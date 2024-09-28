@@ -8,11 +8,15 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 pillow = "^10.4.0"
+replicate = "^0.34.1"
+requests = "^2.32.3"
 
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
 ipython = "^8.27.0"
+python-dotenv = "^1.0.1"
+nbstripout = "^0.7.1"
 
 [build-system]
 requires = ["poetry-core"]

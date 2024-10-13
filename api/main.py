@@ -11,22 +11,23 @@ app = FastAPI()
 
 @app.get("/outfit.jpg")
 def get_outfit(top: str, bottom: str):
-    human = Image.open("../images/humans/model.jpg")
-    print(human.format, human.size, human.mode)
+    human = "nimo"
 
-    mask_bottom = Image.open("../images/masks/bottom.jpg")
-    print(mask_bottom.format, mask_bottom.size, mask_bottom.mode)
+    human_im = Image.open("../images/humans/nimo_underwear.jpg")
+    print(human_im.format, human_im.size, human_im.mode)
 
-    mask_top = Image.open("../images/masks/top.jpg")
-    print(mask_top.format, mask_top.size, mask_top.mode)
+    result_top_im = Image.open(f"../images/results/{human}/single/{top}.jpg")
+    print(result_top_im.format, result_top_im.size, result_top_im.mode)
 
-    result_bottom = Image.open(f"../images/results/single/{bottom}.jpg")
-    print(result_bottom.format, result_bottom.size, result_bottom.mode)
+    result_bottom_im = Image.open(f"../images/results/{human}/single/{bottom}.jpg")
+    print(result_bottom_im.format, result_bottom_im.size, result_bottom_im.mode)
 
-    result_top = Image.open(f"../images/results/single/{top}.jpg")
-    print(result_top.format, result_top.size, result_top.mode)
+    mask_top_im = Image.open(f"../images/masks/{human}/post/{top}.jpg").convert("L")
+    print(mask_top_im.format, mask_top_im.size, mask_top_im.mode)
 
-    im = combine_garments(human, result_top, result_bottom, mask_top, mask_bottom)
+    im = combine_garments(human_im, result_top_im, result_bottom_im, mask_top_im)
+    im.save(f"../images/results/{human}/multi/{top}._{bottom}.jpg")
+    im
 
     img_byte_arr = io.BytesIO()
     im.save(img_byte_arr, format="JPEG")

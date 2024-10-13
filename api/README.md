@@ -1,5 +1,11 @@
 # API
 
+## Installation
+
+```bash
+poetry install --no-root
+```
+
 ## Development
 
 ```bash

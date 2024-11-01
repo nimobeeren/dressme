@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-poetry install --no-root
+poetry install
 ```
 
 ## Development

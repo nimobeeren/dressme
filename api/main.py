@@ -3,10 +3,22 @@ import io
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from PIL import Image
+from sqlmodel import Session, SQLModel, select
 
 from .combining import combine_garments
+from .db import engine
+from .models import User
 
 app = FastAPI()
+
+SQLModel.metadata.create_all(engine)
+
+
+@app.get("/users")
+def get_users():
+    with Session(engine) as session:
+        users = list(session.exec(select(User)))
+    return users
 
 
 @app.get("/outfit.jpg")

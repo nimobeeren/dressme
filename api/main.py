@@ -5,6 +5,7 @@ from typing import Sequence
 from fastapi import FastAPI, Response, status
 from fastapi.responses import StreamingResponse
 from PIL import Image
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from .wardrobe.combining import combine_garments
@@ -21,14 +22,29 @@ def get_users() -> Sequence[User]:
     return users
 
 
+class APIWearable(BaseModel):
+    id: uuid.UUID
+    category: str
+    description: str | None
+    wearable_image_url: str
+
+
 @app.get("/wearables")
-def get_wearables() -> Sequence[Wearable]:
+def get_wearables() -> Sequence[APIWearable]:
     with Session(engine) as session:
         wearables = session.exec(select(Wearable)).all()
-    return wearables
+    return [
+        APIWearable(
+            id=w.id,
+            category=w.category,
+            description=w.description,
+            wearable_image_url=f"/images/wearables/{w.wearable_image_id}",
+        )
+        for w in wearables
+    ]
 
 
-@app.get("/images/wearable_images/{wearable_image_id}")
+@app.get("/images/wearables/{wearable_image_id}")
 def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> bytes:
     with Session(engine) as session:
         wearable_image = session.exec(

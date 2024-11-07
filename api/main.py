@@ -1,17 +1,16 @@
 import io
+import uuid
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.responses import StreamingResponse
 from PIL import Image
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Session, select
 
-from .combining import combine_garments
-from .db import engine
-from .models import User
+from .wardrobe.combining import combine_garments
+from .wardrobe.db import engine
+from .wardrobe.models import User, Wearable, WearableImage
 
 app = FastAPI()
-
-SQLModel.metadata.create_all(engine)
 
 
 @app.get("/users")
@@ -21,7 +20,30 @@ def get_users():
     return users
 
 
-@app.get("/outfit.jpg")
+@app.get("/wearables")
+def get_wearables():
+    with Session(engine) as session:
+        wearables = session.exec(select(Wearable)).all()
+    return wearables
+
+
+@app.get("/images/wearable_images/{wearable_image_id}")
+def get_wearable_image(wearable_image_id: str, response: Response):
+    with Session(engine) as session:
+        wearable_image = session.exec(
+            select(WearableImage).where(
+                WearableImage.id == uuid.UUID(wearable_image_id)
+            )
+        ).first()
+        if wearable_image is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return
+        return StreamingResponse(
+            io.BytesIO(wearable_image.image_data), media_type="image/jpeg"
+        )
+
+
+@app.get("/images/outfit")
 def get_outfit(top: str, bottom: str):
     human = "nimo"
 

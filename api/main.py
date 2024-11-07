@@ -1,5 +1,6 @@
 import io
 import uuid
+from typing import Sequence
 
 from fastapi import FastAPI, Response, status
 from fastapi.responses import StreamingResponse
@@ -14,21 +15,21 @@ app = FastAPI()
 
 
 @app.get("/users")
-def get_users():
+def get_users() -> Sequence[User]:
     with Session(engine) as session:
-        users = list(session.exec(select(User)))
+        users = session.exec(select(User)).all()
     return users
 
 
 @app.get("/wearables")
-def get_wearables():
+def get_wearables() -> Sequence[Wearable]:
     with Session(engine) as session:
         wearables = session.exec(select(Wearable)).all()
     return wearables
 
 
 @app.get("/images/wearable_images/{wearable_image_id}")
-def get_wearable_image(wearable_image_id: uuid.UUID, response: Response):
+def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> bytes:
     with Session(engine) as session:
         wearable_image = session.exec(
             select(WearableImage).where(WearableImage.id == wearable_image_id)
@@ -42,7 +43,7 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response):
 
 
 @app.get("/images/outfit")
-def get_outfit(top: str, bottom: str):
+def get_outfit(top: str, bottom: str) -> bytes:
     human = "nimo"
 
     human_im = Image.open("../images/humans/nimo_underwear.jpg")

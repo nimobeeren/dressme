@@ -45,7 +45,8 @@ def get_avatar_image(avatar_image_id: uuid.UUID, response: Response) -> bytes:
             response.status_code = status.HTTP_404_NOT_FOUND
             return response
         return StreamingResponse(
-            io.BytesIO(avatar_image.image_data), media_type="image/jpeg"
+            io.BytesIO(avatar_image.image_data),
+            media_type="image/jpeg",  # TODO: this may not actually be a JPEG
         )
 
 
@@ -81,7 +82,8 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> byte
             response.status_code = status.HTTP_404_NOT_FOUND
             return response
         return StreamingResponse(
-            io.BytesIO(wearable_image.image_data), media_type="image/jpeg"
+            io.BytesIO(wearable_image.image_data),
+            media_type="image/jpeg",  # TODO: this may not actually be a JPEG
         )
 
 

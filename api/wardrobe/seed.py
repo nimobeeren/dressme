@@ -2,7 +2,7 @@ from pathlib import Path
 from sqlmodel import Session
 
 from .db import engine
-from .models import AvatarImage, User, Wearable, WearableImage
+from .models import AvatarImage, User, Wearable, WearableImage, WearableOnAvatarImage
 
 humans = {
     "model": {"name": "model", "image_path": "../../images/humans/model.jpg"},
@@ -61,18 +61,20 @@ garments = {
 }
 
 if __name__ == "__main__":
+    human = "model"  # which human to use to create test data
+
     with Session(engine) as session:
-        # Add test avatar image
-        image_path = Path(__file__).parent / Path(humans["model"]["image_path"])
+        # Add avatar image
+        image_path = Path(__file__).parent / Path(humans[human]["image_path"])
         with open(image_path, "rb") as image_file:
             avatar_image = AvatarImage(image_data=image_file.read())
             session.add(avatar_image)
 
-        # Add test user
+        # Add user
         user = User(name="Test User", avatar_image_id=avatar_image.id)
         session.add(user)
 
-        # Add test wearables
+        # Add wearables
         for garment in garments.values():
             # Add wearable image
             image_path = Path(__file__).parent / Path(garment["image_path"])
@@ -87,4 +89,26 @@ if __name__ == "__main__":
                 wearable_image_id=wearable_image.id,
             )
             session.add(wearable)
+
+            # Add wearable on avatar image
+            image_path = (
+                Path(__file__).parent.parent.parent
+                / "images"
+                / "results"
+                / human
+                / "single"
+                / f"{garment["name"]}.jpg"
+            )
+            with open(image_path, "rb") as image_file:
+                wearable_on_avatar_image = WearableOnAvatarImage(
+                    avatar_image_id=avatar_image.id,
+                    wearable_image_id=wearable_image.id,
+                    image_data=image_file.read(),
+                )
+                session.add(wearable_on_avatar_image)
+
+            # LEFT HERE
+            # TODO: add mask image data if available?
+            # TODO: implement get outfit method using images from database
+
         session.commit()

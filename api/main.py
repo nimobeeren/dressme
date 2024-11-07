@@ -35,7 +35,7 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response):
         ).first()
         if wearable_image is None:
             response.status_code = status.HTTP_404_NOT_FOUND
-            return
+            return response
         return StreamingResponse(
             io.BytesIO(wearable_image.image_data), media_type="image/jpeg"
         )

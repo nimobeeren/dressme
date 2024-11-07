@@ -28,12 +28,10 @@ def get_wearables():
 
 
 @app.get("/images/wearable_images/{wearable_image_id}")
-def get_wearable_image(wearable_image_id: str, response: Response):
+def get_wearable_image(wearable_image_id: uuid.UUID, response: Response):
     with Session(engine) as session:
         wearable_image = session.exec(
-            select(WearableImage).where(
-                WearableImage.id == uuid.UUID(wearable_image_id)
-            )
+            select(WearableImage).where(WearableImage.id == wearable_image_id)
         ).first()
         if wearable_image is None:
             response.status_code = status.HTTP_404_NOT_FOUND

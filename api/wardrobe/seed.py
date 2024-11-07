@@ -2,7 +2,7 @@ from pathlib import Path
 from sqlmodel import Session
 
 from .db import engine
-from .models import User, Wearable, WearableImage
+from .models import AvatarImage, User, Wearable, WearableImage
 
 humans = {
     "model": {"name": "model", "image_path": "../../images/humans/model.jpg"},
@@ -62,17 +62,25 @@ garments = {
 
 if __name__ == "__main__":
     with Session(engine) as session:
+        # Add test avatar image
+        image_path = Path(__file__).parent / Path(humans["model"]["image_path"])
+        with open(image_path, "rb") as image_file:
+            avatar_image = AvatarImage(image_data=image_file.read())
+            session.add(avatar_image)
+
         # Add test user
-        user = User(name="Test User")
+        user = User(name="Test User", avatar_image_id=avatar_image.id)
         session.add(user)
 
         # Add test wearables
         for garment in garments.values():
+            # Add wearable image
             image_path = Path(__file__).parent / Path(garment["image_path"])
             with open(image_path, "rb") as image_file:
                 wearable_image = WearableImage(image_data=image_file.read())
                 session.add(wearable_image)
 
+            # Add wearable
             wearable = Wearable(
                 category=garment["category"],
                 description=garment["description"],

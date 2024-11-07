@@ -10,16 +10,43 @@ from sqlmodel import Session, select
 
 from .wardrobe.combining import combine_garments
 from .wardrobe.db import engine
-from .wardrobe.models import User, Wearable, WearableImage
+from .wardrobe.models import AvatarImage, User, Wearable, WearableImage
 
 app = FastAPI()
 
 
+class APIUser(BaseModel):
+    id: uuid.UUID
+    name: str
+    avatar_image_url: str
+
+
 @app.get("/users")
-def get_users() -> Sequence[User]:
+def get_users() -> Sequence[APIUser]:
     with Session(engine) as session:
         users = session.exec(select(User)).all()
-    return users
+    return [
+        APIUser(
+            id=u.id,
+            name=u.name,
+            avatar_image_url=f"/images/avatars/{u.avatar_image_id}",
+        )
+        for u in users
+    ]
+
+
+@app.get("/images/avatars/{avatar_image_id}")
+def get_avatar_image(avatar_image_id: uuid.UUID, response: Response) -> bytes:
+    with Session(engine) as session:
+        avatar_image = session.exec(
+            select(AvatarImage).where(AvatarImage.id == avatar_image_id)
+        ).first()
+        if avatar_image is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+        return StreamingResponse(
+            io.BytesIO(avatar_image.image_data), media_type="image/jpeg"
+        )
 
 
 class APIWearable(BaseModel):

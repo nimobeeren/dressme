@@ -6,6 +6,12 @@ from sqlmodel import Field, SQLModel
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str
+    avatar_image_id: uuid.UUID = Field(foreign_key="avatarimage.id")
+
+
+class AvatarImage(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    image_data: bytes
 
 
 class Wearable(SQLModel, table=True):

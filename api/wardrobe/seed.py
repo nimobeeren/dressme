@@ -80,7 +80,7 @@ if __name__ == "__main__":
             image_path = Path(__file__).parent / Path(garment["image_path"])
             with open(image_path, "rb") as image_file:
                 wearable_image = WearableImage(image_data=image_file.read())
-                session.add(wearable_image)
+            session.add(wearable_image)
 
             # Add wearable
             wearable = Wearable(
@@ -100,15 +100,28 @@ if __name__ == "__main__":
                 / f"{garment["name"]}.jpg"
             )
             with open(image_path, "rb") as image_file:
-                wearable_on_avatar_image = WearableOnAvatarImage(
-                    avatar_image_id=avatar_image.id,
-                    wearable_image_id=wearable_image.id,
-                    image_data=image_file.read(),
-                )
-                session.add(wearable_on_avatar_image)
+                image_data = image_file.read()
+            mask_image_path = (
+                Path(__file__).parent.parent.parent
+                / "images"
+                / "masks"
+                / human
+                / "post"
+                / f"{garment["name"]}.jpg"
+            )
+            # TODO: after adding masks for all garments, remove this check
+            if mask_image_path.exists():
+                with open(mask_image_path, "rb") as mask_image_file:
+                    mask_image_data = mask_image_file.read()
+            else:
+                mask_image_data = None
 
-            # LEFT HERE
-            # TODO: add mask image data if available?
-            # TODO: implement get outfit method using images from database
+            wearable_on_avatar_image = WearableOnAvatarImage(
+                avatar_image_id=avatar_image.id,
+                wearable_image_id=wearable_image.id,
+                image_data=image_data,
+                mask_image_data=mask_image_data,
+            )
+            session.add(wearable_on_avatar_image)
 
         session.commit()

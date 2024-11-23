@@ -1,4 +1,5 @@
 from PIL import Image
+from PIL.Image import Image as ImageType
 
 
 def refine_mask(human, garment_on_human, vton_mask, threshold=1000):
@@ -20,9 +21,15 @@ def refine_mask(human, garment_on_human, vton_mask, threshold=1000):
     return mask
 
 
-def combine_garments(human, result_top, result_bottom, mask_top, mask_bottom=None):
-    result = Image.new("RGB", human.size)
-    # refined_mask = refine_mask(human, result_top, mask_top)
-    result.paste(result_bottom, (0, 0))
-    result.paste(result_top, (0, 0), mask_top)
+def combine_wearables(
+    avatar_im: ImageType,
+    top_im: ImageType,
+    bottom_im: ImageType,
+    top_mask_im: ImageType,
+    bottom_mask_im: ImageType | None = None,
+):
+    result = Image.new("RGB", avatar_im.size)
+    # refined_mask = refine_mask(avatar_im, result_top, mask_top)
+    result.paste(bottom_im, (0, 0))
+    result.paste(top_im, (0, 0), top_mask_im.convert("L"))
     return result

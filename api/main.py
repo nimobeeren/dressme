@@ -8,11 +8,21 @@ from PIL import Image
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from .wardrobe.combining import combine_garments
+from .wardrobe.combining import combine_wearables
 from .wardrobe.db import engine
-from .wardrobe.models import AvatarImage, User, Wearable, WearableImage
+from .wardrobe.models import (
+    AvatarImage,
+    User,
+    Wearable,
+    WearableImage,
+    WearableOnAvatarImage,
+)
 
 app = FastAPI()
+
+# LEFT HERE
+# TODO: get this from DB (just get the first user for now)
+current_user_id = uuid.UUID("38fcdea1072648b298da12a62c6402e0")
 
 
 class APIUser(BaseModel):
@@ -90,26 +100,35 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> byte
 
 
 @app.get("/images/outfit")
-def get_outfit(top: str, bottom: str) -> bytes:
-    human = "nimo"
+def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> bytes:
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.id == current_user_id)).one()
+        avatar = session.exec(
+            select(AvatarImage).where(AvatarImage.id == user.avatar_image_id)
+        ).one()
+        top = session.exec(select(Wearable).where(Wearable.id == top_id)).one()
+        bottom = session.exec(select(Wearable).where(Wearable.id == bottom_id)).one()
+        top_on_avatar = session.exec(
+            select(WearableOnAvatarImage)
+            .where(WearableOnAvatarImage.avatar_image_id == user.avatar_image_id)
+            .where(WearableOnAvatarImage.wearable_image_id == top.wearable_image_id)
+        ).first()
+        bottom_on_avatar = session.exec(
+            select(WearableOnAvatarImage)
+            .where(WearableOnAvatarImage.avatar_image_id == user.avatar_image_id)
+            .where(WearableOnAvatarImage.wearable_image_id == bottom.wearable_image_id)
+        ).first()
+    if top_on_avatar is None or bottom_on_avatar is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return response
+    avatar_im = Image.open(io.BytesIO(avatar.image_data))
+    top_im = Image.open(io.BytesIO(top_on_avatar.image_data))
+    bottom_im = Image.open(io.BytesIO(bottom_on_avatar.image_data))
+    top_mask_im = Image.open(io.BytesIO(top_on_avatar.mask_image_data))  # NOTE: fails if mask image data is missing
 
-    human_im = Image.open("../images/humans/nimo_underwear.jpg")
-    print(human_im.format, human_im.size, human_im.mode)
+    outfit_im = combine_wearables(avatar_im, top_im, bottom_im, top_mask_im)
 
-    result_top_im = Image.open(f"../images/results/{human}/single/{top}.jpg")
-    print(result_top_im.format, result_top_im.size, result_top_im.mode)
-
-    result_bottom_im = Image.open(f"../images/results/{human}/single/{bottom}.jpg")
-    print(result_bottom_im.format, result_bottom_im.size, result_bottom_im.mode)
-
-    mask_top_im = Image.open(f"../images/masks/{human}/post/{top}.jpg").convert("L")
-    print(mask_top_im.format, mask_top_im.size, mask_top_im.mode)
-
-    im = combine_garments(human_im, result_top_im, result_bottom_im, mask_top_im)
-    im.save(f"../images/results/{human}/multi/{top}._{bottom}.jpg")
-    im
-
-    img_byte_arr = io.BytesIO()
-    im.save(img_byte_arr, format="JPEG")
-    img_byte_arr.seek(0)
-    return StreamingResponse(img_byte_arr, media_type="image/jpeg")
+    outfit_buffer = io.BytesIO()
+    outfit_im.save(outfit_buffer, format="JPEG")
+    outfit_buffer.seek(0)
+    return StreamingResponse(outfit_buffer, media_type="image/jpeg")

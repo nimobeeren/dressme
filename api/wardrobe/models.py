@@ -31,4 +31,4 @@ class WearableOnAvatarImage(SQLModel, table=True):
     wearable_image_id: uuid.UUID = Field(foreign_key="wearableimage.id")
     avatar_image_id: uuid.UUID = Field(foreign_key="avatarimage.id")
     image_data: bytes
-    mask_image_data: bytes | None  # TODO: make this required
+    mask_image_data: bytes | None  # TODO: generate masks for all wearables, then make this required

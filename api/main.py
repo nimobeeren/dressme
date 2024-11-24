@@ -103,6 +103,7 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> byte
 @app.get("/images/outfit")
 def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> bytes:
     with Session(engine) as session:
+        # TODO: optimize
         user = session.exec(select(User).where(User.id == current_user_id)).one()
         avatar = session.exec(
             select(AvatarImage).where(AvatarImage.id == user.avatar_image_id)
@@ -125,7 +126,7 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
     avatar_im = Image.open(io.BytesIO(avatar.image_data))
     top_im = Image.open(io.BytesIO(top_on_avatar.image_data))
     bottom_im = Image.open(io.BytesIO(bottom_on_avatar.image_data))
-    top_mask_im = Image.open(io.BytesIO(top_on_avatar.mask_image_data))  # NOTE: fails if mask image data is missing
+    top_mask_im = Image.open(io.BytesIO(top_on_avatar.mask_image_data))
 
     outfit_im = combine_wearables(avatar_im, top_im, bottom_im, top_mask_im)
 

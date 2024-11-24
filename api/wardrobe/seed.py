@@ -4,12 +4,12 @@ from sqlmodel import Session
 from .db import engine
 from .models import AvatarImage, User, Wearable, WearableImage, WearableOnAvatarImage
 
-humans = {
+avatars_data = {
     "model": {"name": "model", "image_path": "../../images/humans/model.jpg"},
     "nimo": {"name": "nimo", "image_path": "../../images/humans/nimo_underwear.jpg"},
 }
 
-garments = {
+wearables_data = {
     "tshirt": {
         "name": "tshirt",
         "description": "purple t-shirt",
@@ -61,11 +61,11 @@ garments = {
 }
 
 if __name__ == "__main__":
-    human = "model"  # which human to use to create test data
+    avatar = "model"  # which avatar to use to create test data
 
     with Session(engine) as session:
         # Add avatar image
-        image_path = Path(__file__).parent / Path(humans[human]["image_path"])
+        image_path = Path(__file__).parent / Path(avatars_data[avatar]["image_path"])
         with open(image_path, "rb") as image_file:
             avatar_image = AvatarImage(image_data=image_file.read())
             session.add(avatar_image)
@@ -75,17 +75,17 @@ if __name__ == "__main__":
         session.add(user)
 
         # Add wearables
-        for garment in garments.values():
+        for wearable_data in wearables_data.values():
             # Add wearable image
-            image_path = Path(__file__).parent / Path(garment["image_path"])
+            image_path = Path(__file__).parent / Path(wearable_data["image_path"])
             with open(image_path, "rb") as image_file:
                 wearable_image = WearableImage(image_data=image_file.read())
             session.add(wearable_image)
 
             # Add wearable
             wearable = Wearable(
-                category=garment["category"],
-                description=garment["description"],
+                category=wearable_data["category"],
+                description=wearable_data["description"],
                 wearable_image_id=wearable_image.id,
             )
             session.add(wearable)
@@ -95,9 +95,9 @@ if __name__ == "__main__":
                 Path(__file__).parent.parent.parent
                 / "images"
                 / "results"
-                / human
+                / avatar
                 / "single"
-                / f"{garment["name"]}.jpg"
+                / f"{wearable_data["name"]}.jpg"
             )
             with open(image_path, "rb") as image_file:
                 image_data = image_file.read()
@@ -105,17 +105,12 @@ if __name__ == "__main__":
                 Path(__file__).parent.parent.parent
                 / "images"
                 / "masks"
-                / human
+                / avatar
                 / "post"
-                / f"{garment["name"]}.jpg"
+                / f"{wearable_data["name"]}.jpg"
             )
-            # TODO: after adding masks for all garments, remove this check
-            if mask_image_path.exists():
-                with open(mask_image_path, "rb") as mask_image_file:
-                    mask_image_data = mask_image_file.read()
-            else:
-                mask_image_data = None
-
+            with open(mask_image_path, "rb") as mask_image_file:
+                mask_image_data = mask_image_file.read()
             wearable_on_avatar_image = WearableOnAvatarImage(
                 avatar_image_id=avatar_image.id,
                 wearable_image_id=wearable_image.id,

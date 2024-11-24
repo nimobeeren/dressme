@@ -20,9 +20,10 @@ from .wardrobe.models import (
 
 app = FastAPI()
 
-# LEFT HERE
-# TODO: get this from DB (just get the first user for now)
-current_user_id = uuid.UUID("38fcdea1072648b298da12a62c6402e0")
+# Get the first user ID for testing
+with Session(engine) as session:
+    user = session.exec(select(User)).first()
+    current_user_id = user.id
 
 
 class APIUser(BaseModel):

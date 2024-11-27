@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import io
 import uuid
 from typing import Sequence
@@ -10,7 +11,7 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
 
 from .wardrobe.combining import combine_wearables
-from .wardrobe.db import engine
+from .wardrobe.db import create_db_and_tables, engine
 from .wardrobe.models import (
     AvatarImage,
     User,
@@ -19,12 +20,19 @@ from .wardrobe.models import (
     WearableOnAvatarImage,
 )
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db_and_tables()
 
-# Get the first user ID for testing
-with Session(engine) as session:
-    user = session.exec(select(User)).first()
-    current_user_id = user.id
+    # Get the first user ID for testing
+    with Session(engine) as session:
+        global current_user_id
+        current_user_id = session.exec(select(User.id)).first()
+
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 class APIUser(BaseModel):

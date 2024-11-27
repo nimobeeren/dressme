@@ -2,6 +2,12 @@ from sqlmodel import SQLModel, create_engine
 
 from . import models  # noqa: F401
 
-engine = create_engine("sqlite:///wardrobe.db", echo=True)
+sqlite_file_name = "wardrobe.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
 
-SQLModel.metadata.create_all(engine)
+connect_args = {"check_same_thread": False}
+engine = create_engine(sqlite_url, echo=True, connect_args=connect_args)
+
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)

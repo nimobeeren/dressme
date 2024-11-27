@@ -1,12 +1,13 @@
 import uuid
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str
     avatar_image_id: uuid.UUID = Field(foreign_key="avatarimage.id", index=True)
+    avatar_image: "AvatarImage" = Relationship()
 
 
 class AvatarImage(SQLModel, table=True):

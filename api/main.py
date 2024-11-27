@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from PIL import Image
 from pydantic import BaseModel
 from sqlmodel import Session, select
+from sqlalchemy.orm import joinedload
 
 from .wardrobe.combining import combine_wearables
 from .wardrobe.db import engine
@@ -103,8 +104,10 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> byte
 @app.get("/images/outfit")
 def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> bytes:
     with Session(engine) as session:
-        avatar = session.exec(
-            select(AvatarImage).join(User).where(User.id == current_user_id)
+        user = session.exec(
+            select(User)
+            .where(User.id == current_user_id)
+            .options(joinedload(User.avatar_image))
         ).one()
         top_on_avatar = session.exec(
             select(WearableOnAvatarImage)
@@ -127,7 +130,7 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
     if top_on_avatar is None or bottom_on_avatar is None:
         response.status_code = status.HTTP_404_NOT_FOUND
         return response
-    avatar_im = Image.open(io.BytesIO(avatar.image_data))
+    avatar_im = Image.open(io.BytesIO(user.avatar_image.image_data))
     top_im = Image.open(io.BytesIO(top_on_avatar.image_data))
     bottom_im = Image.open(io.BytesIO(bottom_on_avatar.image_data))
     top_mask_im = Image.open(io.BytesIO(top_on_avatar.mask_image_data))

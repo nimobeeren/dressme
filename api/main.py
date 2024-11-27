@@ -103,22 +103,26 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> byte
 @app.get("/images/outfit")
 def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> bytes:
     with Session(engine) as session:
-        # TODO: optimize
-        user = session.exec(select(User).where(User.id == current_user_id)).one()
         avatar = session.exec(
-            select(AvatarImage).where(AvatarImage.id == user.avatar_image_id)
+            select(AvatarImage).join(User).where(User.id == current_user_id)
         ).one()
-        top = session.exec(select(Wearable).where(Wearable.id == top_id)).one()
-        bottom = session.exec(select(Wearable).where(Wearable.id == bottom_id)).one()
         top_on_avatar = session.exec(
             select(WearableOnAvatarImage)
-            .where(WearableOnAvatarImage.avatar_image_id == user.avatar_image_id)
-            .where(WearableOnAvatarImage.wearable_image_id == top.wearable_image_id)
+            .join(WearableImage, WearableOnAvatarImage.wearable_image_id == WearableImage.id)
+            .join(Wearable, Wearable.wearable_image_id == WearableImage.id)
+            .join(AvatarImage, WearableOnAvatarImage.avatar_image_id == AvatarImage.id)
+            .join(User, User.avatar_image_id == AvatarImage.id)
+            .where(User.id == current_user_id)
+            .where(Wearable.id == top_id)
         ).first()
         bottom_on_avatar = session.exec(
             select(WearableOnAvatarImage)
-            .where(WearableOnAvatarImage.avatar_image_id == user.avatar_image_id)
-            .where(WearableOnAvatarImage.wearable_image_id == bottom.wearable_image_id)
+            .join(WearableImage, WearableOnAvatarImage.wearable_image_id == WearableImage.id)
+            .join(Wearable, Wearable.wearable_image_id == WearableImage.id)
+            .join(AvatarImage, WearableOnAvatarImage.avatar_image_id == AvatarImage.id)
+            .join(User, User.avatar_image_id == AvatarImage.id)
+            .where(User.id == current_user_id)
+            .where(Wearable.id == bottom_id)
         ).first()
     if top_on_avatar is None or bottom_on_avatar is None:
         response.status_code = status.HTTP_404_NOT_FOUND

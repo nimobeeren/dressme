@@ -5,6 +5,7 @@ from typing import Sequence
 
 from fastapi import FastAPI, Response, status
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel
 from sqlmodel import Session, select
@@ -33,6 +34,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class APIUser(BaseModel):

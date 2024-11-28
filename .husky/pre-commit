@@ -1,0 +1,8 @@
+cd client
+client_files=$(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\\ |g' | grep '^client/' | sed 's|^client/||g')
+if [ ! -z "$client_files" ]; then
+    prettier $client_files --write --ignore-unknown
+fi
+
+cd ..
+git update-index --again

@@ -31,8 +31,6 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [top, setTop] = useState(tops[0]);
   const [bottom, setBottom] = useState(bottoms[0]);
 
-  console.log(top, bottom);
-
   return (
     <div className="flex h-screen justify-center">
       <div className="relative">

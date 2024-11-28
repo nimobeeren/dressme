@@ -11,7 +11,7 @@ export function useWearables() {
   return useQuery<Wearable[]>({
     queryKey: ["wearables"],
     queryFn: () => {
-      return fetch(import.meta.env.VITE_API_BASE_URL + "/wearables").then((res) => res.json());
+      return fetch("/wearables").then((res) => res.json());
     },
   });
 }

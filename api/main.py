@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 import io
-import uuid
+from uuid import UUID
 from typing import Sequence
 
 from fastapi import FastAPI, Response, status
@@ -15,11 +15,13 @@ from .wardrobe.combining import combine_wearables
 from .wardrobe.db import create_db_and_tables, engine
 from .wardrobe.models import (
     AvatarImage,
+    FavoriteOutfit,
     User,
     Wearable,
     WearableImage,
     WearableOnAvatarImage,
 )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -45,7 +47,7 @@ app.add_middleware(
 
 
 class APIUser(BaseModel):
-    id: uuid.UUID
+    id: UUID
     name: str
     avatar_image_url: str
 
@@ -65,7 +67,7 @@ def get_users() -> Sequence[APIUser]:
 
 
 @app.get("/images/avatars/{avatar_image_id}")
-def get_avatar_image(avatar_image_id: uuid.UUID, response: Response) -> bytes:
+def get_avatar_image(avatar_image_id: UUID, response: Response) -> bytes:
     with Session(engine) as session:
         avatar_image = session.exec(
             select(AvatarImage).where(AvatarImage.id == avatar_image_id)
@@ -81,7 +83,7 @@ def get_avatar_image(avatar_image_id: uuid.UUID, response: Response) -> bytes:
 
 
 class APIWearable(BaseModel):
-    id: uuid.UUID
+    id: UUID
     category: str
     description: str | None
     wearable_image_url: str
@@ -103,7 +105,7 @@ def get_wearables() -> Sequence[APIWearable]:
 
 
 @app.get("/images/wearables/{wearable_image_id}")
-def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> bytes:
+def get_wearable_image(wearable_image_id: UUID, response: Response) -> bytes:
     with Session(engine) as session:
         wearable_image = session.exec(
             select(WearableImage).where(WearableImage.id == wearable_image_id)
@@ -119,7 +121,7 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> byte
 
 
 @app.get("/images/outfit")
-def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> bytes:
+def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
     with Session(engine) as session:
         user = session.exec(
             select(User)
@@ -128,7 +130,10 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
         ).one()
         top_on_avatar = session.exec(
             select(WearableOnAvatarImage)
-            .join(WearableImage, WearableOnAvatarImage.wearable_image_id == WearableImage.id)
+            .join(
+                WearableImage,
+                WearableOnAvatarImage.wearable_image_id == WearableImage.id,
+            )
             .join(Wearable, Wearable.wearable_image_id == WearableImage.id)
             .join(AvatarImage, WearableOnAvatarImage.avatar_image_id == AvatarImage.id)
             .join(User, User.avatar_image_id == AvatarImage.id)
@@ -137,7 +142,10 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
         ).first()
         bottom_on_avatar = session.exec(
             select(WearableOnAvatarImage)
-            .join(WearableImage, WearableOnAvatarImage.wearable_image_id == WearableImage.id)
+            .join(
+                WearableImage,
+                WearableOnAvatarImage.wearable_image_id == WearableImage.id,
+            )
             .join(Wearable, Wearable.wearable_image_id == WearableImage.id)
             .join(AvatarImage, WearableOnAvatarImage.avatar_image_id == AvatarImage.id)
             .join(User, User.avatar_image_id == AvatarImage.id)
@@ -158,3 +166,26 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
     outfit_im.save(outfit_buffer, format="JPEG")
     outfit_buffer.seek(0)
     return StreamingResponse(outfit_buffer, media_type="image/jpeg")
+
+
+@app.post("/favorite_outfits")
+def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.id == current_user_id)).one()
+        existing = session.exec(
+            select(FavoriteOutfit)
+            .where(FavoriteOutfit.top_id == top_id)
+            .where(FavoriteOutfit.bottom_id == bottom_id)
+            .where(FavoriteOutfit.user_id == user.id)
+        ).one_or_none()
+        if existing:
+            response.status_code = status.HTTP_200_OK
+            return response
+        else:
+            user.favorite_outfits.append(
+                FavoriteOutfit(top_id=top_id, bottom_id=bottom_id, user_id=user.id)
+            )
+            session.add(user)
+            session.commit()
+            response.status_code = status.HTTP_201_CREATED
+            return response

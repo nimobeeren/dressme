@@ -168,6 +168,7 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
     return StreamingResponse(outfit_buffer, media_type="image/jpeg")
 
 
+# TODO: enforce foreign key constraints, i.e. ensure that top and bottom wearables exist before adding favorite
 @app.post("/favorite_outfits")
 def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
     with Session(engine) as session:
@@ -188,4 +189,24 @@ def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
             session.add(user)
             session.commit()
             response.status_code = status.HTTP_201_CREATED
+            return response
+
+
+@app.delete("/favorite_outfits")
+def remove_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.id == current_user_id)).one()
+        outfit = session.exec(
+            select(FavoriteOutfit)
+            .where(FavoriteOutfit.top_id == top_id)
+            .where(FavoriteOutfit.bottom_id == bottom_id)
+            .where(FavoriteOutfit.user_id == user.id)
+        ).one_or_none()
+        if outfit is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+        else:
+            session.delete(outfit)
+            session.commit()
+            response.status_code = status.HTTP_200_OK
             return response

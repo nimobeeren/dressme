@@ -168,10 +168,22 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
     return StreamingResponse(outfit_buffer, media_type="image/jpeg")
 
 
-# TODO: enforce foreign key constraints, i.e. ensure that top and bottom wearables exist before adding favorite
 @app.post("/favorite_outfits")
 def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
     with Session(engine) as session:
+        # Ensure that the top and bottom wearables exist
+        top = session.exec(select(Wearable).where(Wearable.id == top_id)).one_or_none()
+        if top is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+        bottom = session.exec(
+            select(Wearable).where(Wearable.id == bottom_id)
+        ).one_or_none()
+        if bottom is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+
+        # Check if the outfit is already a favorite
         user = session.exec(select(User).where(User.id == current_user_id)).one()
         existing = session.exec(
             select(FavoriteOutfit)
@@ -179,10 +191,13 @@ def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
             .where(FavoriteOutfit.bottom_id == bottom_id)
             .where(FavoriteOutfit.user_id == user.id)
         ).one_or_none()
+
         if existing:
+            # Do nothing if the outfit is already a favorite
             response.status_code = status.HTTP_200_OK
             return response
         else:
+            # Add the outfit to the user's favorites
             user.favorite_outfits.append(
                 FavoriteOutfit(top_id=top_id, bottom_id=bottom_id, user_id=user.id)
             )
@@ -195,6 +210,7 @@ def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
 @app.delete("/favorite_outfits")
 def remove_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
     with Session(engine) as session:
+        # Check if the outfit is a favorite
         user = session.exec(select(User).where(User.id == current_user_id)).one()
         outfit = session.exec(
             select(FavoriteOutfit)
@@ -202,10 +218,13 @@ def remove_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
             .where(FavoriteOutfit.bottom_id == bottom_id)
             .where(FavoriteOutfit.user_id == user.id)
         ).one_or_none()
+
         if outfit is None:
+            # Do nothing if the outfit is not a favorite
             response.status_code = status.HTTP_404_NOT_FOUND
             return response
         else:
+            # Remove the outfit from the user's favorites
             session.delete(outfit)
             session.commit()
             response.status_code = status.HTTP_200_OK

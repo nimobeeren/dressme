@@ -1,9 +1,15 @@
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import { CircleAlertIcon, LoaderCircleIcon } from "lucide-react";
+import { CircleAlertIcon, LoaderCircleIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
+import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { useWearables, type Wearable } from "./hooks";
+import {
+  useAddFavoriteOutfit,
+  useRemoveFavoriteOutfit,
+  useWearables,
+  type Wearable,
+} from "./hooks";
 
 export function Home() {
   const { data: wearables, isPending, error } = useWearables();
@@ -32,9 +38,27 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [topId, setTopId] = useState(tops[0].id);
   const [bottomId, setBottomId] = useState(bottoms[0].id);
 
+  const { mutate: addFavoriteOutfit } = useAddFavoriteOutfit();
+  const { mutate: removeFavoriteOutfit } = useRemoveFavoriteOutfit();
+
+  // TODO: error handling when mutation fails
+  // TODO: get user's favorite outfits
+  // TODO: fill icon depending on whether outfit is favorite or not
+  // TODO: remove outfit from favorites if it's already a favorite
+
   return (
     <div className="flex h-screen items-center justify-center gap-16">
-      <img src={`/images/outfit?top_id=${topId}&bottom_id=${bottomId}`} className="h-full" />
+      <div className="relative h-full">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-4 top-4"
+          onClick={() => addFavoriteOutfit({ topId, bottomId })}
+        >
+          <StarIcon />
+        </Button>
+        <img src={`/images/outfit?top_id=${topId}&bottom_id=${bottomId}`} className="h-full" />
+      </div>
       <form className="h-full max-h-[75%]">
         <Tabs defaultValue="tops" className="flex h-full flex-col items-start gap-2">
           <TabsList className="shrink-0">

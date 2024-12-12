@@ -32,7 +32,9 @@ class WearableImage(SQLModel, table=True):
 class WearableOnAvatarImage(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     wearable_image_id: UUID = Field(foreign_key="wearableimage.id", index=True)
+    wearable_image: "WearableImage" = Relationship()
     avatar_image_id: UUID = Field(foreign_key="avatarimage.id", index=True)
+    avatar_image: "AvatarImage" = Relationship()
     image_data: bytes
     mask_image_data: bytes
 

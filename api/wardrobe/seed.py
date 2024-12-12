@@ -114,8 +114,8 @@ if __name__ == "__main__":
             with open(mask_image_path, "rb") as mask_image_file:
                 mask_image_data = mask_image_file.read()
             wearable_on_avatar_image = WearableOnAvatarImage(
-                avatar_image_id=avatar_image.id,
-                wearable_image_id=wearable_image.id,
+                avatar_image=avatar_image,
+                wearable_image=wearable_image,
                 image_data=image_data,
                 mask_image_data=mask_image_data,
             )

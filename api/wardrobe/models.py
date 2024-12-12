@@ -21,6 +21,7 @@ class Wearable(SQLModel, table=True):
     category: str
     description: str | None
     wearable_image_id: UUID = Field(foreign_key="wearableimage.id", index=True)
+    wearable_image: "WearableImage" = Relationship()
 
 
 class WearableImage(SQLModel, table=True):

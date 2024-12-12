@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     with Session(engine) as session:
         avatar = "model"  # which avatar to use to create test data
-        
+
         # Add avatar image
         image_path = Path(__file__).parent / Path(avatars_data[avatar]["image_path"])
         with open(image_path, "rb") as image_file:
@@ -73,7 +73,7 @@ if __name__ == "__main__":
             session.add(avatar_image)
 
         # Add user
-        user = User(name="Test User", avatar_image_id=avatar_image.id)
+        user = User(name="Test User", avatar_image=avatar_image)
         session.add(user)
 
         # Add wearables
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             wearable = Wearable(
                 category=wearable_data["category"],
                 description=wearable_data["description"],
-                wearable_image_id=wearable_image.id,
+                wearable_image=wearable_image,
             )
             session.add(wearable)
 

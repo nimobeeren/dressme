@@ -1,7 +1,7 @@
 from pathlib import Path
 from sqlmodel import Session
 
-from .db import engine
+from .db import engine, create_db_and_tables
 from .models import AvatarImage, User, Wearable, WearableImage, WearableOnAvatarImage
 
 avatars_data = {
@@ -61,9 +61,11 @@ wearables_data = {
 }
 
 if __name__ == "__main__":
-    avatar = "model"  # which avatar to use to create test data
+    create_db_and_tables()
 
     with Session(engine) as session:
+        avatar = "model"  # which avatar to use to create test data
+        
         # Add avatar image
         image_path = Path(__file__).parent / Path(avatars_data[avatar]["image_path"])
         with open(image_path, "rb") as image_file:

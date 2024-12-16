@@ -41,7 +41,6 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const { mutate: addFavoriteOutfit } = useAddFavoriteOutfit();
   const { mutate: removeFavoriteOutfit } = useRemoveFavoriteOutfit();
 
-  // TODO: error handling when mutation fails
   // TODO: get user's favorite outfits
   // TODO: fill icon depending on whether outfit is favorite or not
   // TODO: remove outfit from favorites if it's already a favorite

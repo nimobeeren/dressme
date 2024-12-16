@@ -10,7 +10,7 @@ import {
   useRemoveFavoriteOutfit,
   useWearables,
   type Wearable,
-} from "./hooks";
+} from "./api";
 import { cn } from "./lib/utils";
 
 export function Home() {
@@ -46,6 +46,8 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const isFavoriteOutfit =
     favoriteOutfits &&
     favoriteOutfits.some((outfit) => outfit.topId === topId && outfit.bottomId === bottomId);
+
+  // TODO: show favorite outfits somewhere
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">

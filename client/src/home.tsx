@@ -6,10 +6,12 @@ import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import {
   useAddFavoriteOutfit,
+  useFavoriteOutfits,
   useRemoveFavoriteOutfit,
   useWearables,
   type Wearable,
 } from "./hooks";
+import { cn } from "./lib/utils";
 
 export function Home() {
   const { data: wearables, isPending, error } = useWearables();
@@ -38,12 +40,12 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [topId, setTopId] = useState(tops[0].id);
   const [bottomId, setBottomId] = useState(bottoms[0].id);
 
+  const { data: favoriteOutfits } = useFavoriteOutfits();
   const { mutate: addFavoriteOutfit } = useAddFavoriteOutfit();
   const { mutate: removeFavoriteOutfit } = useRemoveFavoriteOutfit();
-
-  // TODO: get user's favorite outfits
-  // TODO: fill icon depending on whether outfit is favorite or not
-  // TODO: remove outfit from favorites if it's already a favorite
+  const isFavoriteOutfit =
+    favoriteOutfits &&
+    favoriteOutfits.some((outfit) => outfit.topId === topId && outfit.bottomId === bottomId);
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">
@@ -52,9 +54,13 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           variant="ghost"
           size="icon"
           className="absolute right-4 top-4"
-          onClick={() => addFavoriteOutfit({ topId, bottomId })}
+          onClick={() =>
+            isFavoriteOutfit
+              ? removeFavoriteOutfit({ topId, bottomId })
+              : addFavoriteOutfit({ topId, bottomId })
+          }
         >
-          <StarIcon />
+          <StarIcon className={cn(isFavoriteOutfit && "fill-current")} />
         </Button>
         <img src={`/images/outfit?top_id=${topId}&bottom_id=${bottomId}`} className="h-full" />
       </div>
@@ -110,7 +116,7 @@ function WearableList({
           >
             <img
               key={wearable.id}
-              src={wearable.wearable_image_url}
+              src={wearable.wearableImageUrl}
               className="aspect-3/4 w-48 object-cover"
             />
           </RadioGroup.Item>

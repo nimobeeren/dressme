@@ -168,6 +168,17 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
     return StreamingResponse(outfit_buffer, media_type="image/jpeg")
 
 
+@app.get("/favorite_outfits")
+def get_favorite_outfits():
+    with Session(engine) as session:
+        outfits = session.exec(
+            select(FavoriteOutfit).where(FavoriteOutfit.user_id == current_user_id)
+        ).all()
+    return [
+        {"top_id": outfit.top_id, "bottom_id": outfit.bottom_id} for outfit in outfits
+    ]
+
+
 @app.post("/favorite_outfits")
 def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
     with Session(engine) as session:

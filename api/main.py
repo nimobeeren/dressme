@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 
 from .wardrobe.combining import combine_wearables
 from .wardrobe.db import create_db_and_tables, engine
@@ -168,15 +168,23 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
     return StreamingResponse(outfit_buffer, media_type="image/jpeg")
 
 
+class APIFavoriteOutfit(BaseModel):
+    top: Wearable
+    bottom: Wearable
+
+
 @app.get("/favorite_outfits")
-def get_favorite_outfits():
+def get_favorite_outfits() -> Sequence[APIFavoriteOutfit]:
     with Session(engine) as session:
+        top = aliased(Wearable)
+        bottom = aliased(Wearable)
         outfits = session.exec(
-            select(FavoriteOutfit).where(FavoriteOutfit.user_id == current_user_id)
+            select(top, bottom)
+            .join(FavoriteOutfit, FavoriteOutfit.top_id == top.id)
+            .join(Wearable, FavoriteOutfit.bottom_id == bottom.id)
+            .where(FavoriteOutfit.user_id == current_user_id)
         ).all()
-    return [
-        {"top_id": outfit.top_id, "bottom_id": outfit.bottom_id} for outfit in outfits
-    ]
+    return [{"top": outfit[0], "bottom": outfit[1]} for outfit in outfits]
 
 
 @app.post("/favorite_outfits")

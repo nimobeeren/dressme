@@ -41,5 +41,7 @@ class WearableOnAvatarImage(SQLModel, table=True):
 
 class FavoriteOutfit(SQLModel, table=True):
     top_id: UUID = Field(foreign_key="wearable.id", primary_key=True)
+    top: Wearable = Relationship(sa_relationship_kwargs={"foreign_keys": "FavoriteOutfit.top_id"})
     bottom_id: UUID = Field(foreign_key="wearable.id", primary_key=True)
+    bottom: Wearable = Relationship(sa_relationship_kwargs={"foreign_keys": "FavoriteOutfit.bottom_id"})
     user_id: UUID = Field(foreign_key="user.id", primary_key=True)

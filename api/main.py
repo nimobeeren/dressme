@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from sqlalchemy.orm import joinedload, aliased
+from sqlalchemy.orm import joinedload
 
 from .wardrobe.combining import combine_wearables
 from .wardrobe.db import create_db_and_tables, engine
@@ -176,15 +176,13 @@ class APIFavoriteOutfit(BaseModel):
 @app.get("/favorite_outfits")
 def get_favorite_outfits() -> Sequence[APIFavoriteOutfit]:
     with Session(engine) as session:
-        top = aliased(Wearable)
-        bottom = aliased(Wearable)
         outfits = session.exec(
-            select(top, bottom)
-            .join(FavoriteOutfit, FavoriteOutfit.top_id == top.id)
-            .join(Wearable, FavoriteOutfit.bottom_id == bottom.id)
+            select(FavoriteOutfit)
             .where(FavoriteOutfit.user_id == current_user_id)
+            .options(joinedload(FavoriteOutfit.top))
+            .options(joinedload(FavoriteOutfit.bottom))
         ).all()
-    return [{"top": outfit[0], "bottom": outfit[1]} for outfit in outfits]
+    return [{"top": outfit.top, "bottom": outfit.bottom} for outfit in outfits]
 
 
 @app.post("/favorite_outfits")
@@ -195,12 +193,19 @@ def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
         if top is None:
             response.status_code = status.HTTP_404_NOT_FOUND
             return response
+        if top.category != "upper_body":
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"error": {"message": "Top wearable must have category 'upper_body'"}}
+
         bottom = session.exec(
             select(Wearable).where(Wearable.id == bottom_id)
         ).one_or_none()
         if bottom is None:
             response.status_code = status.HTTP_404_NOT_FOUND
             return response
+        if bottom.category != "lower_body":
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"error": {"message": "Bottom wearable must have category 'lower_body'"}}
 
         # Check if the outfit is already a favorite
         user = session.exec(select(User).where(User.id == current_user_id)).one()

@@ -9,8 +9,8 @@ export interface Wearable {
 }
 
 export interface FavoriteOutfit {
-  topId: string;
-  bottomId: string;
+  top: Wearable;
+  bottom: Wearable;
 }
 
 /** Get all wearables. */

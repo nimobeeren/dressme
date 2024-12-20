@@ -169,8 +169,8 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
 
 
 class APIFavoriteOutfit(BaseModel):
-    top: Wearable
-    bottom: Wearable
+    top: APIWearable
+    bottom: APIWearable
 
 
 @app.get("/favorite_outfits")
@@ -182,7 +182,24 @@ def get_favorite_outfits() -> Sequence[APIFavoriteOutfit]:
             .options(joinedload(FavoriteOutfit.top))
             .options(joinedload(FavoriteOutfit.bottom))
         ).all()
-    return [{"top": outfit.top, "bottom": outfit.bottom} for outfit in outfits]
+
+    # Map wearable image IDs to URLs
+    api_favorite_outfits = []
+    for outfit in outfits:
+        top = APIWearable(
+            id=outfit.top.id,
+            category=outfit.top.category,
+            description=outfit.top.description,
+            wearable_image_url=f"/images/wearables/{outfit.top.wearable_image_id}",
+        )
+        bottom = APIWearable(
+            id=outfit.bottom.id,
+            category=outfit.bottom.category,
+            description=outfit.bottom.description,
+            wearable_image_url=f"/images/wearables/{outfit.bottom.wearable_image_id}",
+        )
+        api_favorite_outfits.append(APIFavoriteOutfit(top=top, bottom=bottom))
+    return api_favorite_outfits
 
 
 @app.post("/favorite_outfits")

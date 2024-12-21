@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 import io
-import uuid
+from uuid import UUID
 from typing import Sequence
 
 from fastapi import FastAPI, Response, status
@@ -15,11 +15,13 @@ from .wardrobe.combining import combine_wearables
 from .wardrobe.db import create_db_and_tables, engine
 from .wardrobe.models import (
     AvatarImage,
+    Outfit,
     User,
     Wearable,
     WearableImage,
     WearableOnAvatarImage,
 )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -45,7 +47,7 @@ app.add_middleware(
 
 
 class APIUser(BaseModel):
-    id: uuid.UUID
+    id: UUID
     name: str
     avatar_image_url: str
 
@@ -65,7 +67,7 @@ def get_users() -> Sequence[APIUser]:
 
 
 @app.get("/images/avatars/{avatar_image_id}")
-def get_avatar_image(avatar_image_id: uuid.UUID, response: Response) -> bytes:
+def get_avatar_image(avatar_image_id: UUID, response: Response) -> bytes:
     with Session(engine) as session:
         avatar_image = session.exec(
             select(AvatarImage).where(AvatarImage.id == avatar_image_id)
@@ -81,7 +83,7 @@ def get_avatar_image(avatar_image_id: uuid.UUID, response: Response) -> bytes:
 
 
 class APIWearable(BaseModel):
-    id: uuid.UUID
+    id: UUID
     category: str
     description: str | None
     wearable_image_url: str
@@ -103,7 +105,7 @@ def get_wearables() -> Sequence[APIWearable]:
 
 
 @app.get("/images/wearables/{wearable_image_id}")
-def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> bytes:
+def get_wearable_image(wearable_image_id: UUID, response: Response) -> bytes:
     with Session(engine) as session:
         wearable_image = session.exec(
             select(WearableImage).where(WearableImage.id == wearable_image_id)
@@ -119,7 +121,7 @@ def get_wearable_image(wearable_image_id: uuid.UUID, response: Response) -> byte
 
 
 @app.get("/images/outfit")
-def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> bytes:
+def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
     with Session(engine) as session:
         user = session.exec(
             select(User)
@@ -128,7 +130,10 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
         ).one()
         top_on_avatar = session.exec(
             select(WearableOnAvatarImage)
-            .join(WearableImage, WearableOnAvatarImage.wearable_image_id == WearableImage.id)
+            .join(
+                WearableImage,
+                WearableOnAvatarImage.wearable_image_id == WearableImage.id,
+            )
             .join(Wearable, Wearable.wearable_image_id == WearableImage.id)
             .join(AvatarImage, WearableOnAvatarImage.avatar_image_id == AvatarImage.id)
             .join(User, User.avatar_image_id == AvatarImage.id)
@@ -137,7 +142,10 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
         ).first()
         bottom_on_avatar = session.exec(
             select(WearableOnAvatarImage)
-            .join(WearableImage, WearableOnAvatarImage.wearable_image_id == WearableImage.id)
+            .join(
+                WearableImage,
+                WearableOnAvatarImage.wearable_image_id == WearableImage.id,
+            )
             .join(Wearable, Wearable.wearable_image_id == WearableImage.id)
             .join(AvatarImage, WearableOnAvatarImage.avatar_image_id == AvatarImage.id)
             .join(User, User.avatar_image_id == AvatarImage.id)
@@ -158,3 +166,106 @@ def get_outfit(top_id: uuid.UUID, bottom_id: uuid.UUID, response: Response) -> b
     outfit_im.save(outfit_buffer, format="JPEG")
     outfit_buffer.seek(0)
     return StreamingResponse(outfit_buffer, media_type="image/jpeg")
+
+
+class APIOutfit(BaseModel):
+    id: UUID
+    top: APIWearable
+    bottom: APIWearable
+
+
+@app.get("/outfits")
+def get_outfits() -> Sequence[APIOutfit]:
+    with Session(engine) as session:
+        outfits = session.exec(
+            select(Outfit)
+            .where(Outfit.user_id == current_user_id)
+            .options(joinedload(Outfit.top))
+            .options(joinedload(Outfit.bottom))
+        ).all()
+
+    # Map wearable image IDs to URLs
+    api_outfits = []
+    for outfit in outfits:
+        top = APIWearable(
+            id=outfit.top.id,
+            category=outfit.top.category,
+            description=outfit.top.description,
+            wearable_image_url=f"/images/wearables/{outfit.top.wearable_image_id}",
+        )
+        bottom = APIWearable(
+            id=outfit.bottom.id,
+            category=outfit.bottom.category,
+            description=outfit.bottom.description,
+            wearable_image_url=f"/images/wearables/{outfit.bottom.wearable_image_id}",
+        )
+        api_outfits.append(APIOutfit(id=outfit.id, top=top, bottom=bottom))
+    return api_outfits
+
+
+@app.post("/outfits")
+def add_outfit(top_id: UUID, bottom_id: UUID, response: Response):
+    with Session(engine) as session:
+        # Ensure that the top and bottom wearables exist
+        top = session.exec(select(Wearable).where(Wearable.id == top_id)).one_or_none()
+        if top is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+        if top.category != "upper_body":
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"error": {"message": "Top wearable must have category 'upper_body'"}}
+
+        bottom = session.exec(
+            select(Wearable).where(Wearable.id == bottom_id)
+        ).one_or_none()
+        if bottom is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+        if bottom.category != "lower_body":
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"error": {"message": "Bottom wearable must have category 'lower_body'"}}
+
+        # Check if the outfit already exists
+        user = session.exec(select(User).where(User.id == current_user_id)).one()
+        existing = session.exec(
+            select(Outfit)
+            .where(Outfit.top_id == top_id)
+            .where(Outfit.bottom_id == bottom_id)
+            .where(Outfit.user_id == user.id)
+        ).one_or_none()
+
+        if existing:
+            # Do nothing if the outfit already exists
+            response.status_code = status.HTTP_200_OK
+            return response
+        else:
+            # Create the outfit
+            user.outfits.append(
+                Outfit(top_id=top_id, bottom_id=bottom_id, user_id=user.id)
+            )
+            session.add(user)
+            session.commit()
+            response.status_code = status.HTTP_201_CREATED
+            return response
+
+
+@app.delete("/outfits")
+def remove_outfit(id: UUID, response: Response):
+    with Session(engine) as session:
+        # Check if the outfit exists and is owned by the current user
+        outfit = session.exec(
+            select(Outfit)
+            .where(Outfit.id == id)
+            .where(Outfit.user_id == current_user_id)
+        ).one_or_none()
+
+        if outfit is None:
+            # Do nothing if the outfit does not exist or is not owned by the current user
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return response
+        else:
+            # Delete the outfit
+            session.delete(outfit)
+            session.commit()
+            response.status_code = status.HTTP_200_OK
+            return response

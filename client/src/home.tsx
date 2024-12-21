@@ -1,9 +1,19 @@
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import { CircleAlertIcon, LoaderCircleIcon } from "lucide-react";
+import { CircleAlertIcon, LoaderCircleIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
+import {
+  useCreateOutfit,
+  useDeleteOutfit,
+  useOutfits,
+  useWearables,
+  type Outfit,
+  type Wearable,
+} from "./api";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
+import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { useWearables, type Wearable } from "./hooks";
+import { useToast } from "./hooks/use-toast";
+import { cn } from "./lib/utils";
 
 export function Home() {
   const { data: wearables, isPending, error } = useWearables();
@@ -29,30 +39,69 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
-  const [topId, setTopId] = useState(tops[0].id);
-  const [bottomId, setBottomId] = useState(bottoms[0].id);
+  const [activeTopId, setActiveTopId] = useState(tops[0].id);
+  const [activeBottomId, setActiveBottomId] = useState(bottoms[0].id);
+
+  const { data: outfits } = useOutfits();
+  const { mutate: createOutfit } = useCreateOutfit();
+  const { mutate: deleteOutfit } = useDeleteOutfit();
+  // Whether the currently active top/bottom are an outfit
+  const isOutfit =
+    outfits &&
+    outfits.some((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">
-      <img src={`/images/outfit?top_id=${topId}&bottom_id=${bottomId}`} className="h-full" />
-      <form className="h-full max-h-[75%]">
-        <Tabs defaultValue="tops" className="flex h-full flex-col items-start gap-2">
+      <div className="relative h-full shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-4 top-4"
+          onClick={() =>
+            isOutfit
+              ? deleteOutfit({ topId: activeTopId, bottomId: activeBottomId })
+              : createOutfit({ topId: activeTopId, bottomId: activeBottomId })
+          }
+        >
+          <StarIcon className={cn(isOutfit && "fill-current")} />
+        </Button>
+        <img
+          src={`/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
+          className="h-full"
+        />
+      </div>
+      <form className="h-full max-h-[75%] w-full max-w-96">
+        <Tabs defaultValue="tops" className="flex h-full w-full flex-col items-start gap-2">
           <TabsList className="shrink-0">
+            <TabsTrigger value="favorites">
+              <StarIcon className="h-4 w-4 fill-current" aria-label="favorites" />
+            </TabsTrigger>
             <TabsTrigger value="tops">Tops</TabsTrigger>
             <TabsTrigger value="bottoms">Bottoms</TabsTrigger>
           </TabsList>
-          <div className="grow overflow-y-auto [scrollbar-gutter:stable]">
+          <div className="min-h-full w-full grow overflow-y-auto [scrollbar-gutter:stable]">
+            <TabsContent value="favorites" className="h-full">
+              <FavoriteOutfitList
+                outfits={outfits}
+                activeTopId={activeTopId}
+                activeBottomId={activeBottomId}
+                onOutfitChange={({ topId, bottomId }) => {
+                  setActiveTopId(topId);
+                  setActiveBottomId(bottomId);
+                }}
+              />
+            </TabsContent>
             <TabsContent value="tops">
               <WearableList
-                value={topId}
-                onValueChange={(value) => setTopId(value)}
+                value={activeTopId}
+                onValueChange={(value) => setActiveTopId(value)}
                 wearables={tops}
               />
             </TabsContent>
             <TabsContent value="bottoms">
               <WearableList
-                value={bottomId}
-                onValueChange={(value) => setBottomId(value)}
+                value={activeBottomId}
+                onValueChange={(value) => setActiveBottomId(value)}
                 wearables={bottoms}
               />
             </TabsContent>
@@ -60,6 +109,86 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
         </Tabs>
       </form>
     </div>
+  );
+}
+
+function FavoriteOutfitList({
+  outfits,
+  activeTopId,
+  activeBottomId,
+  onOutfitChange,
+}: {
+  outfits?: Outfit[];
+  activeTopId?: string;
+  activeBottomId?: string;
+  onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;
+}) {
+  const { toast } = useToast();
+
+  if (!outfits) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <LoaderCircleIcon className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+  if (outfits.length === 0) {
+    return (
+      <div className="flex min-h-[33%] items-center justify-center px-8">
+        <p className="text-center">
+          When you <StarIcon className="inline h-4 w-4 fill-current" aria-label="favorite" /> an
+          outfit it will show up here.
+        </p>
+      </div>
+    );
+  }
+
+  const activeOutfit = outfits.find(
+    (outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId,
+  );
+
+  return (
+    <RadioGroup.Root
+      value={activeOutfit?.id}
+      onValueChange={(value) => {
+        const outfit = outfits.find((o) => o.id === value);
+        if (!outfit) {
+          const message = `Couldn't find outfit with ID: ${value}`;
+          console.error(message);
+          toast({
+            title: "Ugh, couldn't select outfit!",
+            description: `Computer says: '${message}'`,
+            variant: "destructive",
+          });
+          return;
+        }
+        onOutfitChange?.({ topId: outfit.top.id, bottomId: outfit.bottom.id });
+      }}
+      className="grid grid-cols-2 content-start gap-4"
+    >
+      {outfits.map((outfit) => (
+        <RadioGroup.Item
+          key={outfit.id}
+          value={outfit.id}
+          className="relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block"
+        >
+          <div className="absolute inset-0 z-10 drop-shadow-md">
+            <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
+              <img
+                src={outfit.top.wearableImageUrl}
+                className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
+              />
+            </div>
+          </div>
+          <div>
+            <img
+              src={outfit.bottom.wearableImageUrl}
+              className="aspect-3/4 translate-x-[5%] translate-y-[5%] scale-[120%] object-cover"
+            />
+          </div>
+        </RadioGroup.Item>
+      ))}
+    </RadioGroup.Root>
   );
 }
 
@@ -78,21 +207,15 @@ function WearableList({
       onValueChange={onValueChange}
       className="grid grid-cols-2 content-start gap-4"
     >
-      {wearables.map((wearable) => {
-        return (
-          <RadioGroup.Item
-            key={wearable.id}
-            value={wearable.id}
-            className="overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-          >
-            <img
-              key={wearable.id}
-              src={wearable.wearable_image_url}
-              className="aspect-3/4 w-48 object-cover"
-            />
-          </RadioGroup.Item>
-        );
-      })}
+      {wearables.map((wearable) => (
+        <RadioGroup.Item
+          key={wearable.id}
+          value={wearable.id}
+          className="overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        >
+          <img src={wearable.wearableImageUrl} className="aspect-3/4 object-cover" />
+        </RadioGroup.Item>
+      ))}
     </RadioGroup.Root>
   );
 }

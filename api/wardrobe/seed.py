@@ -1,7 +1,7 @@
 from pathlib import Path
 from sqlmodel import Session
 
-from .db import engine
+from .db import engine, create_db_and_tables
 from .models import AvatarImage, User, Wearable, WearableImage, WearableOnAvatarImage
 
 avatars_data = {
@@ -61,9 +61,11 @@ wearables_data = {
 }
 
 if __name__ == "__main__":
-    avatar = "model"  # which avatar to use to create test data
+    create_db_and_tables()
 
     with Session(engine) as session:
+        avatar = "model"  # which avatar to use to create test data
+
         # Add avatar image
         image_path = Path(__file__).parent / Path(avatars_data[avatar]["image_path"])
         with open(image_path, "rb") as image_file:
@@ -71,7 +73,7 @@ if __name__ == "__main__":
             session.add(avatar_image)
 
         # Add user
-        user = User(name="Test User", avatar_image_id=avatar_image.id)
+        user = User(name="Test User", avatar_image=avatar_image)
         session.add(user)
 
         # Add wearables
@@ -86,7 +88,7 @@ if __name__ == "__main__":
             wearable = Wearable(
                 category=wearable_data["category"],
                 description=wearable_data["description"],
-                wearable_image_id=wearable_image.id,
+                wearable_image=wearable_image,
             )
             session.add(wearable)
 
@@ -112,8 +114,8 @@ if __name__ == "__main__":
             with open(mask_image_path, "rb") as mask_image_file:
                 mask_image_data = mask_image_file.read()
             wearable_on_avatar_image = WearableOnAvatarImage(
-                avatar_image_id=avatar_image.id,
-                wearable_image_id=wearable_image.id,
+                avatar_image=avatar_image,
+                wearable_image=wearable_image,
                 image_data=image_data,
                 mask_image_data=mask_image_data,
             )

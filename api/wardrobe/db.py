@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from sqlmodel import SQLModel, create_engine
 
 from . import models  # noqa: F401
@@ -11,3 +12,5 @@ engine = create_engine(sqlite_url, echo=True, connect_args=connect_args)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
+    with engine.connect() as connection:
+        connection.execute(text("PRAGMA foreign_keys=ON"))

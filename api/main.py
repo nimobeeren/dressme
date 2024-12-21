@@ -250,19 +250,17 @@ def add_outfit(top_id: UUID, bottom_id: UUID, response: Response):
 
 
 @app.delete("/outfits")
-def remove_outfit(top_id: UUID, bottom_id: UUID, response: Response):
+def remove_outfit(id: UUID, response: Response):
     with Session(engine) as session:
-        # Check if the outfit exists
-        user = session.exec(select(User).where(User.id == current_user_id)).one()
+        # Check if the outfit exists and is owned by the current user
         outfit = session.exec(
             select(Outfit)
-            .where(Outfit.top_id == top_id)
-            .where(Outfit.bottom_id == bottom_id)
-            .where(Outfit.user_id == user.id)
+            .where(Outfit.id == id)
+            .where(Outfit.user_id == current_user_id)
         ).one_or_none()
 
         if outfit is None:
-            # Do nothing if the outfit does not exist
+            # Do nothing if the outfit does not exist or is not owned by the current user
             response.status_code = status.HTTP_404_NOT_FOUND
             return response
         else:

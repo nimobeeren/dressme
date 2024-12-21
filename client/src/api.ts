@@ -14,7 +14,6 @@ export interface Outfit {
   bottom: Wearable;
 }
 
-/** Get all wearables. */
 export function useWearables() {
   return useQuery<Wearable[]>({
     queryKey: ["wearables"],
@@ -26,7 +25,6 @@ export function useWearables() {
   });
 }
 
-/** Get all outfits. */
 export function useOutfits() {
   return useQuery<Outfit[]>({
     queryKey: ["outfits"],
@@ -38,7 +36,7 @@ export function useOutfits() {
   });
 }
 
-function useCreateOrDeleteOutfit(shouldCreate: boolean) {
+export function useCreateOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ topId, bottomId }: { topId: string; bottomId: string }) => {
@@ -46,7 +44,7 @@ function useCreateOrDeleteOutfit(shouldCreate: boolean) {
       params.set("top_id", topId);
       params.set("bottom_id", bottomId);
       await fetch(`/outfits?${params.toString()}`, {
-        method: shouldCreate ? "POST" : "DELETE",
+        method: "POST",
       });
     },
     onSuccess: () => {
@@ -55,10 +53,18 @@ function useCreateOrDeleteOutfit(shouldCreate: boolean) {
   });
 }
 
-export function useCreateOutfit() {
-  return useCreateOrDeleteOutfit(true);
-}
-
 export function useDeleteOutfit() {
-  return useCreateOrDeleteOutfit(false);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const params = new URLSearchParams();
+      params.set("id", id);
+      await fetch(`/outfits?${params.toString()}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outfits"] });
+    },
+  });
 }

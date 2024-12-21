@@ -5,9 +5,9 @@ import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import {
-  useCreateOutfit,
-  useDeleteOutfit,
+  useAddOutfit,
   useOutfits,
+  useRemoveOutfit,
   useWearables,
   type Outfit,
   type Wearable,
@@ -43,12 +43,11 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [activeBottomId, setActiveBottomId] = useState(bottoms[0].id);
 
   const { data: outfits } = useOutfits();
-  const { mutate: createOutfit } = useCreateOutfit();
-  const { mutate: deleteOutfit } = useDeleteOutfit();
-  // Whether the currently active top/bottom are an outfit
-  const isOutfit =
+  const { mutate: addOutfit } = useAddOutfit();
+  const { mutate: removeOutfit } = useRemoveOutfit();
+  const activeOutfit =
     outfits &&
-    outfits.some((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
+    outfits.find((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">
@@ -58,12 +57,12 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           size="icon"
           className="absolute right-4 top-4"
           onClick={() =>
-            isOutfit
-              ? deleteOutfit({ topId: activeTopId, bottomId: activeBottomId })
-              : createOutfit({ topId: activeTopId, bottomId: activeBottomId })
+            activeOutfit
+              ? removeOutfit(activeOutfit.id)
+              : addOutfit({ topId: activeTopId, bottomId: activeBottomId })
           }
         >
-          <StarIcon className={cn(isOutfit && "fill-current")} />
+          <StarIcon className={cn(activeOutfit && "fill-current")} />
         </Button>
         <img
           src={`/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
@@ -83,8 +82,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
             <TabsContent value="favorites" className="h-full">
               <FavoriteOutfitList
                 outfits={outfits}
-                activeTopId={activeTopId}
-                activeBottomId={activeBottomId}
+                activeOutfit={activeOutfit}
                 onOutfitChange={({ topId, bottomId }) => {
                   setActiveTopId(topId);
                   setActiveBottomId(bottomId);
@@ -114,13 +112,11 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
 
 function FavoriteOutfitList({
   outfits,
-  activeTopId,
-  activeBottomId,
+  activeOutfit,
   onOutfitChange,
 }: {
   outfits?: Outfit[];
-  activeTopId?: string;
-  activeBottomId?: string;
+  activeOutfit?: Outfit;
   onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;
 }) {
   const { toast } = useToast();
@@ -143,16 +139,12 @@ function FavoriteOutfitList({
     );
   }
 
-  const activeOutfit = outfits.find(
-    (outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId,
-  );
-
   return (
     <RadioGroup.Root
       value={activeOutfit?.id}
       onValueChange={(value) => {
-        const outfit = outfits.find((o) => o.id === value);
-        if (!outfit) {
+        const newOutfit = outfits.find((outfit) => outfit.id === value);
+        if (!newOutfit) {
           const message = `Couldn't find outfit with ID: ${value}`;
           console.error(message);
           toast({
@@ -162,7 +154,7 @@ function FavoriteOutfitList({
           });
           return;
         }
-        onOutfitChange?.({ topId: outfit.top.id, bottomId: outfit.bottom.id });
+        onOutfitChange?.({ topId: newOutfit.top.id, bottomId: newOutfit.bottom.id });
       }}
       className="grid grid-cols-2 content-start gap-4"
     >

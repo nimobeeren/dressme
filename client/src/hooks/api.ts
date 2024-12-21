@@ -36,7 +36,7 @@ export function useOutfits() {
   });
 }
 
-export function useCreateOutfit() {
+export function useAddOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ topId, bottomId }: { topId: string; bottomId: string }) => {
@@ -53,7 +53,7 @@ export function useCreateOutfit() {
   });
 }
 
-export function useDeleteOutfit() {
+export function useRemoveOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {

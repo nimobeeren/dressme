@@ -159,13 +159,15 @@ function FavoriteOutfitList({
         <RadioGroup.Item
           key={`${outfit.top.id}:${outfit.bottom.id}`}
           value={`${outfit.top.id}:${outfit.bottom.id}`}
-          className="relative overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+          className="relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block"
         >
-          <div className="absolute inset-0 z-10 [clip-path:polygon(0%0%,100%0%,0%100%)]">
-            <img
-              src={outfit.top.wearableImageUrl}
-              className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
-            />
+          <div className="absolute inset-0 z-10 drop-shadow-md">
+            <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
+              <img
+                src={outfit.top.wearableImageUrl}
+                className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
+              />
+            </div>
           </div>
           <div>
             <img

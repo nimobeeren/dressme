@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { nestedSnakeToCamelCase as camelCase } from "./utils";
+import { nestedSnakeToCamelCase as camelCase } from "../utils";
 
 export interface Wearable {
   id: string;

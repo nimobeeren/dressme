@@ -1,6 +1,9 @@
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
+import { Button } from "./components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import {
   useCreateOutfit,
   useDeleteOutfit,
@@ -8,10 +11,7 @@ import {
   useWearables,
   type Outfit,
   type Wearable,
-} from "./api";
-import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
-import { Button } from "./components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+} from "./hooks/api";
 import { useToast } from "./hooks/use-toast";
 import { cn } from "./lib/utils";
 

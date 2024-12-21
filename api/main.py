@@ -173,8 +173,8 @@ class APIOutfit(BaseModel):
     bottom: APIWearable
 
 
-@app.get("/favorite_outfits")
-def get_favorite_outfits() -> Sequence[APIOutfit]:
+@app.get("/outfits")
+def get_outfits() -> Sequence[APIOutfit]:
     with Session(engine) as session:
         outfits = session.exec(
             select(Outfit)
@@ -202,8 +202,8 @@ def get_favorite_outfits() -> Sequence[APIOutfit]:
     return api_outfits
 
 
-@app.post("/favorite_outfits")
-def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
+@app.post("/outfits")
+def add_outfit(top_id: UUID, bottom_id: UUID, response: Response):
     with Session(engine) as session:
         # Ensure that the top and bottom wearables exist
         top = session.exec(select(Wearable).where(Wearable.id == top_id)).one_or_none()
@@ -248,8 +248,8 @@ def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
             return response
 
 
-@app.delete("/favorite_outfits")
-def remove_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
+@app.delete("/outfits")
+def remove_outfit(top_id: UUID, bottom_id: UUID, response: Response):
     with Session(engine) as session:
         # Check if the outfit exists
         user = session.exec(select(User).where(User.id == current_user_id)).one()

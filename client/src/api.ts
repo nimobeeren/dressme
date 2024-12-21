@@ -8,7 +8,7 @@ export interface Wearable {
   wearableImageUrl: string;
 }
 
-export interface FavoriteOutfit {
+export interface Outfit {
   top: Wearable;
   bottom: Wearable;
 }
@@ -25,42 +25,39 @@ export function useWearables() {
   });
 }
 
-/** Get all favorite outfits. */
-export function useFavoriteOutfits() {
-  return useQuery<FavoriteOutfit[]>({
-    queryKey: ["favoriteOutfits"],
+/** Get all outfits. */
+export function useOutfits() {
+  return useQuery<Outfit[]>({
+    queryKey: ["outfits"],
     queryFn: async () => {
-      return await fetch("/favorite_outfits")
+      return await fetch("/outfits")
         .then((res) => res.json())
         .then((json) => camelCase(json));
     },
   });
 }
 
-/** Add or remove an outfit from favorites. */
-function useAddOrRemoveFavoriteOutfit(shouldSetFavorite: boolean) {
+function useCreateOrDeleteOutfit(shouldCreate: boolean) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ topId, bottomId }: { topId: string; bottomId: string }) => {
       const params = new URLSearchParams();
       params.set("top_id", topId);
       params.set("bottom_id", bottomId);
-      await fetch(`/favorite_outfits?${params.toString()}`, {
-        method: shouldSetFavorite ? "POST" : "DELETE",
+      await fetch(`/outfits?${params.toString()}`, {
+        method: shouldCreate ? "POST" : "DELETE",
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["favoriteOutfits"] });
+      queryClient.invalidateQueries({ queryKey: ["outfits"] });
     },
   });
 }
 
-/** Add an outfit to favorites. */
-export function useAddFavoriteOutfit() {
-  return useAddOrRemoveFavoriteOutfit(true);
+export function useCreateOutfit() {
+  return useCreateOrDeleteOutfit(true);
 }
 
-/** Remove an outfit from favorites. */
-export function useRemoveFavoriteOutfit() {
-  return useAddOrRemoveFavoriteOutfit(false);
+export function useDeleteOutfit() {
+  return useCreateOrDeleteOutfit(false);
 }

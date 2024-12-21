@@ -2,11 +2,11 @@ import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import {
-  useAddFavoriteOutfit,
-  useFavoriteOutfits,
-  useRemoveFavoriteOutfit,
+  useCreateOutfit,
+  useDeleteOutfit,
+  useOutfits,
   useWearables,
-  type FavoriteOutfit,
+  type Outfit,
   type Wearable,
 } from "./api";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
@@ -41,14 +41,13 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [activeTopId, setActiveTopId] = useState(tops[0].id);
   const [activeBottomId, setActiveBottomId] = useState(bottoms[0].id);
 
-  const { data: favoriteOutfits } = useFavoriteOutfits();
-  const { mutate: addFavoriteOutfit } = useAddFavoriteOutfit();
-  const { mutate: removeFavoriteOutfit } = useRemoveFavoriteOutfit();
-  const isFavoriteOutfit =
-    favoriteOutfits &&
-    favoriteOutfits.some(
-      (outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId,
-    );
+  const { data: outfits } = useOutfits();
+  const { mutate: createOutfit } = useCreateOutfit();
+  const { mutate: deleteOutfit } = useDeleteOutfit();
+  // Whether the currently active top/bottom are an outfit
+  const isOutfit =
+    outfits &&
+    outfits.some((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">
@@ -58,12 +57,12 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           size="icon"
           className="absolute right-4 top-4"
           onClick={() =>
-            isFavoriteOutfit
-              ? removeFavoriteOutfit({ topId: activeTopId, bottomId: activeBottomId })
-              : addFavoriteOutfit({ topId: activeTopId, bottomId: activeBottomId })
+            isOutfit
+              ? deleteOutfit({ topId: activeTopId, bottomId: activeBottomId })
+              : createOutfit({ topId: activeTopId, bottomId: activeBottomId })
           }
         >
-          <StarIcon className={cn(isFavoriteOutfit && "fill-current")} />
+          <StarIcon className={cn(isOutfit && "fill-current")} />
         </Button>
         <img
           src={`/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
@@ -82,7 +81,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           <div className="min-h-full w-full grow overflow-y-auto [scrollbar-gutter:stable]">
             <TabsContent value="favorites" className="h-full">
               <FavoriteOutfitList
-                outfits={favoriteOutfits}
+                outfits={outfits}
                 activeTopId={activeTopId}
                 activeBottomId={activeBottomId}
                 onOutfitChange={({ topId, bottomId }) => {
@@ -118,7 +117,7 @@ function FavoriteOutfitList({
   activeBottomId,
   onOutfitChange,
 }: {
-  outfits?: FavoriteOutfit[];
+  outfits?: Outfit[];
   activeTopId?: string;
   activeBottomId?: string;
   onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;

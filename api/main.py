@@ -15,7 +15,7 @@ from .wardrobe.combining import combine_wearables
 from .wardrobe.db import create_db_and_tables, engine
 from .wardrobe.models import (
     AvatarImage,
-    FavoriteOutfit,
+    Outfit,
     User,
     Wearable,
     WearableImage,
@@ -168,23 +168,23 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
     return StreamingResponse(outfit_buffer, media_type="image/jpeg")
 
 
-class APIFavoriteOutfit(BaseModel):
+class APIOutfit(BaseModel):
     top: APIWearable
     bottom: APIWearable
 
 
 @app.get("/favorite_outfits")
-def get_favorite_outfits() -> Sequence[APIFavoriteOutfit]:
+def get_favorite_outfits() -> Sequence[APIOutfit]:
     with Session(engine) as session:
         outfits = session.exec(
-            select(FavoriteOutfit)
-            .where(FavoriteOutfit.user_id == current_user_id)
-            .options(joinedload(FavoriteOutfit.top))
-            .options(joinedload(FavoriteOutfit.bottom))
+            select(Outfit)
+            .where(Outfit.user_id == current_user_id)
+            .options(joinedload(Outfit.top))
+            .options(joinedload(Outfit.bottom))
         ).all()
 
     # Map wearable image IDs to URLs
-    api_favorite_outfits = []
+    api_outfits = []
     for outfit in outfits:
         top = APIWearable(
             id=outfit.top.id,
@@ -198,8 +198,8 @@ def get_favorite_outfits() -> Sequence[APIFavoriteOutfit]:
             description=outfit.bottom.description,
             wearable_image_url=f"/images/wearables/{outfit.bottom.wearable_image_id}",
         )
-        api_favorite_outfits.append(APIFavoriteOutfit(top=top, bottom=bottom))
-    return api_favorite_outfits
+        api_outfits.append(APIOutfit(top=top, bottom=bottom))
+    return api_outfits
 
 
 @app.post("/favorite_outfits")
@@ -224,23 +224,23 @@ def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
             response.status_code = status.HTTP_400_BAD_REQUEST
             return {"error": {"message": "Bottom wearable must have category 'lower_body'"}}
 
-        # Check if the outfit is already a favorite
+        # Check if the outfit already exists
         user = session.exec(select(User).where(User.id == current_user_id)).one()
         existing = session.exec(
-            select(FavoriteOutfit)
-            .where(FavoriteOutfit.top_id == top_id)
-            .where(FavoriteOutfit.bottom_id == bottom_id)
-            .where(FavoriteOutfit.user_id == user.id)
+            select(Outfit)
+            .where(Outfit.top_id == top_id)
+            .where(Outfit.bottom_id == bottom_id)
+            .where(Outfit.user_id == user.id)
         ).one_or_none()
 
         if existing:
-            # Do nothing if the outfit is already a favorite
+            # Do nothing if the outfit already exists
             response.status_code = status.HTTP_200_OK
             return response
         else:
-            # Add the outfit to the user's favorites
-            user.favorite_outfits.append(
-                FavoriteOutfit(top_id=top_id, bottom_id=bottom_id, user_id=user.id)
+            # Create the outfit
+            user.outfits.append(
+                Outfit(top_id=top_id, bottom_id=bottom_id, user_id=user.id)
             )
             session.add(user)
             session.commit()
@@ -251,21 +251,21 @@ def add_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
 @app.delete("/favorite_outfits")
 def remove_favorite_outfit(top_id: UUID, bottom_id: UUID, response: Response):
     with Session(engine) as session:
-        # Check if the outfit is a favorite
+        # Check if the outfit exists
         user = session.exec(select(User).where(User.id == current_user_id)).one()
         outfit = session.exec(
-            select(FavoriteOutfit)
-            .where(FavoriteOutfit.top_id == top_id)
-            .where(FavoriteOutfit.bottom_id == bottom_id)
-            .where(FavoriteOutfit.user_id == user.id)
+            select(Outfit)
+            .where(Outfit.top_id == top_id)
+            .where(Outfit.bottom_id == bottom_id)
+            .where(Outfit.user_id == user.id)
         ).one_or_none()
 
         if outfit is None:
-            # Do nothing if the outfit is not a favorite
+            # Do nothing if the outfit does not exist
             response.status_code = status.HTTP_404_NOT_FOUND
             return response
         else:
-            # Remove the outfit from the user's favorites
+            # Delete the outfit
             session.delete(outfit)
             session.commit()
             response.status_code = status.HTTP_200_OK

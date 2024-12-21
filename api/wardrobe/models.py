@@ -8,7 +8,7 @@ class User(SQLModel, table=True):
     name: str
     avatar_image_id: UUID = Field(foreign_key="avatarimage.id", index=True)
     avatar_image: "AvatarImage" = Relationship()
-    favorite_outfits: list["FavoriteOutfit"] = Relationship()
+    outfits: list["Outfit"] = Relationship()
 
 
 class AvatarImage(SQLModel, table=True):
@@ -39,9 +39,13 @@ class WearableOnAvatarImage(SQLModel, table=True):
     mask_image_data: bytes
 
 
-class FavoriteOutfit(SQLModel, table=True):
+class Outfit(SQLModel, table=True):
     top_id: UUID = Field(foreign_key="wearable.id", primary_key=True)
-    top: Wearable = Relationship(sa_relationship_kwargs={"foreign_keys": "FavoriteOutfit.top_id"})
+    top: Wearable = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "Outfit.top_id"}
+    )
     bottom_id: UUID = Field(foreign_key="wearable.id", primary_key=True)
-    bottom: Wearable = Relationship(sa_relationship_kwargs={"foreign_keys": "FavoriteOutfit.bottom_id"})
+    bottom: Wearable = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "Outfit.bottom_id"}
+    )
     user_id: UUID = Field(foreign_key="user.id", primary_key=True)

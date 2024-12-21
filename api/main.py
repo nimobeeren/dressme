@@ -169,6 +169,7 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
 
 
 class APIOutfit(BaseModel):
+    id: UUID
     top: APIWearable
     bottom: APIWearable
 
@@ -198,7 +199,7 @@ def get_outfits() -> Sequence[APIOutfit]:
             description=outfit.bottom.description,
             wearable_image_url=f"/images/wearables/{outfit.bottom.wearable_image_id}",
         )
-        api_outfits.append(APIOutfit(top=top, bottom=bottom))
+        api_outfits.append(APIOutfit(id=outfit.id, top=top, bottom=bottom))
     return api_outfits
 
 

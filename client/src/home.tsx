@@ -12,6 +12,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { useToast } from "./hooks/use-toast";
 import { cn } from "./lib/utils";
 
 export function Home() {
@@ -122,6 +123,8 @@ function FavoriteOutfitList({
   activeBottomId?: string;
   onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;
 }) {
+  const { toast } = useToast();
+
   if (!outfits) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -146,18 +149,27 @@ function FavoriteOutfitList({
 
   return (
     <RadioGroup.Root
-      // TODO: I don't love having to store two IDs in the value, maybe create a generic Outfit with an ID in the backend after all?
-      value={activeOutfit ? `${activeOutfit.top.id}:${activeOutfit.bottom.id}` : undefined}
+      value={activeOutfit?.id}
       onValueChange={(value) => {
-        const [topId, bottomId] = value.split(":");
-        onOutfitChange?.({ topId, bottomId });
+        const outfit = outfits.find((o) => o.id === value);
+        if (!outfit) {
+          const message = `Couldn't find outfit with ID: ${value}`;
+          console.error(message);
+          toast({
+            title: "Ugh, couldn't select outfit!",
+            description: `Computer says: '${message}'`,
+            variant: "destructive",
+          });
+          return;
+        }
+        onOutfitChange?.({ topId: outfit.top.id, bottomId: outfit.bottom.id });
       }}
       className="grid grid-cols-2 content-start gap-4"
     >
       {outfits.map((outfit) => (
         <RadioGroup.Item
-          key={`${outfit.top.id}:${outfit.bottom.id}`}
-          value={`${outfit.top.id}:${outfit.bottom.id}`}
+          key={outfit.id}
+          value={outfit.id}
           className="relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block"
         >
           <div className="absolute inset-0 z-10 drop-shadow-md">

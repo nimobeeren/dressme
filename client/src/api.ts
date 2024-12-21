@@ -9,6 +9,7 @@ export interface Wearable {
 }
 
 export interface Outfit {
+  id: string;
   top: Wearable;
   bottom: Wearable;
 }

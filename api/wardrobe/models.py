@@ -40,12 +40,18 @@ class WearableOnAvatarImage(SQLModel, table=True):
 
 
 class Outfit(SQLModel, table=True):
-    top_id: UUID = Field(foreign_key="wearable.id", primary_key=True)
+    """
+    A combination of a top and bottom, created by a user.
+    A user can only have one outfit with the same top and bottom.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    top_id: UUID = Field(foreign_key="wearable.id", index=True)
     top: Wearable = Relationship(
         sa_relationship_kwargs={"foreign_keys": "Outfit.top_id"}
     )
-    bottom_id: UUID = Field(foreign_key="wearable.id", primary_key=True)
+    bottom_id: UUID = Field(foreign_key="wearable.id", index=True)
     bottom: Wearable = Relationship(
         sa_relationship_kwargs={"foreign_keys": "Outfit.bottom_id"}
     )
-    user_id: UUID = Field(foreign_key="user.id", primary_key=True)
+    user_id: UUID = Field(foreign_key="user.id", index=True)

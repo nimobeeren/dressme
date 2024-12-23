@@ -4,8 +4,8 @@ import {
   getOutfits,
   getWearables,
   removeOutfit,
-  type APIOutfit,
-  type APIWearable,
+  type Outfit,
+  type Wearable,
 } from "@/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -17,7 +17,7 @@ client.setConfig({
 });
 
 export function useWearables() {
-  return useQuery<APIWearable[]>({
+  return useQuery<Wearable[]>({
     queryKey: ["wearables"],
     queryFn: async () => {
       const result = await getWearables({ throwOnError: true });
@@ -27,7 +27,7 @@ export function useWearables() {
 }
 
 export function useOutfits() {
-  return useQuery<APIOutfit[]>({
+  return useQuery<Outfit[]>({
     queryKey: ["outfits"],
     queryFn: async () => {
       const result = await getOutfits({ throwOnError: true });

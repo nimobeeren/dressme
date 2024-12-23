@@ -1,7 +1,7 @@
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
-import type { APIOutfit, APIWearable } from "./api";
+import type { Outfit, Wearable } from "./api";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
@@ -29,7 +29,7 @@ export function Home() {
   return <OutfitPicker wearables={wearables} />;
 }
 
-function OutfitPicker({ wearables }: { wearables: APIWearable[] }) {
+function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
@@ -109,8 +109,8 @@ function FavoriteOutfitList({
   activeOutfit,
   onOutfitChange,
 }: {
-  outfits?: APIOutfit[];
-  activeOutfit?: APIOutfit;
+  outfits?: Outfit[];
+  activeOutfit?: Outfit;
   onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;
 }) {
   const { toast } = useToast();
@@ -185,7 +185,7 @@ function WearableList({
 }: {
   value: string;
   onValueChange: (value: string) => void;
-  wearables: APIWearable[];
+  wearables: Wearable[];
 }) {
   return (
     <RadioGroup.Root

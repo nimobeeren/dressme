@@ -13,7 +13,7 @@ poetry install
 The first time you run this, you need to create the database and insert some test data:
 
 ```bash
-poetry run python -m wardrobe.seed
+poetry run python -m wardrobe.db.seed
 ```
 
 This will create a file named `wardrobe.db` containing some test data.

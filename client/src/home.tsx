@@ -59,7 +59,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           <StarIcon className={cn(activeOutfit && "fill-current")} />
         </Button>
         <img
-          src={`/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
+          src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
           className="h-full"
         />
       </div>
@@ -161,14 +161,20 @@ function FavoriteOutfitList({
           <div className="absolute inset-0 z-10 drop-shadow-md">
             <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
               <img
-                src={outfit.top.wearable_image_url}
+                src={new URL(
+                  outfit.top.wearable_image_url,
+                  import.meta.env.VITE_API_BASE_URL,
+                ).toString()}
                 className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
               />
             </div>
           </div>
           <div>
             <img
-              src={outfit.bottom.wearable_image_url}
+              src={new URL(
+                outfit.bottom.wearable_image_url,
+                import.meta.env.VITE_API_BASE_URL,
+              ).toString()}
               className="aspect-3/4 translate-x-[5%] translate-y-[5%] scale-[120%] object-cover"
             />
           </div>
@@ -199,7 +205,10 @@ function WearableList({
           value={wearable.id}
           className="overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         >
-          <img src={wearable.wearable_image_url} className="aspect-3/4 object-cover" />
+          <img
+            src={new URL(wearable.wearable_image_url, import.meta.env.VITE_API_BASE_URL).toString()}
+            className="aspect-3/4 object-cover"
+          />
         </RadioGroup.Item>
       ))}
     </RadioGroup.Root>

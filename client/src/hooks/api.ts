@@ -12,7 +12,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // TODO: find a way to enable `throwOnError` globally while still correctly inferring that `result.data` is not undefined
 
 client.setConfig({
-  // Need to set base URL here because client does not respect HTML <base>
   baseUrl: import.meta.env.VITE_API_BASE_URL,
 });
 

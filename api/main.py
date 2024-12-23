@@ -274,7 +274,7 @@ def add_outfit(top_id: UUID, bottom_id: UUID):
             return Response(status_code=status.HTTP_201_CREATED)
 
 
-@app.delete("/outfits", responses={200: {"content": None}, 404: {}})
+@app.delete("/outfits")
 def remove_outfit(id: UUID):
     with Session(engine) as session:
         # Check if the outfit exists and is owned by the current user

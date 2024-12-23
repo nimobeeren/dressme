@@ -1,37 +1,37 @@
+import {
+  addOutfit,
+  client,
+  getOutfits,
+  getWearables,
+  removeOutfit,
+  type APIOutfit,
+  type APIWearable,
+} from "@/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { nestedSnakeToCamelCase as camelCase } from "../utils";
 
-export interface Wearable {
-  id: string;
-  category: string;
-  description: string;
-  wearableImageUrl: string;
-}
+// TODO: find a way to enable `throwOnError` globally while still correctly inferring that `result.data` is not undefined
 
-export interface Outfit {
-  id: string;
-  top: Wearable;
-  bottom: Wearable;
-}
+client.setConfig({
+  // Need to set base URL here because client does not respect HTML <base>
+  baseUrl: import.meta.env.VITE_API_BASE_URL,
+});
 
 export function useWearables() {
-  return useQuery<Wearable[]>({
+  return useQuery<APIWearable[]>({
     queryKey: ["wearables"],
-    queryFn: () => {
-      return fetch("/wearables")
-        .then((res) => res.json())
-        .then((json) => camelCase(json));
+    queryFn: async () => {
+      const result = await getWearables({ throwOnError: true });
+      return result.data;
     },
   });
 }
 
 export function useOutfits() {
-  return useQuery<Outfit[]>({
+  return useQuery<APIOutfit[]>({
     queryKey: ["outfits"],
     queryFn: async () => {
-      return await fetch("/outfits")
-        .then((res) => res.json())
-        .then((json) => camelCase(json));
+      const result = await getOutfits({ throwOnError: true });
+      return result.data;
     },
   });
 }
@@ -40,11 +40,12 @@ export function useAddOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ topId, bottomId }: { topId: string; bottomId: string }) => {
-      const params = new URLSearchParams();
-      params.set("top_id", topId);
-      params.set("bottom_id", bottomId);
-      await fetch(`/outfits?${params.toString()}`, {
-        method: "POST",
+      await addOutfit({
+        query: {
+          top_id: topId,
+          bottom_id: bottomId,
+        },
+        throwOnError: true,
       });
     },
     onSuccess: () => {
@@ -57,11 +58,7 @@ export function useRemoveOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const params = new URLSearchParams();
-      params.set("id", id);
-      await fetch(`/outfits?${params.toString()}`, {
-        method: "DELETE",
-      });
+      await removeOutfit({ query: { id }, throwOnError: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });

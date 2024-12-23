@@ -28,6 +28,7 @@ export function App() {
   return (
     <HelmetProvider>
       <Helmet>
+        {/* Set base URL for fetch and image src URLs */}
         <base href={import.meta.env.VITE_API_BASE_URL} />
       </Helmet>
       <QueryClientProvider client={queryClient}>

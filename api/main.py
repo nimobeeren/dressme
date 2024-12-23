@@ -4,9 +4,10 @@ from uuid import UUID
 from typing import Sequence
 
 from fastapi import FastAPI, Response, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
+from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
@@ -35,7 +36,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+def custom_generate_unique_id(route: APIRoute):
+    # NOTE: this means route names (the name of the function decorated with @app.<method>) must be unique
+    return route.name
+
+
+app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,14 +73,13 @@ def get_users() -> Sequence[APIUser]:
 
 
 @app.get("/images/avatars/{avatar_image_id}")
-def get_avatar_image(avatar_image_id: UUID, response: Response) -> bytes:
+def get_avatar_image(avatar_image_id: UUID) -> bytes:
     with Session(engine) as session:
         avatar_image = session.exec(
             select(AvatarImage).where(AvatarImage.id == avatar_image_id)
         ).first()
         if avatar_image is None:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return response
+            return Response(status_code=status.HTTP_404_NOT_FOUND)
         image = Image.open(io.BytesIO(avatar_image.image_data))
         return StreamingResponse(
             io.BytesIO(avatar_image.image_data),
@@ -105,14 +110,13 @@ def get_wearables() -> Sequence[APIWearable]:
 
 
 @app.get("/images/wearables/{wearable_image_id}")
-def get_wearable_image(wearable_image_id: UUID, response: Response) -> bytes:
+def get_wearable_image(wearable_image_id: UUID) -> bytes:
     with Session(engine) as session:
         wearable_image = session.exec(
             select(WearableImage).where(WearableImage.id == wearable_image_id)
         ).first()
         if wearable_image is None:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return response
+            return Response(status_code=status.HTTP_404_NOT_FOUND)
         image = Image.open(io.BytesIO(wearable_image.image_data))
         return StreamingResponse(
             io.BytesIO(wearable_image.image_data),
@@ -121,7 +125,7 @@ def get_wearable_image(wearable_image_id: UUID, response: Response) -> bytes:
 
 
 @app.get("/images/outfit")
-def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
+def get_outfit(top_id: UUID, bottom_id: UUID) -> bytes:
     with Session(engine) as session:
         user = session.exec(
             select(User)
@@ -153,8 +157,7 @@ def get_outfit(top_id: UUID, bottom_id: UUID, response: Response) -> bytes:
             .where(Wearable.id == bottom_id)
         ).first()
     if top_on_avatar is None or bottom_on_avatar is None:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return response
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
     avatar_im = Image.open(io.BytesIO(user.avatar_image.image_data))
     top_im = Image.open(io.BytesIO(top_on_avatar.image_data))
     bottom_im = Image.open(io.BytesIO(bottom_on_avatar.image_data))
@@ -204,26 +207,50 @@ def get_outfits() -> Sequence[APIOutfit]:
 
 
 @app.post("/outfits")
-def add_outfit(top_id: UUID, bottom_id: UUID, response: Response):
+def add_outfit(top_id: UUID, bottom_id: UUID):
     with Session(engine) as session:
         # Ensure that the top and bottom wearables exist
         top = session.exec(select(Wearable).where(Wearable.id == top_id)).one_or_none()
         if top is None:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return response
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "error": {
+                        "message": f"Wearable with ID '${top_id}' does not exist."
+                    }
+                },
+            )
         if top.category != "upper_body":
-            response.status_code = status.HTTP_400_BAD_REQUEST
-            return {"error": {"message": "Top wearable must have category 'upper_body'"}}
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": {
+                        "message": "Top wearable must have category 'upper_body'."
+                    }
+                },
+            )
 
         bottom = session.exec(
             select(Wearable).where(Wearable.id == bottom_id)
         ).one_or_none()
         if bottom is None:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return response
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "error": {
+                        "message": f"Wearable with ID '${bottom_id}' does not exist."
+                    }
+                },
+            )
         if bottom.category != "lower_body":
-            response.status_code = status.HTTP_400_BAD_REQUEST
-            return {"error": {"message": "Bottom wearable must have category 'lower_body'"}}
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": {
+                        "message": "Bottom wearable must have category 'lower_body'"
+                    }
+                },
+            )
 
         # Check if the outfit already exists
         user = session.exec(select(User).where(User.id == current_user_id)).one()
@@ -236,8 +263,7 @@ def add_outfit(top_id: UUID, bottom_id: UUID, response: Response):
 
         if existing:
             # Do nothing if the outfit already exists
-            response.status_code = status.HTTP_200_OK
-            return response
+            return Response(status_code=status.HTTP_200_OK)
         else:
             # Create the outfit
             user.outfits.append(
@@ -245,12 +271,11 @@ def add_outfit(top_id: UUID, bottom_id: UUID, response: Response):
             )
             session.add(user)
             session.commit()
-            response.status_code = status.HTTP_201_CREATED
-            return response
+            return Response(status_code=status.HTTP_201_CREATED)
 
 
-@app.delete("/outfits")
-def remove_outfit(id: UUID, response: Response):
+@app.delete("/outfits", responses={200: {"content": None}, 404: {}})
+def remove_outfit(id: UUID):
     with Session(engine) as session:
         # Check if the outfit exists and is owned by the current user
         outfit = session.exec(
@@ -261,11 +286,9 @@ def remove_outfit(id: UUID, response: Response):
 
         if outfit is None:
             # Do nothing if the outfit does not exist or is not owned by the current user
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return response
+            return Response(status_code=status.HTTP_404_NOT_FOUND)
         else:
             # Delete the outfit
             session.delete(outfit)
             session.commit()
-            response.status_code = status.HTTP_200_OK
-            return response
+            return Response(status_code=status.HTTP_200_OK)

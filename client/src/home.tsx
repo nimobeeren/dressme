@@ -1,17 +1,11 @@
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
+import type { APIOutfit, APIWearable } from "./api";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import {
-  useAddOutfit,
-  useOutfits,
-  useRemoveOutfit,
-  useWearables,
-  type Outfit,
-  type Wearable,
-} from "./hooks/api";
+import { useAddOutfit, useOutfits, useRemoveOutfit, useWearables } from "./hooks/api";
 import { useToast } from "./hooks/use-toast";
 import { cn } from "./lib/utils";
 
@@ -35,7 +29,7 @@ export function Home() {
   return <OutfitPicker wearables={wearables} />;
 }
 
-function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
+function OutfitPicker({ wearables }: { wearables: APIWearable[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
@@ -115,8 +109,8 @@ function FavoriteOutfitList({
   activeOutfit,
   onOutfitChange,
 }: {
-  outfits?: Outfit[];
-  activeOutfit?: Outfit;
+  outfits?: APIOutfit[];
+  activeOutfit?: APIOutfit;
   onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;
 }) {
   const { toast } = useToast();
@@ -167,14 +161,14 @@ function FavoriteOutfitList({
           <div className="absolute inset-0 z-10 drop-shadow-md">
             <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
               <img
-                src={outfit.top.wearableImageUrl}
+                src={outfit.top.wearable_image_url}
                 className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
               />
             </div>
           </div>
           <div>
             <img
-              src={outfit.bottom.wearableImageUrl}
+              src={outfit.bottom.wearable_image_url}
               className="aspect-3/4 translate-x-[5%] translate-y-[5%] scale-[120%] object-cover"
             />
           </div>
@@ -191,7 +185,7 @@ function WearableList({
 }: {
   value: string;
   onValueChange: (value: string) => void;
-  wearables: Wearable[];
+  wearables: APIWearable[];
 }) {
   return (
     <RadioGroup.Root
@@ -205,7 +199,7 @@ function WearableList({
           value={wearable.id}
           className="overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         >
-          <img src={wearable.wearableImageUrl} className="aspect-3/4 object-cover" />
+          <img src={wearable.wearable_image_url} className="aspect-3/4 object-cover" />
         </RadioGroup.Item>
       ))}
     </RadioGroup.Root>

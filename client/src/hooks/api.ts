@@ -1,26 +1,25 @@
+import {
+  addOutfit,
+  client,
+  getOutfits,
+  getWearables,
+  removeOutfit,
+  type Outfit,
+  type Wearable,
+} from "@/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { nestedSnakeToCamelCase as camelCase } from "../utils";
 
-export interface Wearable {
-  id: string;
-  category: string;
-  description: string;
-  wearableImageUrl: string;
-}
-
-export interface Outfit {
-  id: string;
-  top: Wearable;
-  bottom: Wearable;
-}
+client.setConfig({
+  baseUrl: import.meta.env.VITE_API_BASE_URL,
+  throwOnError: true, // NOTE: `generate-client.ts` needs to be run to generate the correct types
+});
 
 export function useWearables() {
   return useQuery<Wearable[]>({
     queryKey: ["wearables"],
-    queryFn: () => {
-      return fetch("/wearables")
-        .then((res) => res.json())
-        .then((json) => camelCase(json));
+    queryFn: async () => {
+      const result = await getWearables();
+      return result.data;
     },
   });
 }
@@ -29,9 +28,8 @@ export function useOutfits() {
   return useQuery<Outfit[]>({
     queryKey: ["outfits"],
     queryFn: async () => {
-      return await fetch("/outfits")
-        .then((res) => res.json())
-        .then((json) => camelCase(json));
+      const result = await getOutfits();
+      return result.data;
     },
   });
 }
@@ -40,11 +38,11 @@ export function useAddOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ topId, bottomId }: { topId: string; bottomId: string }) => {
-      const params = new URLSearchParams();
-      params.set("top_id", topId);
-      params.set("bottom_id", bottomId);
-      await fetch(`/outfits?${params.toString()}`, {
-        method: "POST",
+      await addOutfit({
+        query: {
+          top_id: topId,
+          bottom_id: bottomId,
+        },
       });
     },
     onSuccess: () => {
@@ -57,11 +55,7 @@ export function useRemoveOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const params = new URLSearchParams();
-      params.set("id", id);
-      await fetch(`/outfits?${params.toString()}`, {
-        method: "DELETE",
-      });
+      await removeOutfit({ query: { id } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });

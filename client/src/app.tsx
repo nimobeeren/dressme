@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { Helmet, HelmetProvider } from "react-helmet-async";
 import { Toaster } from "./components/ui/toaster";
 import { Home } from "./home";
 import { useToast } from "./hooks/use-toast";
@@ -26,14 +25,9 @@ export function App() {
   }, [toast]);
 
   return (
-    <HelmetProvider>
-      <Helmet>
-        <base href={import.meta.env.VITE_API_BASE_URL} />
-      </Helmet>
-      <QueryClientProvider client={queryClient}>
-        <Home />
-        <Toaster />
-      </QueryClientProvider>
-    </HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <Home />
+      <Toaster />
+    </QueryClientProvider>
   );
 }

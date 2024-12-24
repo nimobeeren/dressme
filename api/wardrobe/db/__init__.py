@@ -1,7 +1,8 @@
 from sqlalchemy import text
 from sqlmodel import SQLModel, create_engine
 
-from . import models  # noqa: F401
+# Needed for SQLModel to create tables for all models
+from .models import *  # noqa: F403
 
 sqlite_file_name = "wardrobe.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"

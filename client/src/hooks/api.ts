@@ -9,17 +9,16 @@ import {
 } from "@/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-// TODO: find a way to enable `throwOnError` globally while still correctly inferring that `result.data` is not undefined
-
 client.setConfig({
   baseUrl: import.meta.env.VITE_API_BASE_URL,
+  throwOnError: true, // NOTE: `generate-client.ts` needs to be run to generate the correct types
 });
 
 export function useWearables() {
   return useQuery<Wearable[]>({
     queryKey: ["wearables"],
     queryFn: async () => {
-      const result = await getWearables({ throwOnError: true });
+      const result = await getWearables();
       return result.data;
     },
   });
@@ -29,7 +28,7 @@ export function useOutfits() {
   return useQuery<Outfit[]>({
     queryKey: ["outfits"],
     queryFn: async () => {
-      const result = await getOutfits({ throwOnError: true });
+      const result = await getOutfits();
       return result.data;
     },
   });
@@ -44,7 +43,6 @@ export function useAddOutfit() {
           top_id: topId,
           bottom_id: bottomId,
         },
-        throwOnError: true,
       });
     },
     onSuccess: () => {
@@ -57,7 +55,7 @@ export function useRemoveOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await removeOutfit({ query: { id }, throwOnError: true });
+      await removeOutfit({ query: { id } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });

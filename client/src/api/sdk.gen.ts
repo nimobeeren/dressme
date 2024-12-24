@@ -8,7 +8,7 @@ export const client = createClient(createConfig());
 /**
  * Get Users
  */
-export const getUsers = <ThrowOnError extends boolean = false>(options?: OptionsLegacyParser<unknown, ThrowOnError>) => {
+export const getUsers = <ThrowOnError extends boolean = true>(options?: OptionsLegacyParser<unknown, ThrowOnError>) => {
     return (options?.client ?? client).get<GetUsersResponse, GetUsersError, ThrowOnError>({
         ...options,
         url: '/users'
@@ -18,7 +18,7 @@ export const getUsers = <ThrowOnError extends boolean = false>(options?: Options
 /**
  * Get Avatar Image
  */
-export const getAvatarImage = <ThrowOnError extends boolean = false>(options: OptionsLegacyParser<GetAvatarImageData, ThrowOnError>) => {
+export const getAvatarImage = <ThrowOnError extends boolean = true>(options: OptionsLegacyParser<GetAvatarImageData, ThrowOnError>) => {
     return (options?.client ?? client).get<GetAvatarImageResponse, GetAvatarImageError, ThrowOnError>({
         ...options,
         url: '/images/avatars/{avatar_image_id}'
@@ -28,7 +28,7 @@ export const getAvatarImage = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Get Wearables
  */
-export const getWearables = <ThrowOnError extends boolean = false>(options?: OptionsLegacyParser<unknown, ThrowOnError>) => {
+export const getWearables = <ThrowOnError extends boolean = true>(options?: OptionsLegacyParser<unknown, ThrowOnError>) => {
     return (options?.client ?? client).get<GetWearablesResponse, GetWearablesError, ThrowOnError>({
         ...options,
         url: '/wearables'
@@ -38,7 +38,7 @@ export const getWearables = <ThrowOnError extends boolean = false>(options?: Opt
 /**
  * Get Wearable Image
  */
-export const getWearableImage = <ThrowOnError extends boolean = false>(options: OptionsLegacyParser<GetWearableImageData, ThrowOnError>) => {
+export const getWearableImage = <ThrowOnError extends boolean = true>(options: OptionsLegacyParser<GetWearableImageData, ThrowOnError>) => {
     return (options?.client ?? client).get<GetWearableImageResponse, GetWearableImageError, ThrowOnError>({
         ...options,
         url: '/images/wearables/{wearable_image_id}'
@@ -48,7 +48,7 @@ export const getWearableImage = <ThrowOnError extends boolean = false>(options: 
 /**
  * Get Outfit
  */
-export const getOutfit = <ThrowOnError extends boolean = false>(options: OptionsLegacyParser<GetOutfitData, ThrowOnError>) => {
+export const getOutfit = <ThrowOnError extends boolean = true>(options: OptionsLegacyParser<GetOutfitData, ThrowOnError>) => {
     return (options?.client ?? client).get<GetOutfitResponse, GetOutfitError, ThrowOnError>({
         ...options,
         url: '/images/outfit'
@@ -58,7 +58,7 @@ export const getOutfit = <ThrowOnError extends boolean = false>(options: Options
 /**
  * Get Outfits
  */
-export const getOutfits = <ThrowOnError extends boolean = false>(options?: OptionsLegacyParser<unknown, ThrowOnError>) => {
+export const getOutfits = <ThrowOnError extends boolean = true>(options?: OptionsLegacyParser<unknown, ThrowOnError>) => {
     return (options?.client ?? client).get<GetOutfitsResponse, GetOutfitsError, ThrowOnError>({
         ...options,
         url: '/outfits'
@@ -68,7 +68,7 @@ export const getOutfits = <ThrowOnError extends boolean = false>(options?: Optio
 /**
  * Add Outfit
  */
-export const addOutfit = <ThrowOnError extends boolean = false>(options: OptionsLegacyParser<AddOutfitData, ThrowOnError>) => {
+export const addOutfit = <ThrowOnError extends boolean = true>(options: OptionsLegacyParser<AddOutfitData, ThrowOnError>) => {
     return (options?.client ?? client).post<AddOutfitResponse, AddOutfitError, ThrowOnError>({
         ...options,
         url: '/outfits'
@@ -78,7 +78,7 @@ export const addOutfit = <ThrowOnError extends boolean = false>(options: Options
 /**
  * Remove Outfit
  */
-export const removeOutfit = <ThrowOnError extends boolean = false>(options: OptionsLegacyParser<RemoveOutfitData, ThrowOnError>) => {
+export const removeOutfit = <ThrowOnError extends boolean = true>(options: OptionsLegacyParser<RemoveOutfitData, ThrowOnError>) => {
     return (options?.client ?? client).delete<RemoveOutfitResponse, RemoveOutfitError, ThrowOnError>({
         ...options,
         url: '/outfits'

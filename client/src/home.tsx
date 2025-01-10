@@ -1,5 +1,5 @@
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import { CircleAlertIcon, LoaderCircleIcon, StarIcon } from "lucide-react";
+import { CircleAlertIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import type { Outfit, Wearable } from "./api";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
@@ -56,7 +56,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
               : addOutfit({ topId: activeTopId, bottomId: activeBottomId })
           }
         >
-          <StarIcon className={cn(activeOutfit && "fill-current")} />
+          <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
         </Button>
         <img
           src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
@@ -64,15 +64,21 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
         />
       </div>
       <form className="h-full max-h-[75%] w-full max-w-96">
-        <Tabs defaultValue="tops" className="flex h-full w-full flex-col items-start gap-2">
-          <TabsList className="shrink-0">
-            <TabsTrigger value="favorites">
-              <StarIcon className="h-4 w-4 fill-current" aria-label="favorites" />
-            </TabsTrigger>
-            <TabsTrigger value="tops">Tops</TabsTrigger>
-            <TabsTrigger value="bottoms">Bottoms</TabsTrigger>
-          </TabsList>
-          <div className="min-h-full w-full grow overflow-y-auto [scrollbar-gutter:stable]">
+        <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">
+          <div className="flex justify-between">
+            <TabsList className="shrink-0">
+              <TabsTrigger value="favorites">
+                <StarIcon className="h-4 w-4 fill-current" aria-label="favorites" />
+              </TabsTrigger>
+              <TabsTrigger value="tops">Tops</TabsTrigger>
+              <TabsTrigger value="bottoms">Bottoms</TabsTrigger>
+            </TabsList>
+            <Button>
+              Add
+              <PlusIcon />
+            </Button>
+          </div>
+          <div className="min-h-full w-full grow overflow-y-auto">
             <TabsContent value="favorites" className="h-full">
               <FavoriteOutfitList
                 outfits={outfits}

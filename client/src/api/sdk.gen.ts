@@ -3,7 +3,9 @@
 import { createClient, createConfig, type OptionsLegacyParser } from '@hey-api/client-fetch';
 import type { GetUsersError, GetUsersResponse, GetAvatarImageData, GetAvatarImageError, GetAvatarImageResponse, GetWearablesError, GetWearablesResponse, GetWearableImageData, GetWearableImageError, GetWearableImageResponse, GetOutfitData, GetOutfitError, GetOutfitResponse, GetOutfitsError, GetOutfitsResponse, AddOutfitData, AddOutfitError, AddOutfitResponse, RemoveOutfitData, RemoveOutfitError, RemoveOutfitResponse } from './types.gen';
 
-export const client = createClient(createConfig());
+export const client = createClient(createConfig({
+    throwOnError: true
+}));
 
 /**
  * Get Users

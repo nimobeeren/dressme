@@ -11,7 +11,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 client.setConfig({
   baseUrl: import.meta.env.VITE_API_BASE_URL,
-  throwOnError: true, // NOTE: `generate-client.ts` needs to be run to generate the correct types
 });
 
 export function useWearables() {

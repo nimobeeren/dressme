@@ -5,7 +5,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["build", ".react-router"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -24,10 +24,8 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "no-constant-condition": ["error", { checkLoops: false }],
-      "react-refresh/only-export-components": [
-        "off",
-        { allowConstantExport: true },
-      ],
+      "no-empty-pattern": ["error", { allowObjectPatternsAsParameters: true }],
+      "react-refresh/only-export-components": ["off", { allowConstantExport: true }],
     },
   },
 );

@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
-import { useFetcher, useRevalidator } from "react-router";
+import { useFetcher } from "react-router";
 import type { Route } from "./+types/home";
 
 export function meta({}: Route.MetaArgs) {
@@ -32,14 +32,14 @@ export async function clientLoader({}: Route.ClientLoaderArgs) {
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   if (request.method === "POST") {
-    addOutfit({
+    await addOutfit({
       query: {
         top_id: formData.get("topId") as string,
         bottom_id: formData.get("bottomId") as string,
       },
     });
   } else if (request.method === "DELETE") {
-    removeOutfit({
+    await removeOutfit({
       query: {
         id: formData.get("outfitId") as string,
       },
@@ -81,9 +81,6 @@ function OutfitPicker({ wearables, outfits }: { wearables: Wearable[]; outfits: 
   const [activeBottomId, setActiveBottomId] = useState(bottoms[0]?.id);
 
   const fetcher = useFetcher();
-  // TODO: find a way to automatically revalidate after running the action
-  // and prevent double fetch
-  const { revalidate } = useRevalidator();
 
   const activeOutfit =
     outfits &&
@@ -92,27 +89,14 @@ function OutfitPicker({ wearables, outfits }: { wearables: Wearable[]; outfits: 
   return (
     <div className="flex h-screen items-center justify-center gap-16">
       <div className="relative h-full shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-4"
-          onClick={
-            activeOutfit
-              ? async () => {
-                  await fetcher.submit({ outfitId: activeOutfit.id }, { method: "delete" });
-                  await revalidate();
-                }
-              : async () => {
-                  await fetcher.submit(
-                    { topId: activeTopId, bottomId: activeBottomId },
-                    { method: "post" },
-                  );
-                  await revalidate();
-                }
-          }
-        >
-          <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
-        </Button>
+        <fetcher.Form method={activeOutfit ? "delete" : "post"}>
+          {activeOutfit && <input type="hidden" name="outfitId" value={activeOutfit.id} />}
+          <input type="hidden" name="topId" value={activeTopId} />
+          <input type="hidden" name="bottomId" value={activeBottomId} />
+          <Button type="submit" variant="ghost" size="icon" className="absolute right-4 top-4">
+            <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
+          </Button>
+        </fetcher.Form>
         <img
           src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
           className="aspect-3/4 h-full"

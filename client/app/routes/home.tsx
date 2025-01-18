@@ -82,9 +82,9 @@ function OutfitPicker({ wearables, outfits }: { wearables: Wearable[]; outfits: 
 
   const fetcher = useFetcher();
 
-  const activeOutfit =
-    outfits &&
-    outfits.find((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
+  const activeOutfit = outfits.find(
+    (outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId,
+  );
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">

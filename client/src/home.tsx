@@ -1,105 +1,66 @@
-import {
-  addOutfit,
-  getOutfits,
-  getWearables,
-  removeOutfit,
-  type Outfit,
-  type Wearable,
-} from "@/api";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
-import { useFetcher } from "react-router";
-import type { Route } from "./+types/home";
+import type { Outfit, Wearable } from "./api";
+import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
+import { Button } from "./components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { useAddOutfit, useOutfits, useRemoveOutfit, useWearables } from "./hooks/api";
+import { useToast } from "./hooks/use-toast";
+import { cn } from "./lib/utils";
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Virtual Wardrobe" },
-    { name: "description", content: "Try on clothes virtually just by uploading pictures." },
-  ];
-}
+export function Home() {
+  const { data: wearables, isPending, error } = useWearables();
 
-export async function clientLoader({}: Route.ClientLoaderArgs) {
-  const [wearables, outfits] = await Promise.all([getWearables(), getOutfits()]);
-  return { wearables, outfits };
-}
-
-export async function clientAction({ request }: Route.ClientActionArgs) {
-  const formData = await request.formData();
-  if (request.method === "POST") {
-    await addOutfit({
-      query: {
-        top_id: formData.get("topId") as string,
-        bottom_id: formData.get("bottomId") as string,
-      },
-    });
-  } else if (request.method === "DELETE") {
-    await removeOutfit({
-      query: {
-        id: formData.get("outfitId") as string,
-      },
-    });
-  }
-}
-
-export default function Home({ loaderData }: Route.ComponentProps) {
-  const wearables = loaderData.wearables.data;
-  const outfits = loaderData.outfits.data;
-  const isPending = false;
-  const error = null;
-
-  // TODO: figure out what happens during loading
   if (isPending) {
     return <LoaderCircleIcon className="h-16 w-16 animate-spin" />;
   }
 
-  // TODO: error handling
   if (error) {
     return (
       <Alert variant={"destructive"}>
         <CircleAlertIcon className="h-4 w-4" />
         <AlertTitle>Something went wrong</AlertTitle>
-        {/* @ts-expect-error */}
         <AlertDescription>{error.message}</AlertDescription>
       </Alert>
     );
   }
 
-  return <OutfitPicker wearables={wearables} outfits={outfits} />;
+  return <OutfitPicker wearables={wearables} />;
 }
 
-function OutfitPicker({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[] }) {
+function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
-  const [activeTopId, setActiveTopId] = useState(tops[0]?.id);
-  const [activeBottomId, setActiveBottomId] = useState(bottoms[0]?.id);
+  const [activeTopId, setActiveTopId] = useState(tops[0].id);
+  const [activeBottomId, setActiveBottomId] = useState(bottoms[0].id);
 
-  const fetcher = useFetcher();
-
-  const activeOutfit = outfits.find(
-    (outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId,
-  );
+  const { data: outfits } = useOutfits();
+  const { mutate: addOutfit } = useAddOutfit();
+  const { mutate: removeOutfit } = useRemoveOutfit();
+  const activeOutfit =
+    outfits &&
+    outfits.find((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">
       <div className="relative h-full shrink-0">
-        <fetcher.Form method={activeOutfit ? "delete" : "post"}>
-          {activeOutfit && <input type="hidden" name="outfitId" value={activeOutfit.id} />}
-          <input type="hidden" name="topId" value={activeTopId} />
-          <input type="hidden" name="bottomId" value={activeBottomId} />
-          <Button type="submit" variant="ghost" size="icon" className="absolute right-4 top-4">
-            <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
-          </Button>
-        </fetcher.Form>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-4 top-4"
+          onClick={() =>
+            activeOutfit
+              ? removeOutfit(activeOutfit.id)
+              : addOutfit({ topId: activeTopId, bottomId: activeBottomId })
+          }
+        >
+          <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
+        </Button>
         <img
           src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
-          className="aspect-3/4 h-full"
+          className="h-full"
         />
       </div>
       <form className="h-full max-h-[75%] w-full max-w-96">

@@ -1,13 +1,13 @@
+import type { Outfit, Wearable } from "@/api";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAddOutfit, useOutfits, useRemoveOutfit, useWearables } from "@/hooks/api";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
-import type { Outfit, Wearable } from "./api";
-import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
-import { Button } from "./components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { useAddOutfit, useOutfits, useRemoveOutfit, useWearables } from "./hooks/api";
-import { useToast } from "./hooks/use-toast";
-import { cn } from "./lib/utils";
 
 export function Home() {
   const { data: wearables, isPending, error } = useWearables();

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 export function Home() {
   const { data: wearables, isPending, error } = useWearables();
@@ -73,9 +74,11 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
               <TabsTrigger value="tops">Tops</TabsTrigger>
               <TabsTrigger value="bottoms">Bottoms</TabsTrigger>
             </TabsList>
-            <Button>
-              Add
-              <PlusIcon />
+            <Button asChild>
+              <Link to="/add">
+                Add
+                <PlusIcon />
+              </Link>
             </Button>
           </div>
           <div className="min-h-full w-full grow overflow-y-auto">

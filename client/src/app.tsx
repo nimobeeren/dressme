@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { NotFound } from "./pages/404";
+import { Add } from "./pages/add";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route index element={<Home />} />
+          <Route path="/add" element={<Add />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

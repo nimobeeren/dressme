@@ -19,10 +19,11 @@ const formSchema = z.object({
     z.object({
       file: z.instanceof(File),
       preview: z.string(),
-      category: z.enum(["top", "bottom"], {
-        required_error: "Every item needs to have a category",
-      }),
-      description: z.string().default(""),
+      category: z
+        .enum(["top", "bottom"])
+        .optional()
+        .refine(Boolean, "Every item needs to have a category"),
+      description: z.string(),
     }),
   ),
 });
@@ -35,40 +36,39 @@ export function Add() {
     resolver: zodResolver(formSchema),
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, replace } = useFieldArray({
     control: form.control,
     name: "wearables",
   });
 
-  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      Array.from(e.target.files).forEach((file) => {
-        append({
+    if (e.target.files) {
+      replace(
+        Array.from(e.target.files).map((file) => ({
           file,
           preview: URL.createObjectURL(file),
-          // @ts-expect-error this does not pass validation but that's okay because it's just a default value
           category: undefined,
           description: "", // needed to prevent React uncontrolled to controlled component warning
-        });
-      });
+        })),
+      );
     }
-  };
+  }
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     console.log("submitting", data);
   }
 
-  form.watch((data) => console.log("watch", JSON.stringify(data, null, 2)));
+  form.watch((data) => {
+    console.log("watch", data);
+  });
 
   return (
     <div className="container mx-auto py-10">
       <h1 className="mb-6 text-3xl font-bold">Add Your Clothes</h1>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* This field is not registered to the form, instead the value is captured in `onChange`
-        and set with `useFieldArray` */}
-          <Input type="file" multiple onChange={onFileInputChange} />
+          <Input type="file" multiple accept="image/*" onChange={onFileInputChange} />
 
           {fields.map((wearable, index) => (
             <Card key={wearable.id} className="flex flex-row">

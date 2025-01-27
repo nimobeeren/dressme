@@ -1,43 +1,42 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useFieldArray, useForm, type SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
 
-type ClothingItem = {
-  // id: string;
-  file: File;
-  preview: string;
-  category?: "top" | "bottom";
-  description?: string;
-};
-
-type FormData = {
-  wearables: ClothingItem[];
-};
+const formSchema = z.object({
+  wearables: z.array(
+    z.object({
+      file: z.instanceof(File),
+      preview: z.string(),
+      category: z.enum(["top", "bottom"], {
+        required_error: "Every item needs to have a category",
+      }),
+      description: z.string().default(""),
+    }),
+  ),
+});
 
 export function Add() {
   // TODO
   // const { mutate: addWearable } = useAddWearable();
 
-  const { register, control, handleSubmit, watch } = useForm<FormData>({
-    defaultValues: {
-      // TODO: revert
-      // wearables: []
-      wearables: [
-        {
-          // id: Math.random().toString(36).slice(2, 9),
-          file: new File([], "test"),
-          preview: "http://localhost:8000/images/wearables/72f043bf-63f4-4719-aa3b-d5f0aafd587e",
-          description: "",
-        },
-      ],
-    },
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
   });
 
   const { fields, append, remove } = useFieldArray({
-    control,
+    control: form.control,
     name: "wearables",
   });
 
@@ -48,58 +47,79 @@ export function Add() {
         append({
           file,
           preview: URL.createObjectURL(file),
+          // @ts-expect-error this does not pass validation but that's okay because it's just a default value
+          category: undefined,
+          description: "", // needed to prevent React uncontrolled to controlled component warning
         });
       });
     }
   };
 
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
+  async function onSubmit(data: z.infer<typeof formSchema>) {
     console.log("submitting", data);
-  };
+  }
 
-  watch((data) => console.log("watch", JSON.stringify(data, null, 2)));
+  form.watch((data) => console.log("watch", JSON.stringify(data, null, 2)));
 
   return (
     <div className="container mx-auto py-10">
-      <h1 className="mb-6 text-3xl font-bold">Add Clothing Items</h1>
-      <form className="space-y-8" onSubmit={handleSubmit(onSubmit)}>
-        {/* This field is not registered to the form, instead the value is captured in `onChange`
+      <h1 className="mb-6 text-3xl font-bold">Add Your Clothes</h1>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* This field is not registered to the form, instead the value is captured in `onChange`
         and set with `useFieldArray` */}
-        <Input type="file" multiple onChange={onFileInputChange} />
+          <Input type="file" multiple onChange={onFileInputChange} />
 
-        {fields.map((wearable, index) => (
-          <Card key={wearable.id} className="flex flex-row">
-            <img src={wearable.preview} className="aspect-3/4 h-64 object-cover" />
-            <div className="space-y-8 p-8">
-              <div className="space-y-2">
-                <Label htmlFor={`wearables.${index}.category`}>Category</Label>
-                <RadioGroup
-                  className="flex space-x-4"
-                  {...register(`wearables.${index}.category`, { required: true })}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="top" id={`wearables.${index}.category.top`} />
-                    <Label htmlFor={`wearables.${index}.category.top`}>Top</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="top" id={`wearables.${index}.category.bottom`} />
-                    <Label htmlFor={`wearables.${index}.category.bottom`}>Bottom</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`wearables.${index}.description`}>Description</Label>
-                <Input
-                  {...register(`wearables.${index}.description`)}
-                  id={`wearables.${index}.description`}
-                  type="text"
+          {fields.map((wearable, index) => (
+            <Card key={wearable.id} className="flex flex-row">
+              <img src={wearable.preview} className="aspect-3/4 h-64 object-cover" />
+              <div className="space-y-8 p-8">
+                <FormField
+                  control={form.control}
+                  name={`wearables.${index}.category`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          className="flex space-x-4"
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="top" />
+                            </FormControl>
+                            <FormLabel>Top</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="bottom" />
+                            </FormControl>
+                            <FormLabel>Bottom</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`wearables.${index}.description`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <Input {...field} />
+                    </FormItem>
+                  )}
                 />
               </div>
-            </div>
-          </Card>
-        ))}
-        <Button type="submit">Add</Button>
-      </form>
+            </Card>
+          ))}
+          <Button type="submit">Add</Button>
+        </form>
+      </Form>
     </div>
   );
 }

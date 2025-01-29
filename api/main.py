@@ -1,19 +1,32 @@
 import io
 from contextlib import asynccontextmanager
-from typing import Sequence
+from typing import Annotated, Sequence
 from uuid import UUID
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, File, Form, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel
+import requests
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from replicate.client import Client
 
 from .wardrobe import db
 from .wardrobe.combining import combine_wearables
+
+
+class Settings(BaseSettings):
+    REPLICATE_API_TOKEN: str
+
+    model_config = SettingsConfigDict(env_file=".env")
+
+
+settings = Settings()
+replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
 
 
 @asynccontextmanager
@@ -116,6 +129,58 @@ def get_wearable_image(wearable_image_id: UUID) -> bytes:
         )
 
 
+@app.post("/wearables")
+def create_wearable(
+    category: Annotated[str, Form()],
+    description: Annotated[str | None, Form()],
+    image: Annotated[UploadFile, File()],
+):
+    with Session(db.engine) as session:
+        user = session.exec(select(db.User).where(db.User.id == current_user_id)).one()
+
+        wearable_image = db.WearableImage(image_data=image.file.read())
+        session.add(wearable_image)
+
+        wearable = db.Wearable(
+            category=category,
+            description=description,
+            wearable_image=wearable_image,
+        )
+        session.add(wearable)
+
+        woa_image_url = replicate.run(
+            "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
+            input={
+                "garm_img": io.BytesIO(wearable_image.image_data),
+                "human_img": io.BytesIO(user.avatar_image.image_data),
+                # LEFT HERE
+                # TODO: save avatar mask, then use it here
+                # "mask_img": open(
+                #     avatar_mask_top_path
+                #     if category == "upper_body"
+                #     else avatar_mask_bottom_path,
+                #     "rb",
+                # ),
+                "garment_des": description or "",
+                "category": category,
+            },
+        )
+        woa_image_response = requests.get(woa_image_url, stream=True)
+        woa_image_response.raise_for_status()
+
+        woa = db.WearableOnAvatarImage(
+            avatar_image=user.avatar_image,
+            wearable_image=wearable_image,
+            image_data=woa_image_response.content,
+            mask_image_data=b"",  # TODO: post masking
+        )
+        session.add(woa)
+
+        session.commit()
+
+    return Response(status_code=status.HTTP_201_CREATED)
+
+
 @app.get("/images/outfit")
 def get_outfit(top_id: UUID, bottom_id: UUID) -> bytes:
     with Session(db.engine) as session:
@@ -131,7 +196,10 @@ def get_outfit(top_id: UUID, bottom_id: UUID) -> bytes:
                 db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,
             )
             .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)
-            .join(db.AvatarImage, db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id)
+            .join(
+                db.AvatarImage,
+                db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
+            )
             .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
             .where(db.User.id == current_user_id)
             .where(db.Wearable.id == top_id)
@@ -143,13 +211,18 @@ def get_outfit(top_id: UUID, bottom_id: UUID) -> bytes:
                 db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,
             )
             .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)
-            .join(db.AvatarImage, db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id)
+            .join(
+                db.AvatarImage,
+                db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
+            )
             .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
             .where(db.User.id == current_user_id)
             .where(db.Wearable.id == bottom_id)
         ).first()
+
     if top_on_avatar is None or bottom_on_avatar is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
+
     avatar_im = Image.open(io.BytesIO(user.avatar_image.image_data))
     top_im = Image.open(io.BytesIO(top_on_avatar.image_data))
     bottom_im = Image.open(io.BytesIO(bottom_on_avatar.image_data))
@@ -202,7 +275,9 @@ def get_outfits() -> Sequence[Outfit]:
 def add_outfit(top_id: UUID, bottom_id: UUID):
     with Session(db.engine) as session:
         # Ensure that the top and bottom wearables exist
-        top = session.exec(select(db.Wearable).where(db.Wearable.id == top_id)).one_or_none()
+        top = session.exec(
+            select(db.Wearable).where(db.Wearable.id == top_id)
+        ).one_or_none()
         if top is None:
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,

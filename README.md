@@ -1,3 +1,3 @@
-# Virtual Wardrobe
+# DressMe
 
-Putting multiple garments on a human, virtually.
+A virtual wardrobe that shows you how clothes look on you.

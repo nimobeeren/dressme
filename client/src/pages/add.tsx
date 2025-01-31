@@ -11,9 +11,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCreateWearable } from "@/hooks/api";
+import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LoaderCircleIcon } from "lucide-react";
+import { ChevronLeftIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
+import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 
 const formSchema = z.object({
@@ -28,6 +30,9 @@ const formSchema = z.object({
 });
 
 export function Add() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const { mutate: createWearable, isPending } = useCreateWearable();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -55,11 +60,23 @@ export function Add() {
   }
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    createWearable({
-      category: data.wearables[0].category,
-      description: data.wearables[0].description,
-      image: data.wearables[0].file,
-    });
+    createWearable(
+      {
+        category: data.wearables[0].category,
+        description: data.wearables[0].description,
+        image: data.wearables[0].file,
+      },
+      {
+        onSuccess: async () => {
+          navigate("/");
+          const cheers = ["Nice!", "Pretty!", "Cool!", "Oooh!", "Wow!"];
+          toast({
+            title: cheers[Math.floor(Math.random() * cheers.length)],
+            description: "Added item to your wardrobe.",
+          });
+        },
+      },
+    );
   }
 
   return (
@@ -69,57 +86,67 @@ export function Add() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Input type="file" multiple accept="image/*" onChange={onFileInputChange} />
 
-          {fields.map((wearable, index) => (
-            <Card key={wearable.id} className="flex flex-row">
-              <img src={wearable.preview} className="aspect-3/4 h-64 object-cover" />
-              <div className="space-y-8 p-8">
-                <FormField
-                  control={form.control}
-                  name={`wearables.${index}.category`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          className="flex space-x-4"
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="upper_body" />
-                            </FormControl>
-                            <FormLabel>Top</FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="lower_body" />
-                            </FormControl>
-                            <FormLabel>Bottom</FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`wearables.${index}.description`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <Input {...field} />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </Card>
-          ))}
-          <Button type="submit" disabled={isPending}>
-            Add
-            {isPending && <LoaderCircleIcon className="ml-2 h-4 w-4 animate-spin" />}
-          </Button>
+          <div className="grid grid-cols-2 gap-4">
+            {fields.map((wearable, index) => (
+              <Card key={wearable.id} className="flex flex-row">
+                <img src={wearable.preview} className="aspect-3/4 h-64 object-cover" />
+                <div className="space-y-8 p-8">
+                  <FormField
+                    control={form.control}
+                    name={`wearables.${index}.category`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            className="flex space-x-4"
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="upper_body" />
+                              </FormControl>
+                              <FormLabel>Top</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="lower_body" />
+                              </FormControl>
+                              <FormLabel>Bottom</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`wearables.${index}.description`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <Input {...field} />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="grid w-full max-w-2xl grid-cols-2 gap-4">
+            <Button className="col-span-1" variant="outline" type="button" asChild>
+              <Link to="/">
+                <ChevronLeftIcon />
+                Back
+              </Link>
+            </Button>
+            <Button className="col-span-1" type="submit" disabled={isPending}>
+              Add
+              {isPending ? <LoaderCircleIcon className="animate-spin" /> : <PlusIcon />}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

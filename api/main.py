@@ -129,12 +129,12 @@ def get_wearable_image(wearable_image_id: UUID) -> bytes:
         )
 
 
-@app.post("/wearables")
+@app.post("/wearables", status_code=status.HTTP_201_CREATED)
 def create_wearable(
     category: Annotated[str, Form()],
     description: Annotated[str | None, Form()],
     image: Annotated[UploadFile, File()],
-):
+) -> Wearable:
     with Session(db.engine) as session:
         user = session.exec(select(db.User).where(db.User.id == current_user_id)).one()
 
@@ -196,7 +196,12 @@ def create_wearable(
 
         session.commit()
 
-    return Response(status_code=status.HTTP_201_CREATED)
+        return Wearable(
+            id=wearable.id,
+            category=wearable.category,
+            description=wearable.description,
+            wearable_image_url=f"/images/wearables/{wearable.wearable_image_id}",
+        )
 
 
 @app.get("/images/outfit")

@@ -148,31 +148,49 @@ def create_wearable(
         )
         session.add(wearable)
 
+        # Generate an image of the avatar wearing the wearable
         woa_image_url = replicate.run(
             "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
             input={
                 "garm_img": io.BytesIO(wearable_image.image_data),
                 "human_img": io.BytesIO(user.avatar_image.image_data),
-                # LEFT HERE
-                # TODO: save avatar mask, then use it here
-                # "mask_img": open(
-                #     avatar_mask_top_path
-                #     if category == "upper_body"
-                #     else avatar_mask_bottom_path,
-                #     "rb",
-                # ),
                 "garment_des": description or "",
                 "category": category,
             },
         )
+
+        # Get a mask of the wearable on the avatar using an image segmentation model
+        mask_results = replicate.run(
+            "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
+            input={
+                "image": woa_image_url,
+                # TODO: this prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
+                # Should probably do some classification of wearable into known working wearable types to use as prompt
+                "mask_prompt": description or "",
+                "negative_mask_prompt": "",
+                "adjustment_factor": 0,
+            },
+        )
+        mask_image_url = None
+        for result in mask_results:
+            # Results contains some other stuff, we only want the regular mask
+            if result.endswith("/mask.jpg"):
+                mask_image_url = result
+                break
+        if mask_image_url is None:
+            raise ValueError("Could not get mask URL")
+
         woa_image_response = requests.get(woa_image_url, stream=True)
         woa_image_response.raise_for_status()
+
+        mask_image_response = requests.get(mask_image_url, stream=True)
+        mask_image_response.raise_for_status()
 
         woa = db.WearableOnAvatarImage(
             avatar_image=user.avatar_image,
             wearable_image=wearable_image,
             image_data=woa_image_response.content,
-            mask_image_data=b"",  # TODO: post masking
+            mask_image_data=mask_image_response.content,
         )
         session.add(woa)
 

@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useCreateWearable } from "@/hooks/api";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { LoaderCircleIcon } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -19,18 +21,14 @@ const formSchema = z.object({
     z.object({
       file: z.instanceof(File),
       preview: z.string(),
-      category: z
-        .enum(["top", "bottom"])
-        .optional()
-        .refine(Boolean, "Every item needs to have a category"),
+      category: z.enum(["upper_body", "lower_body"]),
       description: z.string(),
     }),
   ),
 });
 
 export function Add() {
-  // TODO
-  // const { mutate: addWearable } = useAddWearable();
+  const { mutate: createWearable, isPending } = useCreateWearable();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -48,20 +46,21 @@ export function Add() {
         Array.from(e.target.files).map((file) => ({
           file,
           preview: URL.createObjectURL(file),
-          category: undefined,
-          description: "", // needed to prevent React uncontrolled to controlled component warning
+          // Undefined is invalid when submitting the form but fine as an initial value
+          category: undefined as any,
+          description: "",
         })),
       );
     }
   }
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    console.log("submitting", data);
+    createWearable({
+      category: data.wearables[0].category,
+      description: data.wearables[0].description,
+      image: data.wearables[0].file,
+    });
   }
-
-  form.watch((data) => {
-    console.log("watch", data);
-  });
 
   return (
     <div className="container mx-auto py-10">
@@ -84,17 +83,17 @@ export function Add() {
                         <RadioGroup
                           className="flex space-x-4"
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                         >
                           <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl>
-                              <RadioGroupItem value="top" />
+                              <RadioGroupItem value="upper_body" />
                             </FormControl>
                             <FormLabel>Top</FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl>
-                              <RadioGroupItem value="bottom" />
+                              <RadioGroupItem value="lower_body" />
                             </FormControl>
                             <FormLabel>Bottom</FormLabel>
                           </FormItem>
@@ -117,7 +116,10 @@ export function Add() {
               </div>
             </Card>
           ))}
-          <Button type="submit">Add</Button>
+          <Button type="submit" disabled={isPending}>
+            Add
+            {isPending && <LoaderCircleIcon className="ml-2 h-4 w-4 animate-spin" />}
+          </Button>
         </form>
       </Form>
     </div>

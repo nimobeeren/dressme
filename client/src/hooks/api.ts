@@ -1,9 +1,11 @@
 import {
   addOutfit,
   client,
+  createWearable,
   getOutfits,
   getWearables,
   removeOutfit,
+  type Body_create_wearable as CreateWearableBody,
   type Outfit,
   type Wearable,
 } from "@/api";
@@ -58,6 +60,18 @@ export function useRemoveOutfit() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });
+    },
+  });
+}
+
+export function useCreateWearable() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (wearable: CreateWearableBody) => {
+      await createWearable({ body: wearable });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wearables"] });
     },
   });
 }

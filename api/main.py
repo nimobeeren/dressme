@@ -1,6 +1,6 @@
 import io
 from contextlib import asynccontextmanager
-from typing import Annotated, Sequence
+from typing import Annotated, Literal, Sequence
 from uuid import UUID
 
 from fastapi import FastAPI, File, Form, Response, UploadFile, status
@@ -97,20 +97,40 @@ class Wearable(BaseModel):
     category: str
     description: str | None
     wearable_image_url: str
+    generation_status: Literal["pending", "completed", "error"]
 
 
 @app.get("/wearables")
 def get_wearables() -> Sequence[Wearable]:
     with Session(db.engine) as session:
-        wearables = session.exec(select(db.Wearable)).all()
+        # Subquery to get WearableOnAvatarImages associated with the avatar image of the current user
+        woa_subquery = (
+            select(db.WearableOnAvatarImage)
+            .join(
+                db.User,
+                db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
+            )
+            .where(db.User.id == current_user_id)
+            .subquery()
+        )
+
+        # Get all wearables and the associated WearableOnAvatarImage (or None)
+        results = session.exec(
+            select(db.Wearable, woa_subquery.columns.id).outerjoin(
+                woa_subquery,
+                db.Wearable.wearable_image_id == woa_subquery.columns.wearable_image_id,
+            )
+        ).all()
+
     return [
         Wearable(
-            id=w.id,
-            category=w.category,
-            description=w.description,
-            wearable_image_url=f"/images/wearables/{w.wearable_image_id}",
+            id=wearable.id,
+            category=wearable.category,
+            description=wearable.description,
+            wearable_image_url=f"/images/wearables/{wearable.wearable_image_id}",
+            generation_status="pending" if woa_id is None else "completed",
         )
-        for w in wearables
+        for wearable, woa_id in results
     ]
 
 
@@ -201,6 +221,7 @@ def create_wearable(
             category=wearable.category,
             description=wearable.description,
             wearable_image_url=f"/images/wearables/{wearable.wearable_image_id}",
+            generation_status="completed",  # since we wait to create until WOA is finished
         )
 
 
@@ -268,6 +289,18 @@ class Outfit(BaseModel):
 @app.get("/outfits")
 def get_outfits() -> Sequence[Outfit]:
     with Session(db.engine) as session:
+        # Get completed wearable image IDs for the current user
+        woas = session.exec(
+            select(db.WearableOnAvatarImage)
+            .join(
+                db.User,
+                db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
+            )
+            .where(db.User.id == current_user_id)
+        ).all()
+        completed_ids = {woa.wearable_image_id for woa in woas}
+
+        # Fetch outfits along with the top and bottom wearables
         outfits = session.exec(
             select(db.Outfit)
             .where(db.Outfit.user_id == current_user_id)
@@ -275,20 +308,30 @@ def get_outfits() -> Sequence[Outfit]:
             .options(joinedload(db.Outfit.bottom))
         ).all()
 
-    # Map wearable image IDs to URLs
     api_outfits = []
     for outfit in outfits:
+        top_status = (
+            "completed" if outfit.top.wearable_image_id in completed_ids else "pending"
+        )
+        bottom_status = (
+            "completed"
+            if outfit.bottom.wearable_image_id in completed_ids
+            else "pending"
+        )
+
         top = Wearable(
             id=outfit.top.id,
             category=outfit.top.category,
             description=outfit.top.description,
             wearable_image_url=f"/images/wearables/{outfit.top.wearable_image_id}",
+            generation_status=top_status,
         )
         bottom = Wearable(
             id=outfit.bottom.id,
             category=outfit.bottom.category,
             description=outfit.bottom.description,
             wearable_image_url=f"/images/wearables/{outfit.bottom.wearable_image_id}",
+            generation_status=bottom_status,
         )
         api_outfits.append(Outfit(id=outfit.id, top=top, bottom=bottom))
     return api_outfits

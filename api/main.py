@@ -344,7 +344,7 @@ def get_outfits(*, session: Session = Depends(get_session)) -> Sequence[Outfit]:
 
 
 @app.post("/outfits")
-def add_outfit(
+def create_outfit(
     *, top_id: UUID, bottom_id: UUID, session: Session = Depends(get_session)
 ):
     # Ensure that the top and bottom wearables exist
@@ -407,7 +407,7 @@ def add_outfit(
 
 
 @app.delete("/outfits")
-def remove_outfit(*, id: UUID, session: Session = Depends(get_session)):
+def delete_outfit(*, id: UUID, session: Session = Depends(get_session)):
     # Check if the outfit exists and is owned by the current user
     outfit = session.exec(
         select(db.Outfit)

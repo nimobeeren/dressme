@@ -33,7 +33,10 @@ export type Wearable = {
     category: string;
     description: (string | null);
     wearable_image_url: string;
+    generation_status: 'pending' | 'completed' | 'error';
 };
+
+export type generation_status = 'pending' | 'completed' | 'error';
 
 export type GetUsersResponse = (Array<User>);
 
@@ -86,23 +89,23 @@ export type GetOutfitsResponse = (Array<Outfit>);
 
 export type GetOutfitsError = unknown;
 
-export type AddOutfitData = {
+export type CreateOutfitData = {
     query: {
         bottom_id: string;
         top_id: string;
     };
 };
 
-export type AddOutfitResponse = (unknown);
+export type CreateOutfitResponse = (unknown);
 
-export type AddOutfitError = (HTTPValidationError);
+export type CreateOutfitError = (HTTPValidationError);
 
-export type RemoveOutfitData = {
+export type DeleteOutfitData = {
     query: {
         id: string;
     };
 };
 
-export type RemoveOutfitResponse = (unknown);
+export type DeleteOutfitResponse = (unknown);
 
-export type RemoveOutfitError = (HTTPValidationError);
+export type DeleteOutfitError = (HTTPValidationError);

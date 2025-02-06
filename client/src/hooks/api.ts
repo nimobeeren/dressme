@@ -1,10 +1,10 @@
 import {
-  addOutfit,
   client,
+  createOutfit,
   createWearable,
+  deleteOutfit,
   getOutfits,
   getWearables,
-  removeOutfit,
   type Body_create_wearable as CreateWearableBody,
   type Outfit,
   type Wearable,
@@ -35,11 +35,11 @@ export function useOutfits() {
   });
 }
 
-export function useAddOutfit() {
+export function useCreateOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ topId, bottomId }: { topId: string; bottomId: string }) => {
-      await addOutfit({
+      await createOutfit({
         query: {
           top_id: topId,
           bottom_id: bottomId,
@@ -52,11 +52,11 @@ export function useAddOutfit() {
   });
 }
 
-export function useRemoveOutfit() {
+export function useDeleteOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await removeOutfit({ query: { id } });
+      await deleteOutfit({ query: { id } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });

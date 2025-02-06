@@ -2,7 +2,7 @@ import type { Outfit, Wearable } from "@/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAddOutfit, useOutfits, useRemoveOutfit, useWearables } from "@/hooks/api";
+import { useCreateOutfit, useDeleteOutfit, useOutfits, useWearables } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
@@ -38,8 +38,8 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [activeBottomId, setActiveBottomId] = useState(bottoms[0].id);
 
   const { data: outfits } = useOutfits();
-  const { mutate: addOutfit } = useAddOutfit();
-  const { mutate: removeOutfit } = useRemoveOutfit();
+  const { mutate: createOutfit } = useCreateOutfit();
+  const { mutate: deleteOutfit } = useDeleteOutfit();
   const activeOutfit =
     outfits &&
     outfits.find((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
@@ -53,8 +53,8 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           className="absolute right-4 top-4"
           onClick={() =>
             activeOutfit
-              ? removeOutfit(activeOutfit.id)
-              : addOutfit({ topId: activeTopId, bottomId: activeBottomId })
+              ? deleteOutfit(activeOutfit.id)
+              : createOutfit({ topId: activeTopId, bottomId: activeBottomId })
           }
         >
           <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />

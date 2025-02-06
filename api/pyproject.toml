@@ -24,6 +24,7 @@ python-dotenv = "^1.0.1"
 nbstripout = "^0.7.1"
 tqdm = "^4.66.5"
 ipywidgets = "^8.1.5"
+pytest = "^8.3.4"
 
 [build-system]
 requires = ["poetry-core"]

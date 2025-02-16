@@ -3,17 +3,26 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Literal, Sequence
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, File, Form, Response, UploadFile, status
+import requests
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel
-import requests
-from sqlalchemy.orm import joinedload
-from sqlmodel import Session, select
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from replicate.client import Client
+from sqlalchemy.orm import joinedload
+from sqlmodel import Session, select
 
 from .wardrobe import db
 from .wardrobe.combining import combine_wearables
@@ -102,13 +111,14 @@ class Wearable(BaseModel):
     category: str
     description: str | None
     wearable_image_url: str
-    generation_status: Literal["pending", "completed", "error"]
+    generation_status: Literal["pending", "completed"]
+    """Whether a WOA image has been generated with this wearable for the current user."""
 
 
 @app.get("/wearables")
 def get_wearables(*, session: Session = Depends(get_session)) -> Sequence[Wearable]:
-    # Subquery to get WearableOnAvatarImages associated with the avatar image of the current user
-    woa_subquery = (
+    # Subquery to get WearableOnAvatar (WOA) images associated with the avatar image of the current user
+    woa_image_subquery = (
         select(db.WearableOnAvatarImage)
         .join(
             db.User,
@@ -120,9 +130,10 @@ def get_wearables(*, session: Session = Depends(get_session)) -> Sequence[Wearab
 
     # Get all wearables and the associated WearableOnAvatarImage (or None)
     results = session.exec(
-        select(db.Wearable, woa_subquery.columns.id).outerjoin(
-            woa_subquery,
-            db.Wearable.wearable_image_id == woa_subquery.columns.wearable_image_id,
+        select(db.Wearable, woa_image_subquery.columns.id).outerjoin(
+            woa_image_subquery,
+            db.Wearable.wearable_image_id
+            == woa_image_subquery.columns.wearable_image_id,
         )
     ).all()
 
@@ -132,9 +143,9 @@ def get_wearables(*, session: Session = Depends(get_session)) -> Sequence[Wearab
             category=wearable.category,
             description=wearable.description,
             wearable_image_url=f"/images/wearables/{wearable.wearable_image_id}",
-            generation_status="pending" if woa_id is None else "completed",
+            generation_status="pending" if woa_image_id is None else "completed",
         )
-        for wearable, woa_id in results
+        for wearable, woa_image_id in results
     ]
 
 
@@ -154,6 +165,88 @@ def get_wearable_image(
     )
 
 
+def create_woa_image(*, wearable_id: UUID):
+    """
+    Creates an image of the current user's avatar wearing a given wearable.
+
+    This image is called a WearableOnAvatar (WOA) image. It is generated using AI models.
+    This method is intended to be used as a FastAPI background task.
+    """
+    # NOTE: could use a factory method as a dependency to make this easier to override in tests, like this:
+    # def get_session_factory():
+    # """
+    # Factory version of `get_session` for cases where the session is still needed after the path
+    # operation has completed.
+
+    # This is useful for background tasks which need the session, since they can't hook into FastAPI's
+    # dependency system by themselves. By using this method as a dependency, we can still override it
+    # in tests.
+    # """
+    # return lambda: Session(db.engine)
+
+    with Session(db.engine) as session:
+        print("Starting WOA generation")
+        user = session.exec(select(db.User).where(db.User.id == current_user_id)).one()
+        wearable = session.exec(
+            select(db.Wearable).where(db.Wearable.id == wearable_id)
+        ).one()
+
+        # Generate an image of the avatar wearing the wearable
+        print("Generating WOA image")
+        woa_image_url = replicate.run(
+            "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
+            input={
+                "garm_img": io.BytesIO(wearable.wearable_image.image_data),
+                "human_img": io.BytesIO(user.avatar_image.image_data),
+                "garment_des": wearable.description or "",
+                "category": wearable.category,
+            },
+        )
+
+        # Get a mask of the wearable on the avatar using an image segmentation model
+        print("Generating mask")
+        mask_results = replicate.run(
+            "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
+            input={
+                "image": woa_image_url,
+                # TODO: this prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
+                # Should probably do some classification of wearable into known working wearable types to use as prompt
+                "mask_prompt": wearable.description or "",
+                "negative_mask_prompt": "",
+                "adjustment_factor": 0,
+            },
+        )
+        mask_image_url = None
+        for result in mask_results:
+            # Results contains some other stuff, we only want the regular mask
+            if result.endswith("/mask.jpg"):
+                mask_image_url = result
+                break
+        if mask_image_url is None:
+            raise ValueError("Could not get mask URL")
+
+        print("Fetching results")
+        woa_image_response = requests.get(woa_image_url, stream=True)
+        woa_image_response.raise_for_status()
+
+        mask_image_response = requests.get(mask_image_url, stream=True)
+        mask_image_response.raise_for_status()
+
+        print("Saving results to DB")
+        woa_image = db.WearableOnAvatarImage(
+            avatar_image=user.avatar_image,
+            wearable_image=wearable.wearable_image,
+            image_data=woa_image_response.content,
+            mask_image_data=mask_image_response.content,
+        )
+        session.add(woa_image)
+        session.commit()
+        print("Finished generating WOA image")
+
+# LEFT HERE
+# TODO: test in frontend and display wearable generation_status somehow
+
+
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
 def create_wearable(
     *,
@@ -161,9 +254,8 @@ def create_wearable(
     description: Annotated[str | None, Form()],
     image: Annotated[UploadFile, File()],
     session: Session = Depends(get_session),
+    background_tasks: BackgroundTasks,
 ) -> Wearable:
-    user = session.exec(select(db.User).where(db.User.id == current_user_id)).one()
-
     wearable_image = db.WearableImage(image_data=image.file.read())
     session.add(wearable_image)
 
@@ -173,61 +265,17 @@ def create_wearable(
         wearable_image=wearable_image,
     )
     session.add(wearable)
-
-    # Generate an image of the avatar wearing the wearable
-    woa_image_url = replicate.run(
-        "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
-        input={
-            "garm_img": io.BytesIO(wearable_image.image_data),
-            "human_img": io.BytesIO(user.avatar_image.image_data),
-            "garment_des": description or "",
-            "category": category,
-        },
-    )
-
-    # Get a mask of the wearable on the avatar using an image segmentation model
-    mask_results = replicate.run(
-        "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
-        input={
-            "image": woa_image_url,
-            # TODO: this prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
-            # Should probably do some classification of wearable into known working wearable types to use as prompt
-            "mask_prompt": description or "",
-            "negative_mask_prompt": "",
-            "adjustment_factor": 0,
-        },
-    )
-    mask_image_url = None
-    for result in mask_results:
-        # Results contains some other stuff, we only want the regular mask
-        if result.endswith("/mask.jpg"):
-            mask_image_url = result
-            break
-    if mask_image_url is None:
-        raise ValueError("Could not get mask URL")
-
-    woa_image_response = requests.get(woa_image_url, stream=True)
-    woa_image_response.raise_for_status()
-
-    mask_image_response = requests.get(mask_image_url, stream=True)
-    mask_image_response.raise_for_status()
-
-    woa = db.WearableOnAvatarImage(
-        avatar_image=user.avatar_image,
-        wearable_image=wearable_image,
-        image_data=woa_image_response.content,
-        mask_image_data=mask_image_response.content,
-    )
-    session.add(woa)
-
     session.commit()
+
+    # Create a WearableOnAvatar (WOA) image
+    background_tasks.add_task(create_woa_image, wearable_id=wearable.id)
 
     return Wearable(
         id=wearable.id,
         category=wearable.category,
         description=wearable.description,
         wearable_image_url=f"/images/wearables/{wearable.wearable_image_id}",
-        generation_status="completed",  # since we wait to create until WOA is finished
+        generation_status="pending",  # since the generation of the WOA image happens in the background
     )
 
 
@@ -295,8 +343,8 @@ class Outfit(BaseModel):
 
 @app.get("/outfits")
 def get_outfits(*, session: Session = Depends(get_session)) -> Sequence[Outfit]:
-    # Get completed wearable image IDs for the current user
-    woas = session.exec(
+    # Get wearable image IDs for which a WOA image exists and which belong to the current user
+    woa_images = session.exec(
         select(db.WearableOnAvatarImage)
         .join(
             db.User,
@@ -304,7 +352,7 @@ def get_outfits(*, session: Session = Depends(get_session)) -> Sequence[Outfit]:
         )
         .where(db.User.id == current_user_id)
     ).all()
-    completed_ids = {woa.wearable_image_id for woa in woas}
+    completed_ids = {woa.wearable_image_id for woa in woa_images}
 
     # Fetch outfits along with the top and bottom wearables
     outfits = session.exec(

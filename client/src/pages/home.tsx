@@ -157,22 +157,37 @@ function FavoriteOutfitList({
           });
           return;
         }
+        if (
+          !(
+            newOutfit.top.generation_status === "completed" &&
+            newOutfit.bottom.generation_status === "completed"
+          )
+        ) {
+          toast({
+            title: "Just a sec!",
+            description:
+              "One or more items in this outfit are still being generated. Check back later!",
+          });
+          return;
+        }
         onOutfitChange?.({ topId: newOutfit.top.id, bottomId: newOutfit.bottom.id });
       }}
       className="grid grid-cols-2 content-start gap-4"
     >
       {outfits.map((outfit) => {
-        const isDisabled =
-          outfit.top.generation_status !== "completed" ||
-          outfit.bottom.generation_status !== "completed";
+        const isReady =
+          outfit.top.generation_status === "completed" &&
+          outfit.bottom.generation_status === "completed";
         return (
           <RadioGroup.Item
             key={outfit.id}
             value={outfit.id}
-            disabled={isDisabled}
-            className="relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block"
+            className={cn(
+              "relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block",
+              !isReady && "cursor-progress",
+            )}
           >
-            {isDisabled && (
+            {!isReady && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-muted/50">
                 <div className="rounded-full bg-muted p-4">
                   <HourglassIcon className="size-12 stroke-foreground" />
@@ -215,6 +230,7 @@ function WearableList({
   onValueChange: (value: string) => void;
   wearables: Wearable[];
 }) {
+  const { toast } = useToast();
   return (
     <RadioGroup.Root
       value={value}
@@ -222,15 +238,26 @@ function WearableList({
       className="grid grid-cols-2 content-start gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
       {wearables.map((wearable) => {
-        const isDisabled = wearable.generation_status !== "completed";
+        const isReady = wearable.generation_status === "completed";
         return (
           <RadioGroup.Item
             key={wearable.id}
             value={wearable.id}
-            disabled={isDisabled}
-            className="relative overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:cursor-progress"
+            className={cn(
+              "relative overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+              !isReady && "cursor-progress",
+            )}
+            onClick={(e) => {
+              if (!isReady) {
+                e.preventDefault();
+                toast({
+                  title: "Just a sec!",
+                  description: "This item is still being generated. Check back later!",
+                });
+              }
+            }}
           >
-            {isDisabled && (
+            {!isReady && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
                 <div className="rounded-full bg-muted p-4">
                   <HourglassIcon className="size-12 stroke-foreground" />

@@ -243,9 +243,6 @@ def create_woa_image(*, wearable_id: UUID):
         session.commit()
         print("Finished generating WOA image")
 
-# LEFT HERE
-# TODO: test in frontend and display wearable generation_status somehow
-
 
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
 def create_wearable(

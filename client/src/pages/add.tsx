@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useCreateWearable } from "@/hooks/api";
+import { useCreateWearables } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeftIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
@@ -19,21 +19,23 @@ import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 
 const formSchema = z.object({
-  wearables: z.array(
-    z.object({
-      file: z.instanceof(File),
-      preview: z.string(),
-      category: z.enum(["upper_body", "lower_body"]),
-      description: z.string(),
-    }),
-  ),
+  wearables: z
+    .array(
+      z.object({
+        file: z.instanceof(File),
+        preview: z.string(),
+        category: z.enum(["upper_body", "lower_body"]),
+        description: z.string(),
+      }),
+    )
+    .min(1),
 });
 
 export function Add() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { mutate: createWearable, isPending } = useCreateWearable();
+  const { mutate: createWearables, isPending } = useCreateWearables();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -60,12 +62,13 @@ export function Add() {
   }
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    createWearable(
-      {
-        category: data.wearables[0].category,
-        description: data.wearables[0].description,
-        image: data.wearables[0].file,
-      },
+    createWearables(
+      // Rename file field and keep only necessary fields
+      data.wearables.map(({ category, description, file }) => ({
+        category: category,
+        description: description,
+        image: file,
+      })),
       {
         onSuccess: async () => {
           navigate("/");
@@ -142,7 +145,11 @@ export function Add() {
                 Back
               </Link>
             </Button>
-            <Button className="col-span-1" type="submit" disabled={isPending}>
+            <Button
+              className="col-span-1"
+              type="submit"
+              disabled={isPending || fields.length === 0}
+            >
               Add
               {isPending ? <LoaderCircleIcon className="animate-spin" /> : <PlusIcon />}
             </Button>

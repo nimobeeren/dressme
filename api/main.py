@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from replicate.client import Client
 from sqlalchemy.orm import joinedload
@@ -245,35 +245,66 @@ def create_woa_image(*, wearable_id: UUID):
 
 
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
-def create_wearable(
+def create_wearables(
     *,
-    category: Annotated[str, Form()],
-    description: Annotated[str | None, Form()],
-    image: Annotated[UploadFile, File()],
+    category: Annotated[list[Annotated[str, Field(min_length=1)]], Form()],
+    # Description should be optional, but we can't accept it due to the way sending values in form
+    # data works. If a client were to omit the description field on one item but not the others,
+    # there would be no way to know which item the null description belongs to.
+    description: Annotated[list[str], Form()],
+    image: Annotated[list[UploadFile], File()],
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks,
-) -> Wearable:
-    wearable_image = db.WearableImage(image_data=image.file.read())
-    session.add(wearable_image)
+) -> list[Wearable]:
+    """
+    Create one or more wearables.
 
-    wearable = db.Wearable(
-        category=category,
-        description=description,
-        wearable_image=wearable_image,
-    )
-    session.add(wearable)
+    Multiple wearables can be created in one request by passing fields multiple times with the same
+    name. All fields must appear the same number of times. The description can be set to an empty
+    string if you want to omit it.
+    """
+    if not len(category) == len(description) == len(image):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "error": {
+                    "message": "The category, description and image fields should all occur the same number of times."
+                }
+            },
+        )
+
+    wearables: list[db.Wearable] = []
+    for item_category, item_description, item_image in zip(
+        category, description, image, strict=True
+    ):
+        wearable_image = db.WearableImage(image_data=item_image.file.read())
+        session.add(wearable_image)
+
+        wearable = db.Wearable(
+            category=item_category,
+            description=item_description if item_description != "" else None,
+            wearable_image=wearable_image,
+        )
+        wearables.append(wearable)
+        session.add(wearable)
+
     session.commit()
 
-    # Create a WearableOnAvatar (WOA) image
-    background_tasks.add_task(create_woa_image, wearable_id=wearable.id)
+    # Create WearableOnAvatar (WOA) images
+    # Do this after DB commit to ensure the wearables exist
+    for wearable in wearables:
+        background_tasks.add_task(create_woa_image, wearable_id=wearable.id)
 
-    return Wearable(
-        id=wearable.id,
-        category=wearable.category,
-        description=wearable.description,
-        wearable_image_url=f"/images/wearables/{wearable.wearable_image_id}",
-        generation_status="pending",  # since the generation of the WOA image happens in the background
-    )
+    return [
+        Wearable(
+            id=wearable.id,
+            category=wearable.category,
+            description=wearable.description,
+            wearable_image_url=f"/images/wearables/{wearable.wearable_image_id}",
+            generation_status="pending",  # since the generation of the WOA image happens in the background
+        )
+        for wearable in wearables
+    ]
 
 
 @app.get("/images/outfit")

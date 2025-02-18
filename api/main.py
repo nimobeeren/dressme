@@ -293,6 +293,8 @@ def create_wearables(
     # Create WearableOnAvatar (WOA) images
     # Do this after DB commit to ensure the wearables exist
     for wearable in wearables:
+        # TODO: background tasks currently run sequentially, so this will be slow for many wearables
+        # FastAPI does not support concurrent background tasks yet: https://github.com/fastapi/fastapi/discussions/10682
         background_tasks.add_task(create_woa_image, wearable_id=wearable.id)
 
     return [

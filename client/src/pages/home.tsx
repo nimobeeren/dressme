@@ -161,34 +161,47 @@ function FavoriteOutfitList({
       }}
       className="grid grid-cols-2 content-start gap-4"
     >
-      {outfits.map((outfit) => (
-        <RadioGroup.Item
-          key={outfit.id}
-          value={outfit.id}
-          className="relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block"
-        >
-          <div className="absolute inset-0 z-10 drop-shadow-md">
-            <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
+      {outfits.map((outfit) => {
+        const isDisabled =
+          outfit.top.generation_status !== "completed" ||
+          outfit.bottom.generation_status !== "completed";
+        return (
+          <RadioGroup.Item
+            key={outfit.id}
+            value={outfit.id}
+            disabled={isDisabled}
+            className="relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block"
+          >
+            {isDisabled && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-muted/50">
+                <div className="rounded-full bg-muted p-4">
+                  <HourglassIcon className="size-12 stroke-foreground" />
+                </div>
+              </div>
+            )}
+            <div className="absolute inset-0 z-10 drop-shadow-md">
+              <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
+                <img
+                  src={new URL(
+                    outfit.top.wearable_image_url,
+                    import.meta.env.VITE_API_BASE_URL,
+                  ).toString()}
+                  className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
+                />
+              </div>
+            </div>
+            <div>
               <img
                 src={new URL(
-                  outfit.top.wearable_image_url,
+                  outfit.bottom.wearable_image_url,
                   import.meta.env.VITE_API_BASE_URL,
                 ).toString()}
-                className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
+                className="aspect-3/4 translate-x-[5%] translate-y-[5%] scale-[120%] object-cover"
               />
             </div>
-          </div>
-          <div>
-            <img
-              src={new URL(
-                outfit.bottom.wearable_image_url,
-                import.meta.env.VITE_API_BASE_URL,
-              ).toString()}
-              className="aspect-3/4 translate-x-[5%] translate-y-[5%] scale-[120%] object-cover"
-            />
-          </div>
-        </RadioGroup.Item>
-      ))}
+          </RadioGroup.Item>
+        );
+      })}
     </RadioGroup.Root>
   );
 }

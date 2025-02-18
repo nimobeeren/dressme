@@ -6,7 +6,7 @@ import { useCreateOutfit, useDeleteOutfit, useOutfits, useWearables } from "@/ho
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import { CircleAlertIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
+import { CircleAlertIcon, HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
@@ -92,7 +92,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
                 }}
               />
             </TabsContent>
-            <TabsContent value="tops">
+            <TabsContent value="tops" className="z-100 relative">
               <WearableList
                 value={activeTopId}
                 onValueChange={(value) => setActiveTopId(value)}
@@ -206,20 +206,34 @@ function WearableList({
     <RadioGroup.Root
       value={value}
       onValueChange={onValueChange}
-      className="grid grid-cols-2 content-start gap-4"
+      className="grid grid-cols-2 content-start gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
-      {wearables.map((wearable) => (
-        <RadioGroup.Item
-          key={wearable.id}
-          value={wearable.id}
-          className="overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-        >
-          <img
-            src={new URL(wearable.wearable_image_url, import.meta.env.VITE_API_BASE_URL).toString()}
-            className="aspect-3/4 object-cover"
-          />
-        </RadioGroup.Item>
-      ))}
+      {wearables.map((wearable) => {
+        const isDisabled = wearable.generation_status !== "completed";
+        return (
+          <RadioGroup.Item
+            key={wearable.id}
+            value={wearable.id}
+            disabled={isDisabled}
+            className="relative overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:cursor-progress"
+          >
+            {isDisabled && (
+              <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+                <div className="rounded-full bg-muted p-4">
+                  <HourglassIcon className="size-12 stroke-foreground" />
+                </div>
+              </div>
+            )}
+            <img
+              src={new URL(
+                wearable.wearable_image_url,
+                import.meta.env.VITE_API_BASE_URL,
+              ).toString()}
+              className="aspect-3/4 object-cover"
+            />
+          </RadioGroup.Item>
+        );
+      })}
     </RadioGroup.Root>
   );
 }

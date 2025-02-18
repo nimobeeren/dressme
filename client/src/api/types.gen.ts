@@ -33,10 +33,10 @@ export type Wearable = {
     category: string;
     description: (string | null);
     wearable_image_url: string;
-    generation_status: 'pending' | 'completed' | 'error';
+    generation_status: 'pending' | 'completed';
 };
 
-export type generation_status = 'pending' | 'completed' | 'error';
+export type generation_status = 'pending' | 'completed';
 
 export type GetUsersResponse = (Array<User>);
 

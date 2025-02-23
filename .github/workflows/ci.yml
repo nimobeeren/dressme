@@ -36,4 +36,5 @@ jobs:
 
     - name: Run tests
       run: |
+        cd api
         poetry run pytest

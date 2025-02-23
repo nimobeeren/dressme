@@ -25,3 +25,11 @@ Start a HTTP server for development:
 ```bash
 poetry run fastapi dev main.py
 ```
+
+## Testing
+
+Run the tests:
+
+```bash
+poetry run pytest
+```

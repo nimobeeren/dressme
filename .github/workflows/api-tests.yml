@@ -1,0 +1,35 @@
+name: API Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install pipx
+        pipx ensurepath
+        python -m pip install --upgrade pip
+        pipx install poetry==1.8.3
+        poetry install
+
+    - name: Run tests
+      run: |
+        poetry run pytest

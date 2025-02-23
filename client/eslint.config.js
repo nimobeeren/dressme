@@ -24,10 +24,7 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "no-constant-condition": ["error", { checkLoops: false }],
-      "react-refresh/only-export-components": [
-        "off",
-        { allowConstantExport: true },
-      ],
+      "react-refresh/only-export-components": ["off", { allowConstantExport: true }],
     },
   },
 );

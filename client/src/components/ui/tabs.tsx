@@ -45,6 +45,10 @@ const TabsContent = React.forwardRef<
       "rounded-xl transition-all focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
       className,
     )}
+    // NOTE: not sure if this is advisable from an accessibility standpoint, but typically I'd
+    // rather focus this element's children rather than the container.
+    // I initially added this because focus-visible styles weren't working out.
+    tabIndex={-1}
     {...props}
   />
 ));

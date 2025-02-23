@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install Poetry
+      run: |
+        sudo apt update
+        sudo apt install pipx
+        pipx ensurepath
+        python -m pip install --upgrade pip
+        pipx install poetry==1.8.3
+
+    - name: Install dependencies
+      run: |
+        cd api
+        poetry install
+
+    - name: Run tests
+      run: |
+        cd api
+        poetry run pytest
+      env:
+        REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}

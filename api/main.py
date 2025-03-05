@@ -11,6 +11,7 @@ from fastapi import (
     File,
     Form,
     Response,
+    Security,
     UploadFile,
     status,
 )
@@ -19,22 +20,16 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from replicate.client import Client
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
 from .wardrobe import db
+from .wardrobe.auth import VerifyToken
 from .wardrobe.combining import combine_wearables
+from .wardrobe.settings import get_settings
 
-
-class Settings(BaseSettings):
-    REPLICATE_API_TOKEN: str
-
-    model_config = SettingsConfigDict(env_file=".env")
-
-
-settings = Settings()
+settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
 
 
@@ -48,6 +43,7 @@ async def lifespan(app: FastAPI):
     db.create_db_and_tables()
 
     # Get the first user ID for testing
+    # TODO: make current user dependency
     with Session(db.engine) as session:
         global current_user_id
         current_user_id = session.exec(select(db.User.id)).first()
@@ -60,7 +56,12 @@ def custom_generate_unique_id(route: APIRoute):
     return route.name
 
 
-app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
+auth = VerifyToken()
+app = FastAPI(
+    lifespan=lifespan,
+    generate_unique_id_function=custom_generate_unique_id,
+    dependencies=[Security(auth.verify)],  # ensures all routes require authentication
+)
 
 app.add_middleware(
     CORSMiddleware,

@@ -27,6 +27,9 @@ tqdm = "^4.66.5"
 ipywidgets = "^8.1.5"
 pytest = "^8.3.4"
 
+[tool.pyright]
+typeCheckingMode = "off"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

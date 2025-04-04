@@ -5,14 +5,28 @@ import {
   deleteOutfit,
   getOutfits,
   getWearables,
-  type Body_create_wearables as CreateWearablesBody,
+  type BodyCreateWearables,
   type Outfit,
   type Wearable,
 } from "@/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+// A function that used to get the auth token
+let tokenGetter: (() => Promise<string>) | null = null;
+
+// The token getter needs to be set at runtime because it uses React hooks
+export function setTokenGetter(getter: () => Promise<string>) {
+  tokenGetter = getter;
+}
+
 client.setConfig({
   baseUrl: import.meta.env.VITE_API_BASE_URL,
+  auth: async () => {
+    if (!tokenGetter) {
+      throw new Error("Token getter not initialized");
+    }
+    return await tokenGetter();
+  },
 });
 
 export function useWearables() {
@@ -65,9 +79,9 @@ export function useDeleteOutfit() {
 }
 
 type WearablesInput = Array<{
-  category: CreateWearablesBody["category"][0];
-  description?: CreateWearablesBody["description"][0];
-  image: CreateWearablesBody["image"][0];
+  category: BodyCreateWearables["category"][0];
+  description?: BodyCreateWearables["description"][0];
+  image: BodyCreateWearables["image"][0];
 }>;
 
 export function useCreateWearables() {

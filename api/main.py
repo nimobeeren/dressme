@@ -32,6 +32,8 @@ from .wardrobe.settings import get_settings
 settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
 
+# TODO: get the user id from the validated acccess token somehow
+
 
 def get_session():
     with Session(db.engine) as session:

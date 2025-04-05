@@ -34,7 +34,6 @@ class VerifyToken:
         security_scopes: SecurityScopes,
         token: HTTPAuthorizationCredentials | None = Depends(HTTPBearer()),
     ):
-        print('🔑 token', token)
         if token is None:
             raise UnauthenticatedException
 

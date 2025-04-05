@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { Home } from "@/pages/home";
+import { withAuthenticationRequired } from "@auth0/auth0-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useMemo } from "react";
 import { createRoot } from "react-dom/client";
@@ -9,7 +10,6 @@ import { AuthProvider } from "./components/auth-provider";
 import "./index.css";
 import { NotFound } from "./pages/404";
 import { Add } from "./pages/add";
-import { Login } from "./pages/login";
 import { Profile } from "./pages/profile";
 
 const queryClient = new QueryClient();
@@ -33,21 +33,25 @@ function App() {
   }, [toast]);
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
           <Routes>
-            <Route index element={<Home />} />
-            <Route path="/add" element={<Add />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route index element={<ProtectedRoute component={Home} />} />
+            <Route path="/add" element={<ProtectedRoute component={Add} />} />
+            <Route path="/profile" element={<ProtectedRoute component={Profile} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
+      <Toaster />
+    </QueryClientProvider>
   );
+}
+
+function ProtectedRoute({ component }: { component: React.ComponentType }) {
+  const Component = withAuthenticationRequired(component);
+  return <Component />;
 }
 
 createRoot(document.getElementById("root")!).render(

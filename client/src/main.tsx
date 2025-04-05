@@ -10,7 +10,6 @@ import { AuthProvider } from "./components/auth-provider";
 import "./index.css";
 import { NotFound } from "./pages/404";
 import { Add } from "./pages/add";
-import { Profile } from "./pages/profile";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +38,6 @@ function App() {
           <Routes>
             <Route index element={<ProtectedRoute component={Home} />} />
             <Route path="/add" element={<ProtectedRoute component={Add} />} />
-            <Route path="/profile" element={<ProtectedRoute component={Profile} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

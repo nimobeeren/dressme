@@ -8,11 +8,28 @@ interface AuthProviderProps {
 }
 
 function TokenInitializer() {
-  const { getAccessTokenSilently } = useAuth0();
+  const { getAccessTokenSilently, loginWithRedirect } = useAuth0();
 
   useEffect(() => {
-    setTokenGetter(() => getAccessTokenSilently());
-  }, [getAccessTokenSilently]);
+    setTokenGetter(async () => {
+      try {
+        return await getAccessTokenSilently();
+      } catch (error) {
+        if ((error as any)?.error === "invalid_grant") {
+          // This error occurs when the refresh token is expired
+          // In that case, the user has to log in again
+          // Related: https://community.auth0.com/t/rotating-refresh-token-locking-users-out-after-expiry/46203
+          await loginWithRedirect();
+          // The next line should never be reached since the user is redirected to a page outside
+          // our application. But just in case it is, it seems sensible to try to get the token
+          // again.
+          return await getAccessTokenSilently();
+        } else {
+          throw error;
+        }
+      }
+    });
+  }, [getAccessTokenSilently, loginWithRedirect]);
 
   return null;
 }

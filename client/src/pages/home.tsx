@@ -1,4 +1,5 @@
 import type { Outfit, Wearable } from "@/api";
+import { AuthenticatedImage } from "@/components/auth-image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,7 +60,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
         >
           <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
         </Button>
-        <img
+        <AuthenticatedImage
           src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
           className="h-full"
         />
@@ -196,7 +197,7 @@ function FavoriteOutfitList({
             )}
             <div className="absolute inset-0 z-10 drop-shadow-md">
               <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
-                <img
+                <AuthenticatedImage
                   src={new URL(
                     outfit.top.wearable_image_url,
                     import.meta.env.VITE_API_BASE_URL,
@@ -206,7 +207,7 @@ function FavoriteOutfitList({
               </div>
             </div>
             <div>
-              <img
+              <AuthenticatedImage
                 src={new URL(
                   outfit.bottom.wearable_image_url,
                   import.meta.env.VITE_API_BASE_URL,
@@ -264,7 +265,7 @@ function WearableList({
                 </div>
               </div>
             )}
-            <img
+            <AuthenticatedImage
               src={new URL(
                 wearable.wearable_image_url,
                 import.meta.env.VITE_API_BASE_URL,

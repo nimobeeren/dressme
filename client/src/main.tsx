@@ -13,9 +13,6 @@ import { Add } from "./pages/add";
 
 const queryClient = new QueryClient();
 
-// LEFT HERE
-// Next up: fix auth for image requests
-
 function App() {
   const { toast } = useToast();
 

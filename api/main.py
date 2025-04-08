@@ -106,6 +106,7 @@ def get_avatar_image(
     return StreamingResponse(
         io.BytesIO(avatar_image.image_data),
         media_type=Image.MIME[image.format],
+        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 
@@ -165,6 +166,7 @@ def get_wearable_image(
     return StreamingResponse(
         io.BytesIO(wearable_image.image_data),
         media_type=Image.MIME[image.format],
+        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 
@@ -313,7 +315,7 @@ def create_wearables(
 
 
 @app.get("/images/outfit")
-def get_outfit(
+def get_outfit_image(
     *, top_id: UUID, bottom_id: UUID, session: Session = Depends(get_session)
 ) -> bytes:
     user = session.exec(
@@ -365,7 +367,11 @@ def get_outfit(
     outfit_buffer = io.BytesIO()
     outfit_im.save(outfit_buffer, format="JPEG")
     outfit_buffer.seek(0)
-    return StreamingResponse(outfit_buffer, media_type="image/jpeg")
+    return StreamingResponse(
+        outfit_buffer,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 class Outfit(BaseModel):

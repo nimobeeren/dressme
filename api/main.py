@@ -73,19 +73,16 @@ app.add_middleware(
 )
 
 
-def get_current_user_id(
+def get_current_user(
     *, jwt_payload=Security(auth.verify), session: Session = Depends(get_session)
 ) -> str:
     auth0_user_id = jwt_payload["sub"]
-    print(f"auth0_user_id: {auth0_user_id}")
 
-    # TODO: get the user by auth0_user_id
-    current_user_id = session.exec(
-        select(db.User.id).where(db.User.auth0_user_id == auth0_user_id)
+    current_user = session.exec(
+        select(db.User).where(db.User.auth0_user_id == auth0_user_id)
     ).one_or_none()
-    print(f"current_user_id: {current_user_id}")
 
-    if current_user_id is None:
+    if current_user is None:
         # Add avatar image
         ROOT_PATH = Path(__file__).parent.parent
         image_path = ROOT_PATH / Path(
@@ -96,12 +93,12 @@ def get_current_user_id(
             session.add(avatar_image)
 
         # Add user
-        user = db.User(auth0_user_id=auth0_user_id, avatar_image=avatar_image)
-        session.add(user)
+        print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
+        current_user = db.User(auth0_user_id=auth0_user_id, avatar_image=avatar_image)
+        session.add(current_user)
         session.commit()
-        current_user_id = user.id
 
-    return current_user_id
+    return current_user
 
 
 class User(BaseModel):
@@ -125,6 +122,7 @@ def get_users(*, session: Session = Depends(get_session)) -> Sequence[User]:
 
 
 # TODO: check that the image belongs to the current user
+# TODO: do users really need to get the raw avatar image?
 @app.get("/images/avatars/{avatar_image_id}")
 def get_avatar_image(
     *, avatar_image_id: UUID, session: Session = Depends(get_session)
@@ -155,7 +153,7 @@ class Wearable(BaseModel):
 def get_wearables(
     *,
     session: Session = Depends(get_session),
-    current_user_id: UUID = Depends(get_current_user_id),
+    current_user: db.User = Depends(get_current_user),
 ) -> Sequence[Wearable]:
     # Subquery to get WearableOnAvatar (WOA) images associated with the avatar image of the current user
     woa_image_subquery = (
@@ -164,7 +162,7 @@ def get_wearables(
             db.User,
             db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
         )
-        .where(db.User.id == current_user_id)
+        .where(db.User.id == current_user.id)
         .subquery()
     )
 
@@ -297,7 +295,7 @@ def create_wearables(
     image: Annotated[list[UploadFile], File()],
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks,
-    current_user_id: UUID = Depends(get_current_user_id),
+    current_user: db.User = Depends(get_current_user),
 ) -> list[Wearable]:
     """
     Create one or more wearables.
@@ -339,7 +337,7 @@ def create_wearables(
         # TODO: background tasks currently run sequentially, so this will be slow for many wearables
         # FastAPI does not support concurrent background tasks yet: https://github.com/fastapi/fastapi/discussions/10682
         background_tasks.add_task(
-            create_woa_image, wearable_id=wearable.id, current_user_id=current_user_id
+            create_woa_image, wearable_id=wearable.id, current_user_id=current_user.id
         )
 
     return [
@@ -360,11 +358,11 @@ def get_outfit_image(
     top_id: UUID,
     bottom_id: UUID,
     session: Session = Depends(get_session),
-    current_user_id: UUID = Depends(get_current_user_id),
+    current_user: db.User = Depends(get_current_user),
 ) -> bytes:
     user = session.exec(
         select(db.User)
-        .where(db.User.id == current_user_id)
+        .where(db.User.id == current_user.id)
         .options(joinedload(db.User.avatar_image))
     ).one()
     top_on_avatar = session.exec(
@@ -379,7 +377,7 @@ def get_outfit_image(
             db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
         )
         .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
-        .where(db.User.id == current_user_id)
+        .where(db.User.id == current_user.id)
         .where(db.Wearable.id == top_id)
     ).first()
     bottom_on_avatar = session.exec(
@@ -394,7 +392,7 @@ def get_outfit_image(
             db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
         )
         .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
-        .where(db.User.id == current_user_id)
+        .where(db.User.id == current_user.id)
         .where(db.Wearable.id == bottom_id)
     ).first()
 
@@ -428,7 +426,7 @@ class Outfit(BaseModel):
 def get_outfits(
     *,
     session: Session = Depends(get_session),
-    current_user_id: UUID = Depends(get_current_user_id),
+    current_user: db.User = Depends(get_current_user),
 ) -> Sequence[Outfit]:
     # Get wearable image IDs for which a WOA image exists and which belong to the current user
     woa_images = session.exec(
@@ -437,14 +435,14 @@ def get_outfits(
             db.User,
             db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
         )
-        .where(db.User.id == current_user_id)
+        .where(db.User.id == current_user.id)
     ).all()
     completed_ids = {woa.wearable_image_id for woa in woa_images}
 
     # Fetch outfits along with the top and bottom wearables
     outfits = session.exec(
         select(db.Outfit)
-        .where(db.Outfit.user_id == current_user_id)
+        .where(db.Outfit.user_id == current_user.id)
         .options(joinedload(db.Outfit.top))
         .options(joinedload(db.Outfit.bottom))
     ).all()
@@ -484,7 +482,7 @@ def create_outfit(
     top_id: UUID,
     bottom_id: UUID,
     session: Session = Depends(get_session),
-    current_user_id: UUID = Depends(get_current_user_id),
+    current_user: db.User = Depends(get_current_user),
 ):
     # Ensure that the top and bottom wearables exist
     top = session.exec(
@@ -524,7 +522,7 @@ def create_outfit(
         )
 
     # Check if the outfit already exists
-    user = session.exec(select(db.User).where(db.User.id == current_user_id)).one()
+    user = session.exec(select(db.User).where(db.User.id == current_user.id)).one()
     existing = session.exec(
         select(db.Outfit)
         .where(db.Outfit.top_id == top_id)
@@ -550,13 +548,13 @@ def delete_outfit(
     *,
     id: UUID,
     session: Session = Depends(get_session),
-    current_user_id: UUID = Depends(get_current_user_id),
+    current_user: db.User = Depends(get_current_user),
 ):
     # Check if the outfit exists and is owned by the current user
     outfit = session.exec(
         select(db.Outfit)
         .where(db.Outfit.id == id)
-        .where(db.Outfit.user_id == current_user_id)
+        .where(db.Outfit.user_id == current_user.id)
     ).one_or_none()
 
     if outfit is None:

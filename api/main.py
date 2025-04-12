@@ -1,5 +1,6 @@
 import io
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated, Literal, Sequence
 from uuid import UUID
 
@@ -31,8 +32,6 @@ from .wardrobe.settings import get_settings
 
 settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
-
-# TODO: get the user id from the validated acccess token somehow
 
 
 def get_session():
@@ -74,25 +73,58 @@ app.add_middleware(
 )
 
 
+def get_current_user_id(
+    *, jwt_payload=Security(auth.verify), session: Session = Depends(get_session)
+) -> str:
+    auth0_user_id = jwt_payload["sub"]
+    print(f"auth0_user_id: {auth0_user_id}")
+
+    # TODO: get the user by auth0_user_id
+    current_user_id = session.exec(
+        select(db.User.id).where(db.User.auth0_user_id == auth0_user_id)
+    ).one_or_none()
+    print(f"current_user_id: {current_user_id}")
+
+    if current_user_id is None:
+        # Add avatar image
+        ROOT_PATH = Path(__file__).parent.parent
+        image_path = ROOT_PATH / Path(
+            "images/humans/model.jpg"
+        )  # TODO: get avatar during onboarding flow
+        with open(image_path, "rb") as image_file:
+            avatar_image = db.AvatarImage(image_data=image_file.read())
+            session.add(avatar_image)
+
+        # Add user
+        user = db.User(auth0_user_id=auth0_user_id, avatar_image=avatar_image)
+        session.add(user)
+        session.commit()
+        current_user_id = user.id
+
+    return current_user_id
+
+
 class User(BaseModel):
     id: UUID
-    name: str
+    auth0_user_id: str
     avatar_image_url: str
 
 
+# TODO: why is there a get users endpoint? this exposes the avatar image IDs
 @app.get("/users")
 def get_users(*, session: Session = Depends(get_session)) -> Sequence[User]:
     users = session.exec(select(db.User)).all()
     return [
         User(
             id=u.id,
-            name=u.name,
+            auth0_user_id=u.auth0_user_id,
             avatar_image_url=f"/images/avatars/{u.avatar_image_id}",
         )
         for u in users
     ]
 
 
+# TODO: check that the image belongs to the current user
 @app.get("/images/avatars/{avatar_image_id}")
 def get_avatar_image(
     *, avatar_image_id: UUID, session: Session = Depends(get_session)
@@ -120,7 +152,11 @@ class Wearable(BaseModel):
 
 
 @app.get("/wearables")
-def get_wearables(*, session: Session = Depends(get_session)) -> Sequence[Wearable]:
+def get_wearables(
+    *,
+    session: Session = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
+) -> Sequence[Wearable]:
     # Subquery to get WearableOnAvatar (WOA) images associated with the avatar image of the current user
     woa_image_subquery = (
         select(db.WearableOnAvatarImage)
@@ -153,6 +189,7 @@ def get_wearables(*, session: Session = Depends(get_session)) -> Sequence[Wearab
     ]
 
 
+# TODO: check that the image belongs to the current user
 @app.get("/images/wearables/{wearable_image_id}")
 def get_wearable_image(
     *, wearable_image_id: UUID, session: Session = Depends(get_session)
@@ -170,7 +207,7 @@ def get_wearable_image(
     )
 
 
-def create_woa_image(*, wearable_id: UUID):
+def create_woa_image(*, wearable_id: UUID, current_user_id: UUID):
     """
     Creates an image of the current user's avatar wearing a given wearable.
 
@@ -260,6 +297,7 @@ def create_wearables(
     image: Annotated[list[UploadFile], File()],
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks,
+    current_user_id: UUID = Depends(get_current_user_id),
 ) -> list[Wearable]:
     """
     Create one or more wearables.
@@ -300,7 +338,9 @@ def create_wearables(
     for wearable in wearables:
         # TODO: background tasks currently run sequentially, so this will be slow for many wearables
         # FastAPI does not support concurrent background tasks yet: https://github.com/fastapi/fastapi/discussions/10682
-        background_tasks.add_task(create_woa_image, wearable_id=wearable.id)
+        background_tasks.add_task(
+            create_woa_image, wearable_id=wearable.id, current_user_id=current_user_id
+        )
 
     return [
         Wearable(
@@ -316,7 +356,11 @@ def create_wearables(
 
 @app.get("/images/outfit")
 def get_outfit_image(
-    *, top_id: UUID, bottom_id: UUID, session: Session = Depends(get_session)
+    *,
+    top_id: UUID,
+    bottom_id: UUID,
+    session: Session = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
 ) -> bytes:
     user = session.exec(
         select(db.User)
@@ -381,7 +425,11 @@ class Outfit(BaseModel):
 
 
 @app.get("/outfits")
-def get_outfits(*, session: Session = Depends(get_session)) -> Sequence[Outfit]:
+def get_outfits(
+    *,
+    session: Session = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
+) -> Sequence[Outfit]:
     # Get wearable image IDs for which a WOA image exists and which belong to the current user
     woa_images = session.exec(
         select(db.WearableOnAvatarImage)
@@ -432,7 +480,11 @@ def get_outfits(*, session: Session = Depends(get_session)) -> Sequence[Outfit]:
 
 @app.post("/outfits")
 def create_outfit(
-    *, top_id: UUID, bottom_id: UUID, session: Session = Depends(get_session)
+    *,
+    top_id: UUID,
+    bottom_id: UUID,
+    session: Session = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
 ):
     # Ensure that the top and bottom wearables exist
     top = session.exec(
@@ -494,7 +546,12 @@ def create_outfit(
 
 
 @app.delete("/outfits")
-def delete_outfit(*, id: UUID, session: Session = Depends(get_session)):
+def delete_outfit(
+    *,
+    id: UUID,
+    session: Session = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
+):
     # Check if the outfit exists and is owned by the current user
     outfit = session.exec(
         select(db.Outfit)

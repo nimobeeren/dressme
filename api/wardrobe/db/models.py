@@ -5,7 +5,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 class User(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str
+    auth0_user_id: str = Field(index=True)
     avatar_image_id: UUID = Field(foreign_key="avatarimage.id", index=True)
     avatar_image: "AvatarImage" = Relationship()
     outfits: list["Outfit"] = Relationship()

@@ -73,7 +73,7 @@ if __name__ == "__main__":
             session.add(avatar_image)
 
         # Add user
-        user = User(name="Test User", avatar_image=avatar_image)
+        user = User(auth0_user_id="auth0|67eaf8a380e6a5a77d48e95e", avatar_image=avatar_image)
         session.add(user)
 
         # Add wearables

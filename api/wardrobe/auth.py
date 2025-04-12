@@ -1,6 +1,7 @@
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, SecurityScopes
+from uuid import UUID
 
 from .settings import get_settings
 
@@ -31,7 +32,6 @@ class VerifyToken:
 
     async def verify(
         self,
-        security_scopes: SecurityScopes,
         token: HTTPAuthorizationCredentials | None = Depends(HTTPBearer()),
     ):
         if token is None:

@@ -18,7 +18,7 @@ export type Outfit = {
 
 export type User = {
     id: string;
-    name: string;
+    auth0_user_id: string;
     avatar_image_url: string;
 };
 
@@ -147,7 +147,7 @@ export type GetWearableImageResponses = {
 
 export type GetWearableImageResponse = GetWearableImageResponses[keyof GetWearableImageResponses];
 
-export type GetOutfitData = {
+export type GetOutfitImageData = {
     body?: never;
     path?: never;
     query: {
@@ -157,23 +157,23 @@ export type GetOutfitData = {
     url: '/images/outfit';
 };
 
-export type GetOutfitErrors = {
+export type GetOutfitImageErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetOutfitError = GetOutfitErrors[keyof GetOutfitErrors];
+export type GetOutfitImageError = GetOutfitImageErrors[keyof GetOutfitImageErrors];
 
-export type GetOutfitResponses = {
+export type GetOutfitImageResponses = {
     /**
      * Successful Response
      */
     200: Blob | File;
 };
 
-export type GetOutfitResponse = GetOutfitResponses[keyof GetOutfitResponses];
+export type GetOutfitImageResponse = GetOutfitImageResponses[keyof GetOutfitImageResponses];
 
 export type DeleteOutfitData = {
     body?: never;

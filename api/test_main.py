@@ -31,12 +31,12 @@ def client_fixture(session: Session):
 
 def test_get_users(session: Session, client: TestClient):
     avatar_image_1 = db.AvatarImage(image_data=b"")
-    user_1 = db.User(name="Nimo", avatar_image=avatar_image_1)
+    user_1 = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image_1)
     session.add(avatar_image_1)
     session.add(user_1)
 
     avatar_image_2 = db.AvatarImage(image_data=b"")
-    user_2 = db.User(name="Sebastián", avatar_image=avatar_image_2)
+    user_2 = db.User(auth0_user_id="auth0|456", avatar_image=avatar_image_2)
     session.add(avatar_image_2)
     session.add(user_2)
 
@@ -50,8 +50,8 @@ def test_get_users(session: Session, client: TestClient):
 
     assert len(data) == 2
     assert data[0]["id"] == str(user_1.id)
-    assert data[0]["name"] == user_1.name
+    assert data[0]["auth0_user_id"] == user_1.auth0_user_id
     assert data[0]["avatar_image_url"] == f"/images/avatars/{user_1.avatar_image_id}"
     assert data[1]["id"] == str(user_2.id)
-    assert data[1]["name"] == user_2.name
+    assert data[1]["auth0_user_id"] == user_2.auth0_user_id
     assert data[1]["avatar_image_url"] == f"/images/avatars/{user_2.avatar_image_id}"

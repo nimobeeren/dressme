@@ -14,6 +14,11 @@ export function AuthenticatedImage(props: AuthenticatedImageProps) {
   const { getAccessTokenSilently } = useAuth0();
 
   useEffect(() => {
+    // TODO
+    // Getting this token seems to be pretty slow.
+    // It's making a request every time I change the wearable tab, while I would expect it to get
+    // the token from cache.
+    // It might be better to work with short-lived tokens instead (or cookie auth if possible).
     getAccessTokenSilently().then((token) => setToken(token));
   }, [getAccessTokenSilently]);
 

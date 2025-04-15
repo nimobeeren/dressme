@@ -42,13 +42,6 @@ def get_session():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.create_db_and_tables()
-
-    # Get the first user ID for testing
-    # TODO: make current user dependency
-    with Session(db.engine) as session:
-        global current_user_id
-        current_user_id = session.exec(select(db.User.id)).first()
-
     yield
 
 

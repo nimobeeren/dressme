@@ -1,7 +1,6 @@
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, SecurityScopes
-from uuid import UUID
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .settings import get_settings
 
@@ -19,43 +18,38 @@ class UnauthenticatedException(HTTPException):
         )
 
 
-class VerifyToken:
-    """Does all the token verification using PyJWT"""
+async def verify_token(
+    token: HTTPAuthorizationCredentials | None = Depends(HTTPBearer()),
+):
+    settings = get_settings()
 
-    def __init__(self):
-        self.settings = get_settings()
+    # This gets the JWKS from a given URL and does processing so you can
+    # use any of the keys available
+    jwks_url = f"https://{settings.AUTH0_DOMAIN}/.well-known/jwks.json"
+    jwks_client = jwt.PyJWKClient(jwks_url)
 
-        # This gets the JWKS from a given URL and does processing so you can
-        # use any of the keys available
-        jwks_url = f"https://{self.settings.AUTH0_DOMAIN}/.well-known/jwks.json"
-        self.jwks_client = jwt.PyJWKClient(jwks_url)
+    if token is None:
+        raise UnauthenticatedException
 
-    async def verify(
-        self,
-        token: HTTPAuthorizationCredentials | None = Depends(HTTPBearer()),
-    ):
-        if token is None:
-            raise UnauthenticatedException
+    # This gets the 'kid' from the passed token
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(
+            token.credentials
+        ).key
+    except jwt.exceptions.PyJWKClientError as error:
+        raise UnauthorizedException(str(error))
+    except jwt.exceptions.DecodeError as error:
+        raise UnauthorizedException(str(error))
 
-        # This gets the 'kid' from the passed token
-        try:
-            signing_key = self.jwks_client.get_signing_key_from_jwt(
-                token.credentials
-            ).key
-        except jwt.exceptions.PyJWKClientError as error:
-            raise UnauthorizedException(str(error))
-        except jwt.exceptions.DecodeError as error:
-            raise UnauthorizedException(str(error))
+    try:
+        payload = jwt.decode(
+            token.credentials,
+            signing_key,
+            algorithms=settings.AUTH0_ALGORITHMS,
+            audience=settings.AUTH0_API_AUDIENCE,
+            issuer=settings.AUTH0_ISSUER,
+        )
+    except Exception as error:
+        raise UnauthorizedException(str(error))
 
-        try:
-            payload = jwt.decode(
-                token.credentials,
-                signing_key,
-                algorithms=self.settings.AUTH0_ALGORITHMS,
-                audience=self.settings.AUTH0_API_AUDIENCE,
-                issuer=self.settings.AUTH0_ISSUER,
-            )
-        except Exception as error:
-            raise UnauthorizedException(str(error))
-
-        return payload
+    return payload

@@ -4,6 +4,7 @@ from sqlmodel import Session, create_engine, SQLModel
 from sqlmodel.pool import StaticPool
 
 from .main import app, get_session
+from .wardrobe.auth import verify_token
 from .wardrobe import db
 
 
@@ -21,8 +22,12 @@ def session_fixture():
 def client_fixture(session: Session):
     def get_session_override():
         return session
+    
+    def verify_token_override():
+        return {"sub": "auth0|123"}
 
     app.dependency_overrides[get_session] = get_session_override
+    app.dependency_overrides[verify_token] = verify_token_override
 
     client = TestClient(app)
     yield client

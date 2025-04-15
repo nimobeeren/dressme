@@ -26,7 +26,7 @@ from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
 from .wardrobe import db
-from .wardrobe.auth import VerifyToken
+from .wardrobe.auth import verify_token
 from .wardrobe.combining import combine_wearables
 from .wardrobe.settings import get_settings
 
@@ -50,11 +50,10 @@ def custom_generate_unique_id(route: APIRoute):
     return route.name
 
 
-auth = VerifyToken()
 app = FastAPI(
     lifespan=lifespan,
     generate_unique_id_function=custom_generate_unique_id,
-    dependencies=[Security(auth.verify)],  # ensures all routes require authentication
+    dependencies=[Security(verify_token)],  # ensures all routes require authentication
 )
 
 app.add_middleware(
@@ -67,7 +66,7 @@ app.add_middleware(
 
 
 def get_current_user(
-    *, jwt_payload=Security(auth.verify), session: Session = Depends(get_session)
+    *, jwt_payload=Security(verify_token), session: Session = Depends(get_session)
 ) -> str:
     auth0_user_id = jwt_payload["sub"]
 

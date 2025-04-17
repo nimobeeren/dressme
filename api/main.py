@@ -160,19 +160,29 @@ def get_wearables(
     ]
 
 
-# TODO: check that the image belongs to the current user
 @app.get("/images/wearables/{wearable_image_id}")
 def get_wearable_image(
-    *, wearable_image_id: UUID, session: Session = Depends(get_session)
+    *,
+    wearable_image_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: db.User = Depends(get_current_user),
 ) -> bytes:
-    wearable_image = session.exec(
-        select(db.WearableImage).where(db.WearableImage.id == wearable_image_id)
+    # Check if a wearable exists with the given image ID and belongs to the current user
+    wearable = session.exec(
+        select(db.Wearable)
+        .where(db.Wearable.wearable_image_id == wearable_image_id)
+        .where(db.Wearable.user_id == current_user.id)
+        .options(joinedload(db.Wearable.wearable_image))  # Eager load the image data
     ).first()
-    if wearable_image is None:
+
+    if wearable is None:
+        # Return 404 if the wearable doesn't exist or doesn't belong to the user
         return Response(status_code=status.HTTP_404_NOT_FOUND)
-    image = Image.open(io.BytesIO(wearable_image.image_data))
+
+    # Now we know the user owns this wearable, return the image data
+    image = Image.open(io.BytesIO(wearable.wearable_image.image_data))
     return StreamingResponse(
-        io.BytesIO(wearable_image.image_data),
+        io.BytesIO(wearable.wearable_image.image_data),
         media_type=Image.MIME[image.format],
         headers={"Cache-Control": "public, max-age=3600"},
     )
@@ -298,6 +308,7 @@ def create_wearables(
             category=item_category,
             description=item_description if item_description != "" else None,
             wearable_image=wearable_image,
+            user_id=current_user.id,
         )
         wearables.append(wearable)
         session.add(wearable)

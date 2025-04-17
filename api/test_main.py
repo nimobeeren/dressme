@@ -9,6 +9,9 @@ from .main import app, get_session
 from .wardrobe.auth import verify_token
 from .wardrobe import db
 
+# Minimal valid WebP image data
+test_webp_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
+
 
 @pytest.fixture(name="session")
 def session_fixture():
@@ -72,18 +75,29 @@ class TestGetUsers:
 
 class TestGetWearables:
     def test_success(self, session: Session, client: TestClient):
-        # Create test wearables with images
+        # Create user and avatar
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+
+        # Create test wearables with images, associated with the user
         wearable_image_1 = db.WearableImage(image_data=b"")
         wearable_1 = db.Wearable(
             wearable_image=wearable_image_1,
             category="upper_body",
             description="test top",
+            user_id=user.id,
         )
         session.add(wearable_image_1)
         session.add(wearable_1)
 
         wearable_image_2 = db.WearableImage(image_data=b"")
-        wearable_2 = db.Wearable(wearable_image=wearable_image_2, category="lower_body")
+        wearable_2 = db.Wearable(
+            wearable_image=wearable_image_2,
+            category="lower_body",
+            user_id=user.id,
+        )
         session.add(wearable_image_2)
         session.add(wearable_2)
 
@@ -105,30 +119,68 @@ class TestGetWearables:
 
 
 class TestGetWearableImage:
-    def test_success(self, session: Session, client: TestClient):
+    def _create_user_and_wearable(self, session: Session, auth0_id="auth0|123"):
+        # Create avatar image for the user
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        # Create user
+        user = db.User(auth0_user_id=auth0_id, avatar_image=avatar_image)
+        session.add(user)
         # Create test wearable image
-        wearable_image = db.WearableImage(
-            image_data=b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
-        )
+        wearable_image = db.WearableImage(image_data=test_webp_image_data)
         session.add(wearable_image)
+        # Create the Wearable record linking user and wearable image
+        wearable = db.Wearable(
+            category="upper_body",  # Example category
+            wearable_image=wearable_image,
+            user_id=user.id,
+        )
+        session.add(wearable)
         session.commit()
+        return user, wearable, wearable_image
 
-        # Make request to get wearable image
+    def test_success(self, session: Session, client: TestClient):
+        user, wearable, wearable_image = self._create_user_and_wearable(session)
+
+        # Make request to get wearable image owned by the user
         response = client.get(f"/images/wearables/{wearable_image.id}")
         assert response.status_code == 200
         assert response.content == wearable_image.image_data
 
     def test_not_found(self, session: Session, client: TestClient):
+        # Create user first so the endpoint can check ownership
+        self._create_user_and_wearable(session)
         # Make request with non-existent wearable image ID
         response = client.get(f"/images/wearables/{uuid4()}")
         assert response.status_code == 404
+
+    def test_not_found_other_user(self, session: Session, client: TestClient):
+        # Create wearable image for user 2
+        user_2, wearable_2, wearable_image_2 = self._create_user_and_wearable(
+            session, auth0_id="auth0|456"
+        )
+        # Create user 1 (the authenticated user)
+        user_1, _, _ = self._create_user_and_wearable(session, auth0_id="auth0|123")
+
+        # Make request as user 1 to get wearable image belonging to user 2
+        response = client.get(f"/images/wearables/{wearable_image_2.id}")
+        assert (
+            response.status_code == 404  # User 1 should not access user 2's image
+        )
 
 
 class TestCreateWearables:
     @patch("api.main.create_woa_image")
     def test_success(self, mock_create_woa_image, session: Session, client: TestClient):
+        # Create user and avatar first
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+        session.commit()
+
         # Create test image data
-        test_image_data_1 = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
+        test_image_data_1 = test_webp_image_data
         test_image_data_2 = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x01'
 
         # Make request with two images and metadata
@@ -142,8 +194,8 @@ class TestCreateWearables:
                 "category": ["upper_body", "lower_body"],
                 "description": [
                     "test description 1",
-                    "",
-                ],  # empty string means no description
+                    "",  # empty string means no description
+                ],
             },
         )
 
@@ -173,6 +225,7 @@ class TestCreateWearables:
         ).one()
         assert wearable_1.category == "upper_body"
         assert wearable_1.description == "test description 1"
+        assert wearable_1.user_id == user.id
 
         wearable_image_1 = session.exec(
             select(db.WearableImage).where(
@@ -187,6 +240,7 @@ class TestCreateWearables:
         ).one()
         assert wearable_2.category == "lower_body"
         assert wearable_2.description is None
+        assert wearable_2.user_id == user.id
 
         wearable_image_2 = session.exec(
             select(db.WearableImage).where(
@@ -234,6 +288,7 @@ class TestGetOutfitImage:
             category="upper_body",
             description="test top",
             wearable_image=top_wearable_image,
+            user_id=user.id,
         )
         session.add(top_wearable)
         top_woa_image = db.WearableOnAvatarImage(
@@ -251,6 +306,7 @@ class TestGetOutfitImage:
             category="lower_body",
             description="test bottom",
             wearable_image=bottom_wearable_image,
+            user_id=user.id,
         )
         session.add(bottom_wearable)
         bottom_woa_image = db.WearableOnAvatarImage(
@@ -288,6 +344,7 @@ class TestGetOutfitImage:
             category="upper_body",
             description="test top",
             wearable_image=top_wearable_image,
+            user_id=user.id,
         )
         session.add(top_wearable)
 
@@ -314,6 +371,7 @@ class TestGetOutfitImage:
             category="upper_body",
             description="test top",
             wearable_image=top_wearable_image,
+            user_id=user.id,
         )
         session.add(top_wearable)
 
@@ -324,6 +382,7 @@ class TestGetOutfitImage:
             category="lower_body",
             description="test bottom",
             wearable_image=bottom_wearable_image,
+            user_id=user.id,
         )
         session.add(bottom_wearable)
         bottom_woa_image = db.WearableOnAvatarImage(
@@ -362,6 +421,7 @@ class TestGetOutfits:
             category="upper_body",
             description="test top",
             wearable_image=top_wearable_image,
+            user_id=user.id,
         )
         session.add(top_wearable)
         top_woa_image = db.WearableOnAvatarImage(
@@ -379,6 +439,7 @@ class TestGetOutfits:
             category="lower_body",
             description="test bottom",
             wearable_image=bottom_wearable_image,
+            user_id=user.id,
         )
         session.add(bottom_wearable)
 
@@ -443,6 +504,7 @@ class TestCreateOutfit:
             category="upper_body",
             description="test top",
             wearable_image=top_wearable_image,
+            user_id=user.id,
         )
         session.add(top_wearable)
 
@@ -453,6 +515,7 @@ class TestCreateOutfit:
             category="lower_body",
             description="test bottom",
             wearable_image=bottom_wearable_image,
+            user_id=user.id,
         )
         session.add(bottom_wearable)
 
@@ -574,6 +637,7 @@ class TestDeleteOutfit:
             category="upper_body",
             description="test top",
             wearable_image=top_wearable_image,
+            user_id=user.id,
         )
         session.add(top_wearable)
 
@@ -584,6 +648,7 @@ class TestDeleteOutfit:
             category="lower_body",
             description="test bottom",
             wearable_image=bottom_wearable_image,
+            user_id=user.id,
         )
         session.add(bottom_wearable)
 

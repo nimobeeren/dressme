@@ -73,7 +73,9 @@ if __name__ == "__main__":
             session.add(avatar_image)
 
         # Add user
-        user = User(auth0_user_id="auth0|67eaf8a380e6a5a77d48e95e", avatar_image=avatar_image)
+        user = User(
+            auth0_user_id="auth0|67eaf8a380e6a5a77d48e95e", avatar_image=avatar_image
+        )
         session.add(user)
 
         # Add wearables
@@ -89,6 +91,7 @@ if __name__ == "__main__":
                 category=wearable_data["category"],
                 description=wearable_data["description"],
                 wearable_image=wearable_image,
+                user_id=user.id,
             )
             session.add(wearable)
 
@@ -99,7 +102,7 @@ if __name__ == "__main__":
                 / "results"
                 / avatar_data["name"]
                 / "single"
-                / f"{wearable_data["name"]}.jpg"
+                / f"{wearable_data['name']}.jpg"
             )
             with open(image_path, "rb") as image_file:
                 image_data = image_file.read()
@@ -109,7 +112,7 @@ if __name__ == "__main__":
                 / "masks"
                 / avatar_data["name"]
                 / "post"
-                / f"{wearable_data["name"]}.jpg"
+                / f"{wearable_data['name']}.jpg"
             )
             with open(mask_image_path, "rb") as mask_image_file:
                 mask_image_data = mask_image_file.read()

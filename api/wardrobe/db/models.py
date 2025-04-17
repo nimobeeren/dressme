@@ -8,7 +8,8 @@ class User(SQLModel, table=True):
     auth0_user_id: str = Field(index=True)
     avatar_image_id: UUID = Field(foreign_key="avatarimage.id", index=True)
     avatar_image: "AvatarImage" = Relationship()
-    outfits: list["Outfit"] = Relationship()
+    outfits: list["Outfit"] = Relationship(back_populates="user")
+    wearables: list["Wearable"] = Relationship(back_populates="user")
 
 
 class AvatarImage(SQLModel, table=True):
@@ -22,6 +23,8 @@ class Wearable(SQLModel, table=True):
     description: str | None
     wearable_image_id: UUID = Field(foreign_key="wearableimage.id", index=True)
     wearable_image: "WearableImage" = Relationship()
+    user_id: UUID = Field(foreign_key="user.id", index=True)
+    user: "User" = Relationship(back_populates="wearables")
 
 
 class WearableImage(SQLModel, table=True):
@@ -55,3 +58,4 @@ class Outfit(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "Outfit.bottom_id"}
     )
     user_id: UUID = Field(foreign_key="user.id", index=True)
+    user: "User" = Relationship(back_populates="outfits")

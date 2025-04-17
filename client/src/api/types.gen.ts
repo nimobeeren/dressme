@@ -52,33 +52,6 @@ export type GetUsersResponses = {
 
 export type GetUsersResponse = GetUsersResponses[keyof GetUsersResponses];
 
-export type GetAvatarImageData = {
-    body?: never;
-    path: {
-        avatar_image_id: string;
-    };
-    query?: never;
-    url: '/images/avatars/{avatar_image_id}';
-};
-
-export type GetAvatarImageErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetAvatarImageError = GetAvatarImageErrors[keyof GetAvatarImageErrors];
-
-export type GetAvatarImageResponses = {
-    /**
-     * Successful Response
-     */
-    200: Blob | File;
-};
-
-export type GetAvatarImageResponse = GetAvatarImageResponses[keyof GetAvatarImageResponses];
-
 export type GetWearablesData = {
     body?: never;
     path?: never;

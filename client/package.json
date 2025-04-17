@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest",
-    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "dev": "vite",
     "generate-client": "openapi-ts",
+    "lint": "eslint .",
+    "prepare": "cd .. && husky",
     "preview": "vite preview",
-    "prepare": "cd .. && husky"
+    "test": "vitest"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",

@@ -10,7 +10,7 @@ poetry install
 
 ### Seeding the database
 
-The first time you run this, you need to create the database and insert some test data:
+The first time you run this app, you need to create the database and insert some test data:
 
 ```bash
 poetry run python -m wardrobe.db.seed

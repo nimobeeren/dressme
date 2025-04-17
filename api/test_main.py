@@ -326,3 +326,263 @@ class TestGetOutfitImage:
             f"/images/outfit?top_id={top_wearable.id}&bottom_id={bottom_wearable.id}"
         )
         assert response.status_code == 404
+
+
+class TestGetOutfits:
+    def test_success_with_outfits(self, session: Session, client: TestClient):
+        # Create user and avatar
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+
+        # Create top wearable (completed WOA)
+        top_wearable_image = db.WearableImage(image_data=b"top_data")
+        session.add(top_wearable_image)
+        top_wearable = db.Wearable(
+            category="upper_body",
+            description="test top",
+            wearable_image=top_wearable_image,
+        )
+        session.add(top_wearable)
+        top_woa_image = db.WearableOnAvatarImage(
+            avatar_image=avatar_image,
+            wearable_image=top_wearable_image,
+            image_data=b"woa_top",
+            mask_image_data=b"mask_top",
+        )
+        session.add(top_woa_image)
+
+        # Create bottom wearable (pending WOA)
+        bottom_wearable_image = db.WearableImage(image_data=b"bottom_data")
+        session.add(bottom_wearable_image)
+        bottom_wearable = db.Wearable(
+            category="lower_body",
+            description="test bottom",
+            wearable_image=bottom_wearable_image,
+        )
+        session.add(bottom_wearable)
+
+        # Create outfit
+        outfit = db.Outfit(
+            user_id=user.id, top_id=top_wearable.id, bottom_id=bottom_wearable.id
+        )
+        session.add(outfit)
+        session.commit()
+
+        # Make request
+        response = client.get("/outfits")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Assert response
+        assert len(data) == 1
+        assert data[0]["id"] == str(outfit.id)
+        assert data[0]["top"]["id"] == str(top_wearable.id)
+        assert data[0]["top"]["category"] == "upper_body"
+        assert data[0]["top"]["description"] == "test top"
+        assert (
+            data[0]["top"]["wearable_image_url"]
+            == f"/images/wearables/{top_wearable.wearable_image_id}"
+        )
+        assert data[0]["top"]["generation_status"] == "completed"  # WOA exists
+        assert data[0]["bottom"]["id"] == str(bottom_wearable.id)
+        assert data[0]["bottom"]["category"] == "lower_body"
+        assert data[0]["bottom"]["description"] == "test bottom"
+        assert (
+            data[0]["bottom"]["wearable_image_url"]
+            == f"/images/wearables/{bottom_wearable.wearable_image_id}"
+        )
+        assert data[0]["bottom"]["generation_status"] == "pending"  # WOA does not exist
+
+    def test_success_no_outfits(self, session: Session, client: TestClient):
+        # Create user but no outfits
+        avatar_image = db.AvatarImage(image_data=b"")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+        session.commit()
+
+        response = client.get("/outfits")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 0
+
+
+class TestCreateOutfit:
+    def _create_user_and_wearables(self, session: Session):
+        # Create user and avatar
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+
+        # Create top wearable
+        top_wearable_image = db.WearableImage(image_data=b"top_data")
+        session.add(top_wearable_image)
+        top_wearable = db.Wearable(
+            category="upper_body",
+            description="test top",
+            wearable_image=top_wearable_image,
+        )
+        session.add(top_wearable)
+
+        # Create bottom wearable
+        bottom_wearable_image = db.WearableImage(image_data=b"bottom_data")
+        session.add(bottom_wearable_image)
+        bottom_wearable = db.Wearable(
+            category="lower_body",
+            description="test bottom",
+            wearable_image=bottom_wearable_image,
+        )
+        session.add(bottom_wearable)
+
+        session.commit()
+        return user, top_wearable, bottom_wearable
+
+    def test_success(self, session: Session, client: TestClient):
+        user, top_wearable, bottom_wearable = self._create_user_and_wearables(session)
+
+        # Make request
+        response = client.post(
+            "/outfits",
+            json={"top_id": str(top_wearable.id), "bottom_id": str(bottom_wearable.id)},
+        )
+        assert response.status_code == 201
+        data = response.json()
+
+        # Assert response
+        assert "id" in data
+        assert data["top_id"] == str(top_wearable.id)
+        assert data["bottom_id"] == str(bottom_wearable.id)
+        assert data["user_id"] == str(user.id)
+
+        # Assert database state
+        outfit = session.exec(
+            select(db.Outfit).where(db.Outfit.id == UUID(data["id"]))
+        ).one()
+        assert outfit.top_id == top_wearable.id
+        assert outfit.bottom_id == bottom_wearable.id
+        assert outfit.user_id == user.id
+
+    def test_conflict(self, session: Session, client: TestClient):
+        user, top_wearable, bottom_wearable = self._create_user_and_wearables(session)
+
+        # Create the outfit first
+        outfit = db.Outfit(
+            user_id=user.id, top_id=top_wearable.id, bottom_id=bottom_wearable.id
+        )
+        session.add(outfit)
+        session.commit()
+
+        # Try creating it again
+        response = client.post(
+            "/outfits",
+            json={"top_id": str(top_wearable.id), "bottom_id": str(bottom_wearable.id)},
+        )
+        assert response.status_code == 409
+
+    def test_top_not_found(self, session: Session, client: TestClient):
+        user, _, bottom_wearable = self._create_user_and_wearables(session)
+        non_existent_id = uuid4()
+
+        response = client.post(
+            "/outfits",
+            json={"top_id": str(non_existent_id), "bottom_id": str(bottom_wearable.id)},
+        )
+        assert response.status_code == 404
+
+    def test_bottom_not_found(self, session: Session, client: TestClient):
+        user, top_wearable, _ = self._create_user_and_wearables(session)
+        non_existent_id = uuid4()
+
+        response = client.post(
+            "/outfits",
+            json={"top_id": str(top_wearable.id), "bottom_id": str(non_existent_id)},
+        )
+        assert response.status_code == 404
+
+
+class TestDeleteOutfit:
+    def _create_user_wearables_outfit(self, session: Session, auth0_id="auth0|123"):
+        # Create user and avatar
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id=auth0_id, avatar_image=avatar_image)
+        session.add(user)
+
+        # Create top wearable
+        top_wearable_image = db.WearableImage(image_data=b"top_data")
+        session.add(top_wearable_image)
+        top_wearable = db.Wearable(
+            category="upper_body",
+            description="test top",
+            wearable_image=top_wearable_image,
+        )
+        session.add(top_wearable)
+
+        # Create bottom wearable
+        bottom_wearable_image = db.WearableImage(image_data=b"bottom_data")
+        session.add(bottom_wearable_image)
+        bottom_wearable = db.Wearable(
+            category="lower_body",
+            description="test bottom",
+            wearable_image=bottom_wearable_image,
+        )
+        session.add(bottom_wearable)
+
+        # Create outfit
+        outfit = db.Outfit(
+            user_id=user.id, top_id=top_wearable.id, bottom_id=bottom_wearable.id
+        )
+        session.add(outfit)
+        session.commit()
+        session.refresh(outfit)  # Ensure outfit.id is loaded
+        return user, outfit
+
+    def test_success(self, session: Session, client: TestClient):
+        user, outfit = self._create_user_wearables_outfit(session)
+
+        # Make request
+        response = client.delete(f"/outfits?id={outfit.id}")
+        assert response.status_code == 200
+
+        # Assert database state
+        deleted_outfit = session.exec(
+            select(db.Outfit).where(db.Outfit.id == outfit.id)
+        ).one_or_none()
+        assert deleted_outfit is None
+
+    def test_not_found_wrong_id(self, session: Session, client: TestClient):
+        user, _ = self._create_user_wearables_outfit(session)
+        non_existent_id = uuid4()
+
+        response = client.delete(f"/outfits?id={non_existent_id}")
+        assert response.status_code == 404
+
+    def test_not_found_wrong_user(self, session: Session, client: TestClient):
+        # Create outfit for user 1
+        user1, outfit1 = self._create_user_wearables_outfit(
+            session, auth0_id="auth0|user1"
+        )
+
+        # Create user 2 (the authenticated user in the client fixture is auth0|123)
+        avatar_image2 = db.AvatarImage(image_data=b"avatar_data2")
+        session.add(avatar_image2)
+        user2 = db.User(
+            auth0_user_id="auth0|123", avatar_image=avatar_image2
+        )  # This user ID matches the client fixture
+        session.add(user2)
+        session.commit()
+
+        # Try deleting outfit1 as user2 (implicit via client fixture)
+        response = client.delete(f"/outfits?id={outfit1.id}")
+        assert (
+            response.status_code == 404
+        )  # Should fail because outfit1 belongs to user1
+
+        # Verify outfit1 still exists
+        existing_outfit = session.exec(
+            select(db.Outfit).where(db.Outfit.id == outfit1.id)
+        ).one_or_none()
+        assert existing_outfit is not None

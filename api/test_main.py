@@ -38,6 +38,7 @@ def client_fixture(session: Session):
 
 class TestGetUsers:
     def test_success(self, session: Session, client: TestClient):
+        # Create test users with avatar images
         avatar_image_1 = db.AvatarImage(image_data=b"")
         user_1 = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image_1)
         session.add(avatar_image_1)
@@ -50,10 +51,12 @@ class TestGetUsers:
 
         session.commit()
 
+        # Make request to get all users
         response = client.get("/users")
         assert response.status_code == 200
         data = response.json()
 
+        # Verify response contains both users with correct data
         assert len(data) == 2
         assert data[0]["id"] == str(user_1.id)
         assert data[0]["auth0_user_id"] == user_1.auth0_user_id
@@ -69,6 +72,7 @@ class TestGetUsers:
 
 class TestGetWearables:
     def test_success(self, session: Session, client: TestClient):
+        # Create test wearables with images
         wearable_image_1 = db.WearableImage(image_data=b"")
         wearable_1 = db.Wearable(
             wearable_image=wearable_image_1,
@@ -85,10 +89,12 @@ class TestGetWearables:
 
         session.commit()
 
+        # Make request to get all wearables
         response = client.get("/wearables")
         assert response.status_code == 200
         data = response.json()
 
+        # Verify response contains both wearables with correct data
         assert len(data) == 2
         assert data[0]["id"] == str(wearable_1.id)
         assert data[0]["category"] == wearable_1.category
@@ -100,17 +106,20 @@ class TestGetWearables:
 
 class TestGetWearableImage:
     def test_success(self, session: Session, client: TestClient):
+        # Create test wearable image
         wearable_image = db.WearableImage(
             image_data=b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
         )
         session.add(wearable_image)
         session.commit()
 
+        # Make request to get wearable image
         response = client.get(f"/images/wearables/{wearable_image.id}")
         assert response.status_code == 200
         assert response.content == wearable_image.image_data
 
     def test_not_found(self, session: Session, client: TestClient):
+        # Make request with non-existent wearable image ID
         response = client.get(f"/images/wearables/{uuid4()}")
         assert response.status_code == 404
 
@@ -190,6 +199,7 @@ class TestCreateWearables:
         assert mock_create_woa_image.call_count == 2
 
     def test_wrong_field_count(self, session: Session, client: TestClient):
+        # Make request with mismatched number of images and metadata fields
         response = client.post(
             "/wearables",
             files=[

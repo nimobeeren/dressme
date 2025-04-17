@@ -213,7 +213,9 @@ def create_woa_image(*, wearable_id: UUID, current_user_id: UUID):
         print("Starting WOA generation")
         user = session.exec(select(db.User).where(db.User.id == current_user_id)).one()
         wearable = session.exec(
-            select(db.Wearable).where(db.Wearable.id == wearable_id)
+            select(db.Wearable)
+            .where(db.Wearable.id == wearable_id)
+            .where(db.Wearable.user_id == current_user_id)
         ).one()
 
         # Generate an image of the avatar wearing the wearable

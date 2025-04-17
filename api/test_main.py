@@ -202,3 +202,127 @@ class TestCreateWearables:
             },  # missing description for the second wearable
         )
         assert response.status_code == 422
+
+
+class TestGetOutfitImage:
+    def test_success(self, session: Session, client: TestClient):
+        # Create a minimal valid WebP image for testing
+        test_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
+
+        # Create avatar image
+        avatar_image = db.AvatarImage(image_data=test_image_data)
+        session.add(avatar_image)
+
+        # Create user with avatar
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+
+        # Create top wearable and its WOA image
+        top_wearable_image = db.WearableImage(image_data=test_image_data)
+        session.add(top_wearable_image)
+        top_wearable = db.Wearable(
+            category="upper_body",
+            description="test top",
+            wearable_image=top_wearable_image,
+        )
+        session.add(top_wearable)
+        top_woa_image = db.WearableOnAvatarImage(
+            avatar_image=avatar_image,
+            wearable_image=top_wearable_image,
+            image_data=test_image_data,
+            mask_image_data=test_image_data,
+        )
+        session.add(top_woa_image)
+
+        # Create bottom wearable and its WOA image
+        bottom_wearable_image = db.WearableImage(image_data=test_image_data)
+        session.add(bottom_wearable_image)
+        bottom_wearable = db.Wearable(
+            category="lower_body",
+            description="test bottom",
+            wearable_image=bottom_wearable_image,
+        )
+        session.add(bottom_wearable)
+        bottom_woa_image = db.WearableOnAvatarImage(
+            avatar_image=avatar_image,
+            wearable_image=bottom_wearable_image,
+            image_data=test_image_data,
+            mask_image_data=test_image_data,
+        )
+        session.add(bottom_woa_image)
+
+        session.commit()
+
+        response = client.get(
+            f"/images/outfit?top_id={top_wearable.id}&bottom_id={bottom_wearable.id}"
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/jpeg"
+        assert response.headers["cache-control"] == "public, max-age=3600"
+
+    def test_wearable_not_found(self, session: Session, client: TestClient):
+        # Create avatar image and user
+        avatar_image = db.AvatarImage(image_data=b"")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+
+        # Create only the top wearable
+        top_wearable_image = db.WearableImage(image_data=b"")
+        session.add(top_wearable_image)
+        top_wearable = db.Wearable(
+            category="upper_body",
+            description="test top",
+            wearable_image=top_wearable_image,
+        )
+        session.add(top_wearable)
+
+        session.commit()
+
+        # Try to get outfit with non-existent bottom wearable
+        response = client.get(
+            f"/images/outfit?top_id={top_wearable.id}&bottom_id={uuid4()}"
+        )
+        assert response.status_code == 404
+
+    def test_woa_image_not_found(self, session: Session, client: TestClient):
+        # Create avatar image and user
+        avatar_image = db.AvatarImage(image_data=b"")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        session.add(user)
+
+        # Create top wearable without WOA image
+        top_wearable_image = db.WearableImage(image_data=b"")
+        session.add(top_wearable_image)
+        top_wearable = db.Wearable(
+            category="upper_body",
+            description="test top",
+            wearable_image=top_wearable_image,
+        )
+        session.add(top_wearable)
+
+        # Create bottom wearable with WOA image
+        bottom_wearable_image = db.WearableImage(image_data=b"")
+        session.add(bottom_wearable_image)
+        bottom_wearable = db.Wearable(
+            category="lower_body",
+            description="test bottom",
+            wearable_image=bottom_wearable_image,
+        )
+        session.add(bottom_wearable)
+        bottom_woa_image = db.WearableOnAvatarImage(
+            avatar_image=avatar_image,
+            wearable_image=bottom_wearable_image,
+            image_data=b"",
+            mask_image_data=b"",
+        )
+        session.add(bottom_woa_image)
+
+        session.commit()
+
+        # Try to get outfit with missing top WOA image
+        response = client.get(
+            f"/images/outfit?top_id={top_wearable.id}&bottom_id={bottom_wearable.id}"
+        )
+        assert response.status_code == 404

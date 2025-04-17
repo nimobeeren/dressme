@@ -16,12 +16,6 @@ export type Outfit = {
     bottom: Wearable;
 };
 
-export type User = {
-    id: string;
-    auth0_user_id: string;
-    avatar_image_url: string;
-};
-
 export type ValidationError = {
     loc: Array<string | number>;
     msg: string;
@@ -35,22 +29,6 @@ export type Wearable = {
     wearable_image_url: string;
     generation_status: 'pending' | 'completed';
 };
-
-export type GetUsersData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/users';
-};
-
-export type GetUsersResponses = {
-    /**
-     * Successful Response
-     */
-    200: Array<User>;
-};
-
-export type GetUsersResponse = GetUsersResponses[keyof GetUsersResponses];
 
 export type GetWearablesData = {
     body?: never;

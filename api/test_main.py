@@ -41,40 +41,6 @@ def client_fixture(session: Session):
     app.dependency_overrides.clear()
 
 
-class TestGetUsers:
-    def test_success(self, session: Session, client: TestClient):
-        # Create test users with avatar images
-        avatar_image_1 = db.AvatarImage(image_data=b"")
-        user_1 = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image_1)
-        session.add(avatar_image_1)
-        session.add(user_1)
-
-        avatar_image_2 = db.AvatarImage(image_data=b"")
-        user_2 = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image_2)
-        session.add(avatar_image_2)
-        session.add(user_2)
-
-        session.commit()
-
-        # Make request to get all users
-        response = client.get("/users")
-        assert response.status_code == 200
-        data = response.json()
-
-        # Verify response contains both users with correct data
-        assert len(data) == 2
-        assert data[0]["id"] == str(user_1.id)
-        assert data[0]["auth0_user_id"] == user_1.auth0_user_id
-        assert (
-            data[0]["avatar_image_url"] == f"/images/avatars/{user_1.avatar_image_id}"
-        )
-        assert data[1]["id"] == str(user_2.id)
-        assert data[1]["auth0_user_id"] == user_2.auth0_user_id
-        assert (
-            data[1]["avatar_image_url"] == f"/images/avatars/{user_2.avatar_image_id}"
-        )
-
-
 class TestGetWearables:
     def test_success(self, session: Session, client: TestClient):
         # Create user and avatar

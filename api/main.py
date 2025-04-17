@@ -99,20 +99,6 @@ class User(BaseModel):
     avatar_image_url: str
 
 
-# TODO: why is there a get users endpoint? this exposes the avatar image IDs
-@app.get("/users")
-def get_users(*, session: Session = Depends(get_session)) -> Sequence[User]:
-    users = session.exec(select(db.User)).all()
-    return [
-        User(
-            id=u.id,
-            auth0_user_id=u.auth0_user_id,
-            avatar_image_url=f"/images/avatars/{u.avatar_image_id}",
-        )
-        for u in users
-    ]
-
-
 class Wearable(BaseModel):
     id: UUID
     category: str

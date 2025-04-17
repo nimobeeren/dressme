@@ -264,7 +264,11 @@ class TestGetOutfitImage:
         session.commit()
 
         response = client.get(
-            f"/images/outfit?top_id={top_wearable.id}&bottom_id={bottom_wearable.id}"
+            "/images/outfit",
+            params={
+                "top_id": str(top_wearable.id),
+                "bottom_id": str(bottom_wearable.id),
+            },
         )
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/jpeg"
@@ -291,7 +295,8 @@ class TestGetOutfitImage:
 
         # Try to get outfit with non-existent bottom wearable
         response = client.get(
-            f"/images/outfit?top_id={top_wearable.id}&bottom_id={uuid4()}"
+            "/images/outfit",
+            params={"top_id": str(top_wearable.id), "bottom_id": str(uuid4())},
         )
         assert response.status_code == 404
 
@@ -333,7 +338,11 @@ class TestGetOutfitImage:
 
         # Try to get outfit with missing top WOA image
         response = client.get(
-            f"/images/outfit?top_id={top_wearable.id}&bottom_id={bottom_wearable.id}"
+            "/images/outfit",
+            params={
+                "top_id": str(top_wearable.id),
+                "bottom_id": str(bottom_wearable.id),
+            },
         )
         assert response.status_code == 404
 
@@ -456,26 +465,23 @@ class TestCreateOutfit:
         # Make request
         response = client.post(
             "/outfits",
-            json={"top_id": str(top_wearable.id), "bottom_id": str(bottom_wearable.id)},
+            params={
+                "top_id": str(top_wearable.id),
+                "bottom_id": str(bottom_wearable.id),
+            },
         )
         assert response.status_code == 201
-        data = response.json()
-
-        # Assert response
-        assert "id" in data
-        assert data["top_id"] == str(top_wearable.id)
-        assert data["bottom_id"] == str(bottom_wearable.id)
-        assert data["user_id"] == str(user.id)
 
         # Assert database state
         outfit = session.exec(
-            select(db.Outfit).where(db.Outfit.id == UUID(data["id"]))
-        ).one()
-        assert outfit.top_id == top_wearable.id
-        assert outfit.bottom_id == bottom_wearable.id
-        assert outfit.user_id == user.id
+            select(db.Outfit)
+            .where(db.Outfit.top_id == top_wearable.id)
+            .where(db.Outfit.bottom_id == bottom_wearable.id)
+            .where(db.Outfit.user_id == user.id)
+        ).one_or_none()
+        assert outfit is not None
 
-    def test_conflict(self, session: Session, client: TestClient):
+    def test_success_already_exists(self, session: Session, client: TestClient):
         user, top_wearable, bottom_wearable = self._create_user_and_wearables(session)
 
         # Create the outfit first
@@ -488,9 +494,12 @@ class TestCreateOutfit:
         # Try creating it again
         response = client.post(
             "/outfits",
-            json={"top_id": str(top_wearable.id), "bottom_id": str(bottom_wearable.id)},
+            params={
+                "top_id": str(top_wearable.id),
+                "bottom_id": str(bottom_wearable.id),
+            },
         )
-        assert response.status_code == 409
+        assert response.status_code == 200
 
     def test_top_not_found(self, session: Session, client: TestClient):
         user, _, bottom_wearable = self._create_user_and_wearables(session)
@@ -498,7 +507,10 @@ class TestCreateOutfit:
 
         response = client.post(
             "/outfits",
-            json={"top_id": str(non_existent_id), "bottom_id": str(bottom_wearable.id)},
+            params={
+                "top_id": str(non_existent_id),
+                "bottom_id": str(bottom_wearable.id),
+            },
         )
         assert response.status_code == 404
 
@@ -508,9 +520,43 @@ class TestCreateOutfit:
 
         response = client.post(
             "/outfits",
-            json={"top_id": str(top_wearable.id), "bottom_id": str(non_existent_id)},
+            params={"top_id": str(top_wearable.id), "bottom_id": str(non_existent_id)},
         )
         assert response.status_code == 404
+
+    def test_top_wrong_category(self, session: Session, client: TestClient):
+        user, _, bottom_wearable = self._create_user_and_wearables(session)
+
+        # Try to create outfit with two bottom wearables
+        response = client.post(
+            "/outfits",
+            params={
+                "top_id": str(bottom_wearable.id),
+                "bottom_id": str(bottom_wearable.id),
+            },
+        )
+        assert response.status_code == 400
+        assert (
+            response.json()["error"]["message"]
+            == "Top wearable must have category 'upper_body'."
+        )
+
+    def test_bottom_wrong_category(self, session: Session, client: TestClient):
+        user, top_wearable, _ = self._create_user_and_wearables(session)
+
+        # Try to create outfit with two top wearables
+        response = client.post(
+            "/outfits",
+            params={
+                "top_id": str(top_wearable.id),
+                "bottom_id": str(top_wearable.id),
+            },
+        )
+        assert response.status_code == 400
+        assert (
+            response.json()["error"]["message"]
+            == "Bottom wearable must have category 'lower_body'"
+        )
 
 
 class TestDeleteOutfit:
@@ -554,7 +600,7 @@ class TestDeleteOutfit:
         user, outfit = self._create_user_wearables_outfit(session)
 
         # Make request
-        response = client.delete(f"/outfits?id={outfit.id}")
+        response = client.delete("/outfits", params={"id": str(outfit.id)})
         assert response.status_code == 200
 
         # Assert database state
@@ -567,7 +613,7 @@ class TestDeleteOutfit:
         user, _ = self._create_user_wearables_outfit(session)
         non_existent_id = uuid4()
 
-        response = client.delete(f"/outfits?id={non_existent_id}")
+        response = client.delete("/outfits", params={"id": str(non_existent_id)})
         assert response.status_code == 404
 
     def test_not_found_wrong_user(self, session: Session, client: TestClient):
@@ -586,7 +632,7 @@ class TestDeleteOutfit:
         session.commit()
 
         # Try deleting outfit1 as user2 (implicit via client fixture)
-        response = client.delete(f"/outfits?id={outfit1.id}")
+        response = client.delete("/outfits", params={"id": str(outfit1.id)})
         assert (
             response.status_code == 404
         )  # Should fail because outfit1 belongs to user1

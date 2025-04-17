@@ -113,25 +113,6 @@ def get_users(*, session: Session = Depends(get_session)) -> Sequence[User]:
     ]
 
 
-# TODO: check that the image belongs to the current user
-# TODO: do users really need to get the raw avatar image?
-@app.get("/images/avatars/{avatar_image_id}")
-def get_avatar_image(
-    *, avatar_image_id: UUID, session: Session = Depends(get_session)
-) -> bytes:
-    avatar_image = session.exec(
-        select(db.AvatarImage).where(db.AvatarImage.id == avatar_image_id)
-    ).first()
-    if avatar_image is None:
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
-    image = Image.open(io.BytesIO(avatar_image.image_data))
-    return StreamingResponse(
-        io.BytesIO(avatar_image.image_data),
-        media_type=Image.MIME[image.format],
-        headers={"Cache-Control": "public, max-age=3600"},
-    )
-
-
 class Wearable(BaseModel):
     id: UUID
     category: str
@@ -514,25 +495,26 @@ def create_outfit(
         )
 
     # Check if the outfit already exists
-    user = session.exec(select(db.User).where(db.User.id == current_user.id)).one()
-    existing = session.exec(
-        select(db.Outfit)
-        .where(db.Outfit.top_id == top_id)
-        .where(db.Outfit.bottom_id == bottom_id)
-        .where(db.Outfit.user_id == user.id)
-    ).one_or_none()
-
-    if existing:
-        # Do nothing if the outfit already exists
-        return Response(status_code=status.HTTP_200_OK)
-    else:
-        # Create the outfit
-        user.outfits.append(
-            db.Outfit(top_id=top_id, bottom_id=bottom_id, user_id=user.id)
+    existing_outfit = session.exec(
+        select(db.Outfit).where(
+            db.Outfit.top_id == top_id,
+            db.Outfit.bottom_id == bottom_id,
+            db.Outfit.user_id == current_user.id,
         )
-        session.add(user)
-        session.commit()
-        return Response(status_code=status.HTTP_201_CREATED)
+    ).first()
+    if existing_outfit is not None:
+        return Response(status_code=status.HTTP_200_OK)
+
+    # Create the outfit
+    outfit = db.Outfit(
+        top_id=top_id,
+        bottom_id=bottom_id,
+        user_id=current_user.id,
+    )
+    session.add(outfit)
+    session.commit()
+
+    return Response(status_code=status.HTTP_201_CREATED)
 
 
 @app.delete("/outfits")

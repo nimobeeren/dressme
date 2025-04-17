@@ -470,15 +470,19 @@ def create_outfit(
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
 ):
-    # Ensure that the top and bottom wearables exist
+    # Ensure that the top and bottom wearables exist AND belong to the current user
     top = session.exec(
-        select(db.Wearable).where(db.Wearable.id == top_id)
+        select(db.Wearable)
+        .where(db.Wearable.id == top_id)
+        .where(db.Wearable.user_id == current_user.id)
     ).one_or_none()
     if top is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
-                "error": {"message": f"Wearable with ID '${top_id}' does not exist."}
+                "error": {
+                    "message": f"Top wearable with ID '${top_id}' not found or not owned by user."
+                }
             },
         )
     if top.category != "upper_body":
@@ -490,13 +494,17 @@ def create_outfit(
         )
 
     bottom = session.exec(
-        select(db.Wearable).where(db.Wearable.id == bottom_id)
+        select(db.Wearable)
+        .where(db.Wearable.id == bottom_id)
+        .where(db.Wearable.user_id == current_user.id)
     ).one_or_none()
     if bottom is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
-                "error": {"message": f"Wearable with ID '${bottom_id}' does not exist."}
+                "error": {
+                    "message": f"Bottom wearable with ID '${bottom_id}' not found or not owned by user."
+                }
             },
         )
     if bottom.category != "lower_body":

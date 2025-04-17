@@ -640,6 +640,46 @@ class TestCreateOutfit:
             == "Bottom wearable must have category 'lower_body'"
         )
 
+    def test_wearable_not_owned(self, session: Session, client: TestClient):
+        # Create user 1 (the logged-in user)
+        user_1, top_wearable, _ = self._create_user_and_wearables(session)
+
+        # Create user 2 and their bottom wearable
+        # Need a separate avatar image for user 2
+        avatar_image_2 = db.AvatarImage(image_data=b"avatar_data_2")
+        session.add(avatar_image_2)
+        user_2 = db.User(auth0_user_id="auth0|2", avatar_image=avatar_image_2)
+        session.add(user_2)
+
+        # Create bottom wearable image for user 2
+        bottom_wearable_image_2 = db.WearableImage(image_data=test_webp_image_data)
+        session.add(bottom_wearable_image_2)
+
+        # Create bottom wearable for user 2
+        bottom_wearable_2 = db.Wearable(
+            category="lower_body",
+            wearable_image=bottom_wearable_image_2,
+            user_id=user_2.id,  # Belongs to user 2
+        )
+        session.add(bottom_wearable_2)
+        session.commit()
+
+        # Attempt to create outfit as user 1 using user 2's bottom wearable
+        response = client.post(
+            "/outfits",
+            params={"top_id": top_wearable.id, "bottom_id": bottom_wearable_2.id},
+        )
+
+        assert response.status_code == 404, (
+            "User 1 should not be able to use User 2's wearable"
+        )
+
+        # Also verify that no outfit was actually created for user 1
+        outfit = session.exec(
+            select(db.Outfit).where(db.Outfit.user_id == user_1.id)
+        ).one_or_none()
+        assert outfit is None
+
 
 class TestDeleteOutfit:
     def _create_user_wearables_outfit(

@@ -9,6 +9,8 @@ from .main import app, get_session
 from .wardrobe.auth import verify_token
 from .wardrobe import db
 
+current_user_id = "auth0|1"
+
 # Minimal valid WebP image data
 test_webp_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
 
@@ -29,7 +31,7 @@ def client_fixture(session: Session):
         return session
 
     def verify_token_override():
-        return {"sub": "auth0|123"}
+        return {"sub": current_user_id}
 
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[verify_token] = verify_token_override
@@ -43,12 +45,12 @@ class TestGetUsers:
     def test_success(self, session: Session, client: TestClient):
         # Create test users with avatar images
         avatar_image_1 = db.AvatarImage(image_data=b"")
-        user_1 = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image_1)
+        user_1 = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image_1)
         session.add(avatar_image_1)
         session.add(user_1)
 
         avatar_image_2 = db.AvatarImage(image_data=b"")
-        user_2 = db.User(auth0_user_id="auth0|456", avatar_image=avatar_image_2)
+        user_2 = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image_2)
         session.add(avatar_image_2)
         session.add(user_2)
 
@@ -78,10 +80,10 @@ class TestGetWearables:
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
 
-        # Create test wearables with images, associated with the user
+        # Create test wearables with images, associated with the current user
         wearable_image_1 = db.WearableImage(image_data=b"")
         wearable_1 = db.Wearable(
             wearable_image=wearable_image_1,
@@ -101,6 +103,19 @@ class TestGetWearables:
         session.add(wearable_image_2)
         session.add(wearable_2)
 
+        # Create a wearable that does not belong to the user
+        other_user = db.User(auth0_user_id="auth0|2", avatar_image=avatar_image)
+        session.add(other_user)
+
+        wearable_image_3 = db.WearableImage(image_data=b"")
+        wearable_3 = db.Wearable(
+            wearable_image=wearable_image_3,
+            category="upper_body",
+            user_id=other_user.id,
+        )
+        session.add(wearable_image_3)
+        session.add(wearable_3)
+
         session.commit()
 
         # Make request to get all wearables
@@ -108,7 +123,7 @@ class TestGetWearables:
         assert response.status_code == 200
         data = response.json()
 
-        # Verify response contains both wearables with correct data
+        # Verify response contains two wearables owned by the current user with correct data
         assert len(data) == 2
         assert data[0]["id"] == str(wearable_1.id)
         assert data[0]["category"] == wearable_1.category
@@ -119,12 +134,14 @@ class TestGetWearables:
 
 
 class TestGetWearableImage:
-    def _create_user_and_wearable(self, session: Session, auth0_id="auth0|123"):
+    def _create_user_and_wearable(
+        self, session: Session, auth0_user_id=current_user_id
+    ):
         # Create avatar image for the user
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
         # Create user
-        user = db.User(auth0_user_id=auth0_id, avatar_image=avatar_image)
+        user = db.User(auth0_user_id=auth0_user_id, avatar_image=avatar_image)
         session.add(user)
         # Create test wearable image
         wearable_image = db.WearableImage(image_data=test_webp_image_data)
@@ -157,10 +174,12 @@ class TestGetWearableImage:
     def test_not_found_other_user(self, session: Session, client: TestClient):
         # Create wearable image for user 2
         user_2, wearable_2, wearable_image_2 = self._create_user_and_wearable(
-            session, auth0_id="auth0|456"
+            session, auth0_user_id="auth0|2"
         )
         # Create user 1 (the authenticated user)
-        user_1, _, _ = self._create_user_and_wearable(session, auth0_id="auth0|123")
+        user_1, _, _ = self._create_user_and_wearable(
+            session, auth0_user_id=current_user_id
+        )
 
         # Make request as user 1 to get wearable image belonging to user 2
         response = client.get(f"/images/wearables/{wearable_image_2.id}")
@@ -175,7 +194,7 @@ class TestCreateWearables:
         # Create user and avatar first
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
         session.commit()
 
@@ -278,7 +297,7 @@ class TestGetOutfitImage:
         session.add(avatar_image)
 
         # Create user with avatar
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
 
         # Create top wearable and its WOA image
@@ -334,7 +353,7 @@ class TestGetOutfitImage:
         # Create avatar image and user
         avatar_image = db.AvatarImage(image_data=b"")
         session.add(avatar_image)
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
 
         # Create only the top wearable
@@ -361,7 +380,7 @@ class TestGetOutfitImage:
         # Create avatar image and user
         avatar_image = db.AvatarImage(image_data=b"")
         session.add(avatar_image)
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
 
         # Create top wearable without WOA image
@@ -411,7 +430,7 @@ class TestGetOutfits:
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
 
         # Create top wearable (completed WOA)
@@ -479,7 +498,7 @@ class TestGetOutfits:
         # Create user but no outfits
         avatar_image = db.AvatarImage(image_data=b"")
         session.add(avatar_image)
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
         session.commit()
 
@@ -494,7 +513,7 @@ class TestCreateOutfit:
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id="auth0|123", avatar_image=avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image=avatar_image)
         session.add(user)
 
         # Create top wearable
@@ -623,11 +642,13 @@ class TestCreateOutfit:
 
 
 class TestDeleteOutfit:
-    def _create_user_wearables_outfit(self, session: Session, auth0_id="auth0|123"):
+    def _create_user_wearables_outfit(
+        self, session: Session, auth0_user_id=current_user_id
+    ):
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=auth0_id, avatar_image=avatar_image)
+        user = db.User(auth0_user_id=auth0_user_id, avatar_image=avatar_image)
         session.add(user)
 
         # Create top wearable
@@ -682,28 +703,17 @@ class TestDeleteOutfit:
         assert response.status_code == 404
 
     def test_not_found_wrong_user(self, session: Session, client: TestClient):
-        # Create outfit for user 1
-        user1, outfit1 = self._create_user_wearables_outfit(
-            session, auth0_id="auth0|user1"
+        # Create outfit for user 2
+        user2, outfit = self._create_user_wearables_outfit(session, "auth0|2")
+
+        # Try deleting outfit as user 1 (implicit via client fixture)
+        response = client.delete("/outfits", params={"id": str(outfit.id)})
+        assert (
+            response.status_code == 404  # Should fail because outfit belongs to user2
         )
 
-        # Create user 2 (the authenticated user in the client fixture is auth0|123)
-        avatar_image2 = db.AvatarImage(image_data=b"avatar_data2")
-        session.add(avatar_image2)
-        user2 = db.User(
-            auth0_user_id="auth0|123", avatar_image=avatar_image2
-        )  # This user ID matches the client fixture
-        session.add(user2)
-        session.commit()
-
-        # Try deleting outfit1 as user2 (implicit via client fixture)
-        response = client.delete("/outfits", params={"id": str(outfit1.id)})
-        assert (
-            response.status_code == 404
-        )  # Should fail because outfit1 belongs to user1
-
-        # Verify outfit1 still exists
+        # Verify outfit still exists
         existing_outfit = session.exec(
-            select(db.Outfit).where(db.Outfit.id == outfit1.id)
+            select(db.Outfit).where(db.Outfit.id == outfit.id)
         ).one_or_none()
         assert existing_outfit is not None

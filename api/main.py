@@ -141,7 +141,9 @@ def get_wearables(
 
     # Get all wearables and the associated WearableOnAvatarImage (or None)
     results = session.exec(
-        select(db.Wearable, woa_image_subquery.columns.id).outerjoin(
+        select(db.Wearable, woa_image_subquery.columns.id)
+        .where(db.Wearable.user_id == current_user.id)
+        .outerjoin(
             woa_image_subquery,
             db.Wearable.wearable_image_id
             == woa_image_subquery.columns.wearable_image_id,

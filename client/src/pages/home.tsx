@@ -1,5 +1,5 @@
 import type { Outfit, Wearable } from "@/api";
-import { AuthenticatedImage } from "@/components/auth-image";
+import { AuthenticatedImage } from "@/components/authenticated-image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

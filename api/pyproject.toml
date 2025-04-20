@@ -1,5 +1,5 @@
 [project]
-name = "virtual-wardrobe"
+name = "dressme"
 version = "0.1.0"
 authors = [{ name = "Nimo Beeren", email = "nimobeeren@gmail.com" }]
 requires-python = "~=3.12"

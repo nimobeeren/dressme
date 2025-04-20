@@ -1,4 +1,5 @@
 import type { Outfit, Wearable } from "@/api";
+import { AuthenticatedImage } from "@/components/authenticated-image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,8 @@ import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+
+// TODO: seems like the first wearable that is added is immediately active, which causes an error when the outfit image is being requested because there is no WOA image yet
 
 export function Home() {
   const { data: wearables, isPending, error } = useWearables();
@@ -34,8 +37,8 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
-  const [activeTopId, setActiveTopId] = useState(tops[0].id);
-  const [activeBottomId, setActiveBottomId] = useState(bottoms[0].id);
+  const [activeTopId, setActiveTopId] = useState(tops.at(0)?.id);
+  const [activeBottomId, setActiveBottomId] = useState(bottoms.at(0)?.id);
 
   const { data: outfits } = useOutfits();
   const { mutate: createOutfit } = useCreateOutfit();
@@ -51,18 +54,25 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           variant="ghost"
           size="icon"
           className="absolute right-4 top-4"
+          disabled={!activeTopId || !activeBottomId}
           onClick={() =>
             activeOutfit
               ? deleteOutfit(activeOutfit.id)
-              : createOutfit({ topId: activeTopId, bottomId: activeBottomId })
+              : createOutfit({ topId: activeTopId!, bottomId: activeBottomId! })
           }
         >
           <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
         </Button>
-        <img
-          src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
-          className="h-full"
-        />
+        {activeTopId && activeBottomId ? (
+          <AuthenticatedImage
+            src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
+            className="h-full"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center px-8">
+            <p className="text-center">Select a top and bottom to see your outfit preview.</p>
+          </div>
+        )}
       </div>
       <form className="h-full max-h-[75%] w-full max-w-96">
         <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">
@@ -196,7 +206,7 @@ function FavoriteOutfitList({
             )}
             <div className="absolute inset-0 z-10 drop-shadow-md">
               <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
-                <img
+                <AuthenticatedImage
                   src={new URL(
                     outfit.top.wearable_image_url,
                     import.meta.env.VITE_API_BASE_URL,
@@ -206,7 +216,7 @@ function FavoriteOutfitList({
               </div>
             </div>
             <div>
-              <img
+              <AuthenticatedImage
                 src={new URL(
                   outfit.bottom.wearable_image_url,
                   import.meta.env.VITE_API_BASE_URL,
@@ -226,7 +236,7 @@ function WearableList({
   onValueChange,
   wearables,
 }: {
-  value: string;
+  value?: string;
   onValueChange: (value: string) => void;
   wearables: Wearable[];
 }) {
@@ -264,7 +274,7 @@ function WearableList({
                 </div>
               </div>
             )}
-            <img
+            <AuthenticatedImage
               src={new URL(
                 wearable.wearable_image_url,
                 import.meta.env.VITE_API_BASE_URL,

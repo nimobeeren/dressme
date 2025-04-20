@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "path": "api"
+    },
+    {
+      "path": "client"
+    },
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "workbench.colorTheme": "Light Pink"
+  }
+}

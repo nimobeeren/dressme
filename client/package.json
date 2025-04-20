@@ -4,15 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest",
-    "lint": "eslint .",
+    "dev": "vite",
     "generate-client": "openapi-ts",
+    "lint": "eslint .",
+    "prepare": "cd .. && husky",
     "preview": "vite preview",
-    "prepare": "cd .. && husky"
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@auth0/auth0-react": "^2.3.0",
     "@hey-api/client-fetch": "^0.6.0",
     "@hey-api/openapi-ts": "^0.61.2",
     "@hookform/resolvers": "^3.10.0",

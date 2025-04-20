@@ -1,8 +1,12 @@
 from pathlib import Path
+
 from sqlmodel import Session
 
-from . import engine, create_db_and_tables
+from ..settings import get_settings
+from . import create_db_and_tables, engine
 from .models import AvatarImage, User, Wearable, WearableImage, WearableOnAvatarImage
+
+settings = get_settings()
 
 avatar_data = {"name": "model", "image_path": "images/humans/model.jpg"}
 
@@ -73,7 +77,13 @@ if __name__ == "__main__":
             session.add(avatar_image)
 
         # Add user
-        user = User(name="Test User", avatar_image=avatar_image)
+        if settings.AUTH0_SEED_USER_ID is None:
+            raise ValueError(
+                "AUTH0_SEED_USER_ID is not set, but this is required to determine which user should own the data added during seeding. You can find this your user ID in the Auth0 dashboard under User Management."
+            )
+        user = User(
+            auth0_user_id=settings.AUTH0_SEED_USER_ID, avatar_image=avatar_image
+        )
         session.add(user)
 
         # Add wearables
@@ -89,6 +99,7 @@ if __name__ == "__main__":
                 category=wearable_data["category"],
                 description=wearable_data["description"],
                 wearable_image=wearable_image,
+                user_id=user.id,
             )
             session.add(wearable)
 
@@ -99,7 +110,7 @@ if __name__ == "__main__":
                 / "results"
                 / avatar_data["name"]
                 / "single"
-                / f"{wearable_data["name"]}.jpg"
+                / f"{wearable_data['name']}.jpg"
             )
             with open(image_path, "rb") as image_file:
                 image_data = image_file.read()
@@ -109,7 +120,7 @@ if __name__ == "__main__":
                 / "masks"
                 / avatar_data["name"]
                 / "post"
-                / f"{wearable_data["name"]}.jpg"
+                / f"{wearable_data['name']}.jpg"
             )
             with open(mask_image_path, "rb") as mask_image_file:
                 mask_image_data = mask_image_file.read()

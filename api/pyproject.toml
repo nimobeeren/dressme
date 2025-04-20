@@ -15,6 +15,7 @@ sqlmodel = "^0.0.22"
 pydantic = "^2.10.2"
 python-multipart = "^0.0.20"
 pydantic-settings = "^2.7.1"
+pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 
 
 [tool.poetry.group.dev.dependencies]
@@ -25,6 +26,9 @@ nbstripout = "^0.7.1"
 tqdm = "^4.66.5"
 ipywidgets = "^8.1.5"
 pytest = "^8.3.4"
+
+[tool.pyright]
+typeCheckingMode = "off"
 
 [build-system]
 requires = ["poetry-core"]

@@ -15,9 +15,17 @@ function TokenInitializer() {
       try {
         return await getAccessTokenSilently();
       } catch (error) {
-        if ((error as any)?.error === "invalid_grant") {
-          // This error occurs when the refresh token is expired
-          // In that case, the user has to log in again
+        if (
+          (error as any)?.error === "invalid_grant" ||
+          (error as any)?.error === "missing_refresh_token"
+        ) {
+          console.error(
+            "Failed to get access token, redirecting to login. Error:",
+            (error as any)?.error,
+          );
+          // The "invalid_grant" error occurs when the refresh token is expired
+          // The "missing_refresh_token" error occurs when the refresh token is not available
+          // In both cases, the user has to log in again
           // Related: https://community.auth0.com/t/rotating-refresh-token-locking-users-out-after-expiry/46203
           await loginWithRedirect();
           // The next line should never be reached since the user is redirected to a page outside
@@ -25,7 +33,7 @@ function TokenInitializer() {
           // again.
           return await getAccessTokenSilently();
         } else {
-          throw error;
+          throw new Error("Failed to get access token", { cause: error });
         }
       }
     });

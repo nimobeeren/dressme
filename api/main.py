@@ -176,9 +176,9 @@ def get_wearable_image(
 
 
 # TODO: add a test for this
-def create_woa_image(*, wearable_id: UUID, current_user_id: UUID):
+def create_woa_image(*, wearable_id: UUID, user_id: UUID):
     """
-    Creates an image of the current user's avatar wearing a given wearable.
+    Creates an image of the given user's avatar wearing a given wearable.
 
     This image is called a WearableOnAvatar (WOA) image. It is generated using AI models.
     This method is intended to be used as a FastAPI background task.
@@ -186,11 +186,11 @@ def create_woa_image(*, wearable_id: UUID, current_user_id: UUID):
 
     with Session(db.engine) as session:
         print("Starting WOA generation")
-        user = session.exec(select(db.User).where(db.User.id == current_user_id)).one()
+        user = session.exec(select(db.User).where(db.User.id == user_id)).one()
         wearable = session.exec(
             select(db.Wearable)
             .where(db.Wearable.id == wearable_id)
-            .where(db.Wearable.user_id == current_user_id)
+            .where(db.Wearable.user_id == user_id)
         ).one()
 
         # Generate an image of the avatar wearing the wearable
@@ -300,7 +300,7 @@ def create_wearables(
         # TODO: background tasks currently run sequentially, so this will be slow for many wearables
         # FastAPI does not support concurrent background tasks yet: https://github.com/fastapi/fastapi/discussions/10682
         background_tasks.add_task(
-            create_woa_image, wearable_id=wearable.id, current_user_id=current_user.id
+            create_woa_image, wearable_id=wearable.id, user_id=current_user.id
         )
 
     return [

@@ -5,13 +5,13 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b && vite build",
-    "check-types": "tsc --noEmit",
     "dev": "vite",
     "generate-client": "openapi-ts",
     "lint": "eslint .",
     "prepare": "cd .. && husky",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",

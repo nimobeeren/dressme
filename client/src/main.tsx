@@ -36,20 +36,15 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route index element={<ProtectedRoute component={Home} />} />
-            <Route path="/add" element={<ProtectedRoute component={Add} />} />
-            <Route path="*" element={<NotFound />} />
+            <Route index Component={withAuthenticationRequired(Home)} />
+            <Route path="/add" Component={withAuthenticationRequired(Add)} />
+            <Route path="*" Component={NotFound} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
       <Toaster />
     </QueryClientProvider>
   );
-}
-
-function ProtectedRoute({ component }: { component: React.ComponentType }) {
-  const Component = withAuthenticationRequired(component);
-  return <Component />;
 }
 
 createRoot(document.getElementById("root")!).render(

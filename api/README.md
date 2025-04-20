@@ -2,9 +2,7 @@
 
 ## Installation
 
-```bash
-poetry install
-```
+Install the [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager.
 
 ## Development
 
@@ -13,7 +11,7 @@ poetry install
 Start a HTTP server for development:
 
 ```bash
-poetry run fastapi dev main.py
+uv run fastapi dev
 ```
 
 This will start a development server on `http://localhost:8000`.
@@ -23,7 +21,7 @@ This will start a development server on `http://localhost:8000`.
 When you first start the backend, the database will be empty. To add some test data, you should set the `AUTH0_SEED_USER_ID` environment variable, then run the seed script:
 
 ```bash
-poetry run python -m wardrobe.db.seed
+uv run -m wardrobe.db.seed
 ```
 
 This will add some wearables to the database stored in the `wardrobe.db` file.
@@ -57,5 +55,5 @@ curl -X GET 'http://localhost:8000/wearables' \
 Run the tests:
 
 ```bash
-poetry run pytest
+uv run pytest
 ```

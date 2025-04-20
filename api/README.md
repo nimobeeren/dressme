@@ -11,7 +11,7 @@ Install the [uv](https://docs.astral.sh/uv/getting-started/installation/) packag
 Start a HTTP server for development:
 
 ```bash
-uv run fastapi dev
+uv run fastapi dev src/dressme/main.py
 ```
 
 This will start a development server on `http://localhost:8000`.

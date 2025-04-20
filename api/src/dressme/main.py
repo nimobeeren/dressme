@@ -25,10 +25,10 @@ from replicate.client import Client
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
-from .dressme import db
-from .dressme.auth import verify_token
-from .dressme.combining import combine_wearables
-from .dressme.settings import get_settings
+from . import db
+from .auth import verify_token
+from .combining import combine_wearables
+from .settings import get_settings
 
 settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN)

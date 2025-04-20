@@ -1,8 +1,12 @@
 from pathlib import Path
+
 from sqlmodel import Session
 
-from . import engine, create_db_and_tables
+from ..settings import get_settings
+from . import create_db_and_tables, engine
 from .models import AvatarImage, User, Wearable, WearableImage, WearableOnAvatarImage
+
+settings = get_settings()
 
 avatar_data = {"name": "model", "image_path": "images/humans/model.jpg"}
 
@@ -73,8 +77,12 @@ if __name__ == "__main__":
             session.add(avatar_image)
 
         # Add user
+        if settings.AUTH0_SEED_USER_ID is None:
+            raise ValueError(
+                "AUTH0_SEED_USER_ID is not set, but this is required to determine which user should own the data added during seeding. You can find this your user ID in the Auth0 dashboard under User Management."
+            )
         user = User(
-            auth0_user_id="auth0|67eaf8a380e6a5a77d48e95e", avatar_image=avatar_image
+            auth0_user_id=settings.AUTH0_SEED_USER_ID, avatar_image=avatar_image
         )
         session.add(user)
 

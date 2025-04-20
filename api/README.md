@@ -20,7 +20,7 @@ This will start a development server on `http://localhost:8000`.
 
 ### Adding test data
 
-When you first start the backend, the database will be empty. To add some test data, you can run the seed script:
+When you first start the backend, the database will be empty. To add some test data, you should set the `AUTH0_SEED_USER_ID` environment variable, then run the seed script:
 
 ```bash
 poetry run python -m wardrobe.db.seed

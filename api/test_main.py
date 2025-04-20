@@ -6,8 +6,8 @@ from sqlmodel.pool import StaticPool
 from unittest.mock import patch
 
 from .main import app, get_session
-from .wardrobe.auth import verify_token
-from .wardrobe import db
+from .dressme.auth import verify_token
+from .dressme import db
 
 current_user_id = "auth0|1"
 

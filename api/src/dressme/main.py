@@ -159,13 +159,13 @@ def get_wearable_image(
 ) -> bytes:
     # Check if a wearable exists with the given image ID and belongs to the current user
     wearable = typing.cast(
-        db.Wearable,
+        db.Wearable | None,
         session.exec(
             select(db.Wearable)
             .where(db.Wearable.wearable_image_id == wearable_image_id)
             .where(db.Wearable.user_id == current_user.id)
             .options(joinedload(db.Wearable.wearable_image))  # type: ignore
-        ).one(),
+        ).one_or_none(),
     )
 
     if wearable is None:

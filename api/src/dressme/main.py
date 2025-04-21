@@ -1,7 +1,8 @@
 import io
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Literal, Sequence
+from typing import Annotated, Any, Literal, Sequence, cast
+from urllib.parse import urlparse
 from uuid import UUID
 
 import requests
@@ -11,17 +12,18 @@ from fastapi import (
     FastAPI,
     File,
     Form,
+    HTTPException,
     Response,
     Security,
     UploadFile,
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
-from replicate.client import Client
+from replicate.client import Client  # type: ignore
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
@@ -66,8 +68,10 @@ app.add_middleware(
 
 
 def get_current_user(
-    *, jwt_payload=Security(verify_token), session: Session = Depends(get_session)
-) -> str:
+    *,
+    jwt_payload: dict[str, Any] = Security(verify_token),
+    session: Session = Depends(get_session),
+) -> db.User:
     auth0_user_id = jwt_payload["sub"]
 
     current_user = session.exec(
@@ -85,7 +89,9 @@ def get_current_user(
 
         # Add user
         print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
-        current_user = db.User(auth0_user_id=auth0_user_id, avatar_image=avatar_image)
+        current_user = db.User(
+            auth0_user_id=auth0_user_id, avatar_image_id=avatar_image.id
+        )
         session.add(current_user)
         session.commit()
 
@@ -118,22 +124,25 @@ def get_wearables(
         select(db.WearableOnAvatarImage)
         .join(
             db.User,
-            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
+            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,  # type: ignore
         )
         .where(db.User.id == current_user.id)
         .subquery()
     )
 
     # Get all wearables and the associated WearableOnAvatarImage (or None)
-    results = session.exec(
-        select(db.Wearable, woa_image_subquery.columns.id)
-        .where(db.Wearable.user_id == current_user.id)
-        .outerjoin(
-            woa_image_subquery,
-            db.Wearable.wearable_image_id
-            == woa_image_subquery.columns.wearable_image_id,
-        )
-    ).all()
+    results = cast(
+        list[tuple[db.Wearable, UUID | None]],
+        session.exec(
+            select(db.Wearable, woa_image_subquery.columns.id)
+            .where(db.Wearable.user_id == current_user.id)
+            .outerjoin(
+                woa_image_subquery,
+                db.Wearable.wearable_image_id
+                == woa_image_subquery.columns.wearable_image_id,  # type: ignore
+            )
+        ).all(),
+    )
 
     return [
         Wearable(
@@ -153,24 +162,31 @@ def get_wearable_image(
     wearable_image_id: UUID,
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
-) -> bytes:
+) -> StreamingResponse:
     # Check if a wearable exists with the given image ID and belongs to the current user
-    wearable = session.exec(
-        select(db.Wearable)
-        .where(db.Wearable.wearable_image_id == wearable_image_id)
-        .where(db.Wearable.user_id == current_user.id)
-        .options(joinedload(db.Wearable.wearable_image))  # Eager load the image data
-    ).first()
+    wearable = cast(
+        db.Wearable | None,
+        session.exec(
+            select(db.Wearable)
+            .where(db.Wearable.wearable_image_id == wearable_image_id)
+            .where(db.Wearable.user_id == current_user.id)
+            .options(joinedload(db.Wearable.wearable_image))  # type: ignore
+        ).one_or_none(),
+    )
 
     if wearable is None:
         # Return 404 if the wearable doesn't exist or doesn't belong to the user
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wearable not found."
+        )
+
+    assert wearable.wearable_image is not None
 
     # Now we know the user owns this wearable, return the image data
     image = Image.open(io.BytesIO(wearable.wearable_image.image_data))
     return StreamingResponse(
         io.BytesIO(wearable.wearable_image.image_data),
-        media_type=Image.MIME[image.format],
+        media_type=Image.MIME[image.format or "JPEG"],
         headers={"Cache-Control": "public, max-age=3600"},
     )
 
@@ -195,7 +211,9 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
 
         # Generate an image of the avatar wearing the wearable
         print("Generating WOA image")
-        woa_image_url = replicate.run(
+        assert wearable.wearable_image is not None
+        assert user.avatar_image is not None
+        woa_image_url_raw = replicate.run(
             "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
             input={
                 "garm_img": io.BytesIO(wearable.wearable_image.image_data),
@@ -204,6 +222,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
                 "category": wearable.category,
             },
         )
+        woa_image_url = urlparse(str(woa_image_url_raw)).geturl()
 
         # Get a mask of the wearable on the avatar using an image segmentation model
         print("Generating mask")
@@ -219,10 +238,11 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
             },
         )
         mask_image_url = None
-        for result in mask_results:
+        for result_url_raw in mask_results:
             # Results contains some other stuff, we only want the regular mask
-            if result.endswith("/mask.jpg"):
-                mask_image_url = result
+            result_url_parsed = urlparse(str(result_url_raw))
+            if result_url_parsed.path.endswith("/mask.jpg"):
+                mask_image_url = result_url_parsed.geturl()
                 break
         if mask_image_url is None:
             raise ValueError("Could not get mask URL")
@@ -235,9 +255,11 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         mask_image_response.raise_for_status()
 
         print("Saving results to DB")
+        assert user.avatar_image is not None
+        assert wearable.wearable_image is not None
         woa_image = db.WearableOnAvatarImage(
-            avatar_image=user.avatar_image,
-            wearable_image=wearable.wearable_image,
+            avatar_image_id=user.avatar_image.id,
+            wearable_image_id=wearable.wearable_image.id,
             image_data=woa_image_response.content,
             mask_image_data=mask_image_response.content,
         )
@@ -267,13 +289,9 @@ def create_wearables(
     string if you want to omit it.
     """
     if not len(category) == len(description) == len(image):
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "error": {
-                    "message": "The category, description and image fields should all occur the same number of times."
-                }
-            },
+            detail="The category, description and image fields should all occur the same number of times.",
         )
 
     wearables: list[db.Wearable] = []
@@ -286,7 +304,7 @@ def create_wearables(
         wearable = db.Wearable(
             category=item_category,
             description=item_description if item_description != "" else None,
-            wearable_image=wearable_image,
+            wearable_image_id=wearable_image.id,
             user_id=current_user.id,
         )
         wearables.append(wearable)
@@ -322,24 +340,27 @@ def get_outfit_image(
     bottom_id: UUID,
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
-) -> bytes:
-    user = session.exec(
-        select(db.User)
-        .where(db.User.id == current_user.id)
-        .options(joinedload(db.User.avatar_image))
-    ).one()
+) -> StreamingResponse:
+    user = cast(
+        db.User,
+        session.exec(
+            select(db.User)
+            .where(db.User.id == current_user.id)
+            .options(joinedload(db.User.avatar_image))  # type: ignore
+        ).one(),
+    )
     top_on_avatar = session.exec(
         select(db.WearableOnAvatarImage)
         .join(
             db.WearableImage,
-            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,
+            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,  # type: ignore
         )
-        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)
+        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)  # type: ignore
         .join(
             db.AvatarImage,
-            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
+            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,  # type: ignore
         )
-        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
+        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)  # type: ignore
         .where(db.User.id == current_user.id)
         .where(db.Wearable.id == top_id)
     ).first()
@@ -347,21 +368,24 @@ def get_outfit_image(
         select(db.WearableOnAvatarImage)
         .join(
             db.WearableImage,
-            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,
+            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,  # type: ignore
         )
-        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)
+        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)  # type: ignore
         .join(
             db.AvatarImage,
-            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
+            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,  # type: ignore
         )
-        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
+        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)  # type: ignore
         .where(db.User.id == current_user.id)
         .where(db.Wearable.id == bottom_id)
     ).first()
 
     if top_on_avatar is None or bottom_on_avatar is None:
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Outfit image not found."
+        )
 
+    assert user.avatar_image is not None
     avatar_im = Image.open(io.BytesIO(user.avatar_image.image_data))
     top_im = Image.open(io.BytesIO(top_on_avatar.image_data))
     bottom_im = Image.open(io.BytesIO(bottom_on_avatar.image_data))
@@ -396,22 +420,28 @@ def get_outfits(
         select(db.WearableOnAvatarImage)
         .join(
             db.User,
-            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
+            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,  # type: ignore
         )
         .where(db.User.id == current_user.id)
     ).all()
     completed_ids = {woa.wearable_image_id for woa in woa_images}
 
     # Fetch outfits along with the top and bottom wearables
-    outfits = session.exec(
-        select(db.Outfit)
-        .where(db.Outfit.user_id == current_user.id)
-        .options(joinedload(db.Outfit.top))
-        .options(joinedload(db.Outfit.bottom))
-    ).all()
+    outfits = cast(
+        list[db.Outfit],
+        session.exec(
+            select(db.Outfit)
+            .where(db.Outfit.user_id == current_user.id)
+            .options(joinedload(db.Outfit.top))  # type: ignore
+            .options(joinedload(db.Outfit.bottom))  # type: ignore
+        ).all(),
+    )
 
-    api_outfits = []
+    api_outfits: list[Outfit] = []
     for outfit in outfits:
+        assert outfit.top is not None
+        assert outfit.bottom is not None
+
         top_status = (
             "completed" if outfit.top.wearable_image_id in completed_ids else "pending"
         )
@@ -454,20 +484,14 @@ def create_outfit(
         .where(db.Wearable.user_id == current_user.id)
     ).one_or_none()
     if top is None:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "error": {
-                    "message": f"Top wearable with ID '${top_id}' not found or not owned by user."
-                }
-            },
+            detail=f"Top wearable with ID '{top_id}' not found or not owned by user.",
         )
     if top.category != "upper_body":
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "error": {"message": "Top wearable must have category 'upper_body'."}
-            },
+            detail="Top wearable must have category 'upper_body'.",
         )
 
     bottom = session.exec(
@@ -476,20 +500,14 @@ def create_outfit(
         .where(db.Wearable.user_id == current_user.id)
     ).one_or_none()
     if bottom is None:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "error": {
-                    "message": f"Bottom wearable with ID '${bottom_id}' not found or not owned by user."
-                }
-            },
+            detail=f"Bottom wearable with ID '{bottom_id}' not found or not owned by user.",
         )
     if bottom.category != "lower_body":
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "error": {"message": "Bottom wearable must have category 'lower_body'"}
-            },
+            detail="Bottom wearable must have category 'lower_body'.",
         )
 
     # Check if the outfit already exists
@@ -531,7 +549,9 @@ def delete_outfit(
 
     if outfit is None:
         # Do nothing if the outfit does not exist or is not owned by the current user
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found."
+        )
     else:
         # Delete the outfit
         session.delete(outfit)

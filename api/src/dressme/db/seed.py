@@ -64,6 +64,7 @@ wearables_data = {
 # Path to the repo root
 ROOT_PATH = Path(__file__).parent.parent.parent.parent
 
+
 def seed():
     create_db_and_tables()
 
@@ -80,7 +81,8 @@ def seed():
                 "AUTH0_SEED_USER_ID is not set, but this is required to determine which user should own the data added during seeding. You can find this your user ID in the Auth0 dashboard under User Management."
             )
         user = User(
-            auth0_user_id=settings.AUTH0_SEED_USER_ID, avatar_image=avatar_image
+            auth0_user_id=settings.AUTH0_SEED_USER_ID,
+            avatar_image_id=avatar_image.id,
         )
         session.add(user)
 
@@ -96,7 +98,7 @@ def seed():
             wearable = Wearable(
                 category=wearable_data["category"],
                 description=wearable_data["description"],
-                wearable_image=wearable_image,
+                wearable_image_id=wearable_image.id,
                 user_id=user.id,
             )
             session.add(wearable)
@@ -123,14 +125,15 @@ def seed():
             with open(mask_image_path, "rb") as mask_image_file:
                 mask_image_data = mask_image_file.read()
             wearable_on_avatar_image = WearableOnAvatarImage(
-                avatar_image=avatar_image,
-                wearable_image=wearable_image,
+                avatar_image_id=avatar_image.id,
+                wearable_image_id=wearable_image.id,
                 image_data=image_data,
                 mask_image_data=mask_image_data,
             )
             session.add(wearable_on_avatar_image)
 
         session.commit()
+
 
 if __name__ == "__main__":
     seed()

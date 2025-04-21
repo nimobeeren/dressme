@@ -1,3 +1,4 @@
+from typing import Any
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -6,8 +7,8 @@ from .settings import get_settings
 
 
 class UnauthorizedException(HTTPException):
-    def __init__(self, detail: str, **kwargs):
-        super().__init__(status.HTTP_403_FORBIDDEN, detail=detail)
+    def __init__(self, detail: str, **kwargs: dict[str, Any]):
+        super().__init__(status.HTTP_403_FORBIDDEN, detail=detail, **kwargs)
 
 
 class UnauthenticatedException(HTTPException):

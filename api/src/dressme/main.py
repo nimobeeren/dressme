@@ -25,10 +25,10 @@ from replicate.client import Client
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
-from .wardrobe import db
-from .wardrobe.auth import verify_token
-from .wardrobe.combining import combine_wearables
-from .wardrobe.settings import get_settings
+from . import db
+from .auth import verify_token
+from .combining import combine_wearables
+from .settings import get_settings
 
 settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
@@ -77,7 +77,7 @@ def get_current_user(
     if current_user is None:
         # Add avatar image
         # TODO: get avatar during onboarding flow (there is currently no way for new users to upload an avatar)
-        ROOT_PATH = Path(__file__).parent.parent
+        ROOT_PATH = Path(__file__).parent.parent.parent.parent
         image_path = ROOT_PATH / Path("images/humans/model.jpg")
         with open(image_path, "rb") as image_file:
             avatar_image = db.AvatarImage(image_data=image_file.read())

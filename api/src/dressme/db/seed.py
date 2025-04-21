@@ -64,12 +64,10 @@ wearables_data = {
 # Path to the repo root
 ROOT_PATH = Path(__file__).parent.parent.parent.parent
 
-if __name__ == "__main__":
+def seed():
     create_db_and_tables()
 
     with Session(engine) as session:
-        avatar = "model"  # which avatar to use to create test data
-
         # Add avatar image
         image_path = ROOT_PATH / Path(avatar_data["image_path"])
         with open(image_path, "rb") as image_file:
@@ -133,3 +131,6 @@ if __name__ == "__main__":
             session.add(wearable_on_avatar_image)
 
         session.commit()
+
+if __name__ == "__main__":
+    seed()

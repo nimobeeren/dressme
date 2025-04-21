@@ -6,8 +6,8 @@ from sqlmodel.pool import StaticPool
 from unittest.mock import patch
 
 from .main import app, get_session
-from .wardrobe.auth import verify_token
-from .wardrobe import db
+from .auth import verify_token
+from . import db
 
 current_user_id = "auth0|1"
 
@@ -155,7 +155,7 @@ class TestGetWearableImage:
 
 
 class TestCreateWearables:
-    @patch("api.main.create_woa_image")
+    @patch("dressme.main.create_woa_image")
     def test_success(self, mock_create_woa_image, session: Session, client: TestClient):
         # Create user and avatar first
         avatar_image = db.AvatarImage(image_data=b"avatar_data")

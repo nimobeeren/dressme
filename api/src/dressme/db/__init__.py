@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, create_engine
 # Needed for SQLModel to create tables for all models
 from .models import *  # noqa: F403
 
-sqlite_file_name = "wardrobe.db"
+sqlite_file_name = "dressme.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 connect_args = {"check_same_thread": False}

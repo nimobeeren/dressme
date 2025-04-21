@@ -16,28 +16,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
-
-      - name: Install Poetry
-        run: |
-          sudo apt update
-          sudo apt install pipx
-          pipx ensurepath
-          python -m pip install --upgrade pip
-          pipx install poetry==1.8.3
-
-      - name: Install dependencies
-        run: |
-          cd api
-          poetry install
+          version: "0.6.14"
 
       - name: Run tests
         run: |
           cd api
-          poetry run pytest
+          uv run pytest
         env:
           AUTH0_ALGORITHMS: ${{ secrets.AUTH0_ALGORITHMS }}
           AUTH0_API_AUDIENCE: ${{ secrets.AUTH0_API_AUDIENCE }}

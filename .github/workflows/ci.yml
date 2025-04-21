@@ -10,6 +10,7 @@ on:
 
 jobs:
   typecheck-api:
+    name: API type checking
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,12 +21,13 @@ jobs:
         with:
           version: "0.6.14"
 
-      - name: Run type check
+      - name: Run type checking
         run: |
           cd api
           uv run pyright
 
   test-api:
+    name: API tests
     runs-on: ubuntu-latest
 
     steps:

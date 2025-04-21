@@ -235,9 +235,9 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         mask_image_url = None
         for result_url_raw in mask_results:
             # Results contains some other stuff, we only want the regular mask
-            result_url = urlparse(str(result_url_raw)).geturl()
-            if result_url.endswith("/mask.jpg"):
-                mask_image_url = result_url
+            result_url_parsed = urlparse(str(result_url_raw))
+            if result_url_parsed.path.endswith("/mask.jpg"):
+                mask_image_url = result_url_parsed.geturl()
                 break
         if mask_image_url is None:
             raise ValueError("Could not get mask URL")

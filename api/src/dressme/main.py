@@ -1,8 +1,7 @@
 import io
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Literal, Sequence
-import typing
+from typing import Annotated, Literal, Sequence, cast
 from uuid import UUID
 
 import requests
@@ -121,7 +120,7 @@ def get_wearables(
         select(db.WearableOnAvatarImage)
         .join(
             db.User,
-            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
+            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,  # type: ignore
         )
         .where(db.User.id == current_user.id)
         .subquery()
@@ -134,7 +133,7 @@ def get_wearables(
         .outerjoin(
             woa_image_subquery,
             db.Wearable.wearable_image_id
-            == woa_image_subquery.columns.wearable_image_id,
+            == woa_image_subquery.columns.wearable_image_id,  # type: ignore
         )
     ).all()
 
@@ -158,13 +157,10 @@ def get_wearable_image(
     current_user: db.User = Depends(get_current_user),
 ) -> bytes:
     # Check if a wearable exists with the given image ID and belongs to the current user
-    wearable = typing.cast(
+    wearable = cast(
         db.Wearable | None,
         session.exec(
-            select(db.Wearable)
-            .where(db.Wearable.wearable_image_id == wearable_image_id)
-            .where(db.Wearable.user_id == current_user.id)
-            .options(joinedload(db.Wearable.wearable_image))  # type: ignore
+            select(db.Wearable).options(joinedload(db.Wearable.wearable_image))  # type: ignore
         ).one_or_none(),
     )
 
@@ -333,7 +329,7 @@ def get_outfit_image(
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
 ) -> bytes:
-    user = typing.cast(
+    user = cast(
         db.User,
         session.exec(
             select(db.User)
@@ -345,14 +341,14 @@ def get_outfit_image(
         select(db.WearableOnAvatarImage)
         .join(
             db.WearableImage,
-            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,
+            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,  # type: ignore
         )
-        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)
+        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)  # type: ignore
         .join(
             db.AvatarImage,
-            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
+            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,  # type: ignore
         )
-        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
+        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)  # type: ignore
         .where(db.User.id == current_user.id)
         .where(db.Wearable.id == top_id)
     ).first()
@@ -360,14 +356,14 @@ def get_outfit_image(
         select(db.WearableOnAvatarImage)
         .join(
             db.WearableImage,
-            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,
+            db.WearableOnAvatarImage.wearable_image_id == db.WearableImage.id,  # type: ignore
         )
-        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)
+        .join(db.Wearable, db.Wearable.wearable_image_id == db.WearableImage.id)  # type: ignore
         .join(
             db.AvatarImage,
-            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,
+            db.WearableOnAvatarImage.avatar_image_id == db.AvatarImage.id,  # type: ignore
         )
-        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)
+        .join(db.User, db.User.avatar_image_id == db.AvatarImage.id)  # type: ignore
         .where(db.User.id == current_user.id)
         .where(db.Wearable.id == bottom_id)
     ).first()
@@ -410,14 +406,14 @@ def get_outfits(
         select(db.WearableOnAvatarImage)
         .join(
             db.User,
-            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,
+            db.WearableOnAvatarImage.avatar_image_id == db.User.avatar_image_id,  # type: ignore
         )
         .where(db.User.id == current_user.id)
     ).all()
     completed_ids = {woa.wearable_image_id for woa in woa_images}
 
     # Fetch outfits along with the top and bottom wearables
-    outfits = typing.cast(
+    outfits = cast(
         list[db.Outfit],
         session.exec(
             select(db.Outfit)
@@ -429,6 +425,9 @@ def get_outfits(
 
     api_outfits = []
     for outfit in outfits:
+        assert outfit.top is not None
+        assert outfit.bottom is not None
+
         top_status = (
             "completed" if outfit.top.wearable_image_id in completed_ids else "pending"
         )

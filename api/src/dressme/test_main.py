@@ -155,7 +155,7 @@ class TestGetWearableImage:
 
 
 class TestCreateWearables:
-    @patch("api.main.create_woa_image")
+    @patch("dressme.main.create_woa_image")
     def test_success(self, mock_create_woa_image, session: Session, client: TestClient):
         # Create user and avatar first
         avatar_image = db.AvatarImage(image_data=b"avatar_data")

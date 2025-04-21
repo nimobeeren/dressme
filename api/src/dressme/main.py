@@ -11,13 +11,14 @@ from fastapi import (
     FastAPI,
     File,
     Form,
+    HTTPException,
     Response,
     Security,
     UploadFile,
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
@@ -169,7 +170,9 @@ def get_wearable_image(
 
     if wearable is None:
         # Return 404 if the wearable doesn't exist or doesn't belong to the user
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wearable not found"
+        )
 
     # Now we know the user owns this wearable, return the image data
     image = Image.open(io.BytesIO(wearable.wearable_image.image_data))
@@ -276,13 +279,9 @@ def create_wearables(
     string if you want to omit it.
     """
     if not len(category) == len(description) == len(image):
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "error": {
-                    "message": "The category, description and image fields should all occur the same number of times."
-                }
-            },
+            detail="The category, description and image fields should all occur the same number of times.",
         )
 
     wearables: list[db.Wearable] = []
@@ -473,20 +472,14 @@ def create_outfit(
         .where(db.Wearable.user_id == current_user.id)
     ).one_or_none()
     if top is None:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "error": {
-                    "message": f"Top wearable with ID '${top_id}' not found or not owned by user."
-                }
-            },
+            detail=f"Top wearable with ID '{top_id}' not found or not owned by user.",
         )
     if top.category != "upper_body":
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "error": {"message": "Top wearable must have category 'upper_body'."}
-            },
+            detail="Top wearable must have category 'upper_body'.",
         )
 
     bottom = session.exec(
@@ -495,20 +488,14 @@ def create_outfit(
         .where(db.Wearable.user_id == current_user.id)
     ).one_or_none()
     if bottom is None:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "error": {
-                    "message": f"Bottom wearable with ID '${bottom_id}' not found or not owned by user."
-                }
-            },
+            detail=f"Bottom wearable with ID '{bottom_id}' not found or not owned by user.",
         )
     if bottom.category != "lower_body":
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "error": {"message": "Bottom wearable must have category 'lower_body'"}
-            },
+            detail="Bottom wearable must have category 'lower_body'.",
         )
 
     # Check if the outfit already exists
@@ -550,7 +537,9 @@ def delete_outfit(
 
     if outfit is None:
         # Do nothing if the outfit does not exist or is not owned by the current user
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found."
+        )
     else:
         # Delete the outfit
         session.delete(outfit)

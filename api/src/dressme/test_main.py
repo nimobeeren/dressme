@@ -585,8 +585,7 @@ class TestCreateOutfit:
         )
         assert response.status_code == 400
         assert (
-            response.json()["error"]["message"]
-            == "Top wearable must have category 'upper_body'."
+            response.json()["detail"] == "Top wearable must have category 'upper_body'."
         )
 
     def test_bottom_wrong_category(self, session: Session, client: TestClient):
@@ -602,8 +601,8 @@ class TestCreateOutfit:
         )
         assert response.status_code == 400
         assert (
-            response.json()["error"]["message"]
-            == "Bottom wearable must have category 'lower_body'"
+            response.json()["detail"]
+            == "Bottom wearable must have category 'lower_body'."
         )
 
     def test_wearable_not_owned(self, session: Session, client: TestClient):

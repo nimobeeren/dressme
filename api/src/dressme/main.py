@@ -2,6 +2,7 @@ import io
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal, Sequence, cast
+from urllib.parse import urlparse
 from uuid import UUID
 
 import requests
@@ -68,7 +69,7 @@ app.add_middleware(
 
 def get_current_user(
     *, jwt_payload=Security(verify_token), session: Session = Depends(get_session)
-) -> str:
+) -> db.User:
     auth0_user_id = jwt_payload["sub"]
 
     current_user = session.exec(
@@ -156,7 +157,7 @@ def get_wearable_image(
     wearable_image_id: UUID,
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
-) -> bytes:
+) -> StreamingResponse:
     # Check if a wearable exists with the given image ID and belongs to the current user
     wearable = cast(
         db.Wearable | None,
@@ -171,14 +172,16 @@ def get_wearable_image(
     if wearable is None:
         # Return 404 if the wearable doesn't exist or doesn't belong to the user
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Wearable not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wearable not found."
         )
+
+    assert wearable.wearable_image is not None
 
     # Now we know the user owns this wearable, return the image data
     image = Image.open(io.BytesIO(wearable.wearable_image.image_data))
     return StreamingResponse(
         io.BytesIO(wearable.wearable_image.image_data),
-        media_type=Image.MIME[image.format],
+        media_type=Image.MIME[image.format or "JPEG"],
         headers={"Cache-Control": "public, max-age=3600"},
     )
 
@@ -205,7 +208,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         print("Generating WOA image")
         assert wearable.wearable_image is not None
         assert user.avatar_image is not None
-        woa_image_url = replicate.run(
+        woa_image_url_raw = replicate.run(
             "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
             input={
                 "garm_img": io.BytesIO(wearable.wearable_image.image_data),
@@ -214,6 +217,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
                 "category": wearable.category,
             },
         )
+        woa_image_url = urlparse(str(woa_image_url_raw)).geturl()
 
         # Get a mask of the wearable on the avatar using an image segmentation model
         print("Generating mask")
@@ -229,10 +233,11 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
             },
         )
         mask_image_url = None
-        for result in mask_results:
+        for result_url_raw in mask_results:
             # Results contains some other stuff, we only want the regular mask
-            if result.endswith("/mask.jpg"):
-                mask_image_url = result
+            result_url = urlparse(str(result_url_raw)).geturl()
+            if result_url.endswith("/mask.jpg"):
+                mask_image_url = result_url
                 break
         if mask_image_url is None:
             raise ValueError("Could not get mask URL")
@@ -330,7 +335,7 @@ def get_outfit_image(
     bottom_id: UUID,
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
-) -> bytes:
+) -> StreamingResponse:
     user = cast(
         db.User,
         session.exec(
@@ -371,7 +376,9 @@ def get_outfit_image(
     ).first()
 
     if top_on_avatar is None or bottom_on_avatar is None:
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Outfit image not found."
+        )
 
     assert user.avatar_image is not None
     avatar_im = Image.open(io.BytesIO(user.avatar_image.image_data))

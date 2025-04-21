@@ -57,3 +57,11 @@ Run the tests:
 ```bash
 uv run pytest
 ```
+
+## Type checking
+
+Run the type checker:
+
+```bash
+uv run pyright
+```

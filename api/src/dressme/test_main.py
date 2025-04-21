@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pytest
 from sqlmodel import Session, create_engine, SQLModel, select
 from sqlmodel.pool import StaticPool
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from .main import app, get_session
 from .auth import verify_token
@@ -103,7 +103,7 @@ class TestGetWearables:
 
 class TestGetWearableImage:
     def _create_user_and_wearable(
-        self, session: Session, auth0_user_id=current_user_id
+        self, session: Session, auth0_user_id: str = current_user_id
     ):
         # Create avatar image for the user
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
@@ -126,7 +126,7 @@ class TestGetWearableImage:
         return user, wearable, wearable_image
 
     def test_success(self, session: Session, client: TestClient):
-        user, wearable, wearable_image = self._create_user_and_wearable(session)
+        _, _, wearable_image = self._create_user_and_wearable(session)
 
         # Make request to get wearable image owned by the user
         response = client.get(f"/images/wearables/{wearable_image.id}")
@@ -142,13 +142,11 @@ class TestGetWearableImage:
 
     def test_not_found_other_user(self, session: Session, client: TestClient):
         # Create wearable image for user 2
-        user_2, wearable_2, wearable_image_2 = self._create_user_and_wearable(
+        _, _, wearable_image_2 = self._create_user_and_wearable(
             session, auth0_user_id="auth0|2"
         )
         # Create user 1 (the authenticated user)
-        user_1, _, _ = self._create_user_and_wearable(
-            session, auth0_user_id=current_user_id
-        )
+        _, _, _ = self._create_user_and_wearable(session, auth0_user_id=current_user_id)
 
         # Make request as user 1 to get wearable image belonging to user 2
         response = client.get(f"/images/wearables/{wearable_image_2.id}")
@@ -159,7 +157,9 @@ class TestGetWearableImage:
 
 class TestCreateWearables:
     @patch("dressme.main.create_woa_image")
-    def test_success(self, mock_create_woa_image, session: Session, client: TestClient):
+    def test_success(
+        self, mock_create_woa_image: MagicMock, session: Session, client: TestClient
+    ):
         # Create user and avatar first
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
@@ -553,7 +553,7 @@ class TestCreateOutfit:
         assert response.status_code == 200
 
     def test_top_not_found(self, session: Session, client: TestClient):
-        user, _, bottom_wearable = self._create_user_and_wearables(session)
+        _, _, bottom_wearable = self._create_user_and_wearables(session)
         non_existent_id = uuid4()
 
         response = client.post(
@@ -566,7 +566,7 @@ class TestCreateOutfit:
         assert response.status_code == 404
 
     def test_bottom_not_found(self, session: Session, client: TestClient):
-        user, top_wearable, _ = self._create_user_and_wearables(session)
+        _, top_wearable, _ = self._create_user_and_wearables(session)
         non_existent_id = uuid4()
 
         response = client.post(
@@ -576,7 +576,7 @@ class TestCreateOutfit:
         assert response.status_code == 404
 
     def test_top_wrong_category(self, session: Session, client: TestClient):
-        user, _, bottom_wearable = self._create_user_and_wearables(session)
+        _, _, bottom_wearable = self._create_user_and_wearables(session)
 
         # Try to create outfit with two bottom wearables
         response = client.post(
@@ -592,7 +592,7 @@ class TestCreateOutfit:
         )
 
     def test_bottom_wrong_category(self, session: Session, client: TestClient):
-        user, top_wearable, _ = self._create_user_and_wearables(session)
+        _, top_wearable, _ = self._create_user_and_wearables(session)
 
         # Try to create outfit with two top wearables
         response = client.post(
@@ -655,7 +655,7 @@ class TestCreateOutfit:
 
 class TestDeleteOutfit:
     def _create_user_wearables_outfit(
-        self, session: Session, auth0_user_id=current_user_id
+        self, session: Session, auth0_user_id: str = current_user_id
     ):
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
@@ -695,7 +695,7 @@ class TestDeleteOutfit:
         return user, outfit
 
     def test_success(self, session: Session, client: TestClient):
-        user, outfit = self._create_user_wearables_outfit(session)
+        _, outfit = self._create_user_wearables_outfit(session)
 
         # Make request
         response = client.delete("/outfits", params={"id": str(outfit.id)})
@@ -708,7 +708,7 @@ class TestDeleteOutfit:
         assert deleted_outfit is None
 
     def test_not_found_wrong_id(self, session: Session, client: TestClient):
-        user, _ = self._create_user_wearables_outfit(session)
+        _, _ = self._create_user_wearables_outfit(session)
         non_existent_id = uuid4()
 
         response = client.delete("/outfits", params={"id": str(non_existent_id)})
@@ -716,7 +716,7 @@ class TestDeleteOutfit:
 
     def test_not_found_wrong_user(self, session: Session, client: TestClient):
         # Create outfit for user 2
-        user2, outfit = self._create_user_wearables_outfit(session, "auth0|2")
+        _, outfit = self._create_user_wearables_outfit(session, "auth0|2")
 
         # Try deleting outfit as user 1 (implicit via client fixture)
         response = client.delete("/outfits", params={"id": str(outfit.id)})

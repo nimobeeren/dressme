@@ -1,7 +1,11 @@
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import (
+    Field,  # type: ignore
+    Relationship,
+    SQLModel,
+)
 
 # NOTE: Relationship foreign key ID fields (e.g., user_id) are typed as required, but
 # the corresponding relationship object fields (e.g., user) are typed as optional to

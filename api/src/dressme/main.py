@@ -1,7 +1,7 @@
 import io
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Literal, Sequence, cast
+from typing import Annotated, Any, Literal, Sequence, cast
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -23,7 +23,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
-from replicate.client import Client
+from replicate.client import Client  # type: ignore
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
@@ -68,7 +68,9 @@ app.add_middleware(
 
 
 def get_current_user(
-    *, jwt_payload=Security(verify_token), session: Session = Depends(get_session)
+    *,
+    jwt_payload: dict[str, Any] = Security(verify_token),
+    session: Session = Depends(get_session),
 ) -> db.User:
     auth0_user_id = jwt_payload["sub"]
 
@@ -129,15 +131,18 @@ def get_wearables(
     )
 
     # Get all wearables and the associated WearableOnAvatarImage (or None)
-    results = session.exec(
-        select(db.Wearable, woa_image_subquery.columns.id)
-        .where(db.Wearable.user_id == current_user.id)
-        .outerjoin(
-            woa_image_subquery,
-            db.Wearable.wearable_image_id
-            == woa_image_subquery.columns.wearable_image_id,  # type: ignore
-        )
-    ).all()
+    results = cast(
+        list[tuple[db.Wearable, UUID | None]],
+        session.exec(
+            select(db.Wearable, woa_image_subquery.columns.id)
+            .where(db.Wearable.user_id == current_user.id)
+            .outerjoin(
+                woa_image_subquery,
+                db.Wearable.wearable_image_id
+                == woa_image_subquery.columns.wearable_image_id,  # type: ignore
+            )
+        ).all(),
+    )
 
     return [
         Wearable(
@@ -432,7 +437,7 @@ def get_outfits(
         ).all(),
     )
 
-    api_outfits = []
+    api_outfits: list[Outfit] = []
     for outfit in outfits:
         assert outfit.top is not None
         assert outfit.bottom is not None

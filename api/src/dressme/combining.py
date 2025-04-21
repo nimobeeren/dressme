@@ -1,3 +1,5 @@
+# type: ignore
+
 from PIL import Image
 from PIL.Image import Image as ImageType
 

@@ -160,7 +160,10 @@ def get_wearable_image(
     wearable = cast(
         db.Wearable | None,
         session.exec(
-            select(db.Wearable).options(joinedload(db.Wearable.wearable_image))  # type: ignore
+            select(db.Wearable)
+            .where(db.Wearable.wearable_image_id == wearable_image_id)
+            .where(db.Wearable.user_id == current_user.id)
+            .options(joinedload(db.Wearable.wearable_image))  # type: ignore
         ).one_or_none(),
     )
 

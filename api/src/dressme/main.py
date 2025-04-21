@@ -2,6 +2,7 @@ import io
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal, Sequence
+import typing
 from uuid import UUID
 
 import requests
@@ -85,7 +86,9 @@ def get_current_user(
 
         # Add user
         print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
-        current_user = db.User(auth0_user_id=auth0_user_id, avatar_image=avatar_image)
+        current_user = db.User(
+            auth0_user_id=auth0_user_id, avatar_image_id=avatar_image.id
+        )
         session.add(current_user)
         session.commit()
 
@@ -155,12 +158,15 @@ def get_wearable_image(
     current_user: db.User = Depends(get_current_user),
 ) -> bytes:
     # Check if a wearable exists with the given image ID and belongs to the current user
-    wearable = session.exec(
-        select(db.Wearable)
-        .where(db.Wearable.wearable_image_id == wearable_image_id)
-        .where(db.Wearable.user_id == current_user.id)
-        .options(joinedload(db.Wearable.wearable_image))  # Eager load the image data
-    ).first()
+    wearable = typing.cast(
+        db.Wearable,
+        session.exec(
+            select(db.Wearable)
+            .where(db.Wearable.wearable_image_id == wearable_image_id)
+            .where(db.Wearable.user_id == current_user.id)
+            .options(joinedload(db.Wearable.wearable_image))  # type: ignore
+        ).one(),
+    )
 
     if wearable is None:
         # Return 404 if the wearable doesn't exist or doesn't belong to the user
@@ -195,6 +201,8 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
 
         # Generate an image of the avatar wearing the wearable
         print("Generating WOA image")
+        assert wearable.wearable_image is not None
+        assert user.avatar_image is not None
         woa_image_url = replicate.run(
             "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
             input={
@@ -235,9 +243,11 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         mask_image_response.raise_for_status()
 
         print("Saving results to DB")
+        assert user.avatar_image is not None
+        assert wearable.wearable_image is not None
         woa_image = db.WearableOnAvatarImage(
-            avatar_image=user.avatar_image,
-            wearable_image=wearable.wearable_image,
+            avatar_image_id=user.avatar_image.id,
+            wearable_image_id=wearable.wearable_image.id,
             image_data=woa_image_response.content,
             mask_image_data=mask_image_response.content,
         )
@@ -286,7 +296,7 @@ def create_wearables(
         wearable = db.Wearable(
             category=item_category,
             description=item_description if item_description != "" else None,
-            wearable_image=wearable_image,
+            wearable_image_id=wearable_image.id,
             user_id=current_user.id,
         )
         wearables.append(wearable)
@@ -323,11 +333,14 @@ def get_outfit_image(
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
 ) -> bytes:
-    user = session.exec(
-        select(db.User)
-        .where(db.User.id == current_user.id)
-        .options(joinedload(db.User.avatar_image))
-    ).one()
+    user = typing.cast(
+        db.User,
+        session.exec(
+            select(db.User)
+            .where(db.User.id == current_user.id)
+            .options(joinedload(db.User.avatar_image))  # type: ignore
+        ).one(),
+    )
     top_on_avatar = session.exec(
         select(db.WearableOnAvatarImage)
         .join(
@@ -362,6 +375,7 @@ def get_outfit_image(
     if top_on_avatar is None or bottom_on_avatar is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
 
+    assert user.avatar_image is not None
     avatar_im = Image.open(io.BytesIO(user.avatar_image.image_data))
     top_im = Image.open(io.BytesIO(top_on_avatar.image_data))
     bottom_im = Image.open(io.BytesIO(bottom_on_avatar.image_data))
@@ -403,12 +417,15 @@ def get_outfits(
     completed_ids = {woa.wearable_image_id for woa in woa_images}
 
     # Fetch outfits along with the top and bottom wearables
-    outfits = session.exec(
-        select(db.Outfit)
-        .where(db.Outfit.user_id == current_user.id)
-        .options(joinedload(db.Outfit.top))
-        .options(joinedload(db.Outfit.bottom))
-    ).all()
+    outfits = typing.cast(
+        list[db.Outfit],
+        session.exec(
+            select(db.Outfit)
+            .where(db.Outfit.user_id == current_user.id)
+            .options(joinedload(db.Outfit.top))  # type: ignore
+            .options(joinedload(db.Outfit.bottom))  # type: ignore
+        ).all(),
+    )
 
     api_outfits = []
     for outfit in outfits:

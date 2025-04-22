@@ -41,6 +41,78 @@ def client_fixture(session: Session):
     app.dependency_overrides.clear()
 
 
+class TestUpdateAvatarImage:
+    def test_success(self, session: Session, client: TestClient):
+        # Create user and initial avatar image
+        initial_avatar_data = b"initial_avatar"
+        avatar_image = db.AvatarImage(image_data=initial_avatar_data)
+        session.add(avatar_image)
+        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        session.add(user)
+        session.commit()
+        initial_avatar_id = avatar_image.id
+
+        # New avatar data to upload
+        new_avatar_data = test_webp_image_data
+
+        # Make request to update avatar image
+        response = client.put(
+            "/images/avatars/me",
+            files={"image": ("new_avatar.webp", new_avatar_data, "image/webp")},
+        )
+
+        # Assert response status code
+        assert response.status_code == 200
+
+        # Refresh user object to get updated relationships
+        session.refresh(user)
+
+        # Assert database state
+        # Check that the user's avatar image ID has changed
+        assert user.avatar_image_id is not None
+        assert user.avatar_image_id != initial_avatar_id
+
+        # Check the new avatar image data
+        updated_avatar_image = session.get(db.AvatarImage, user.avatar_image_id)
+        assert updated_avatar_image is not None
+        assert updated_avatar_image.image_data == new_avatar_data
+
+        # Check that the old avatar image is deleted
+        old_avatar_image = session.get(db.AvatarImage, initial_avatar_id)
+        assert old_avatar_image is None
+
+    def test_success_first_avatar(self, session: Session, client: TestClient):
+        # Create user without an initial avatar image
+        user = db.User(auth0_user_id=current_user_id, avatar_image_id=None)
+        session.add(user)
+        session.commit()
+        assert user.avatar_image_id is None
+
+        # New avatar data to upload
+        new_avatar_data = test_webp_image_data
+
+        # Make request to update avatar image
+        response = client.put(
+            "/images/avatars/me",
+            files={"image": ("new_avatar.webp", new_avatar_data, "image/webp")},
+        )
+
+        # Assert response status code
+        assert response.status_code == 200
+
+        # Refresh user object to get updated relationships
+        session.refresh(user)
+
+        # Assert database state
+        # Check that the user now has an avatar image ID
+        assert user.avatar_image_id is not None
+
+        # Check the new avatar image data
+        new_avatar_image = session.get(db.AvatarImage, user.avatar_image_id)
+        assert new_avatar_image is not None
+        assert new_avatar_image.image_data == new_avatar_data
+
+
 class TestGetWearables:
     def test_success(self, session: Session, client: TestClient):
         # Create user and avatar

@@ -79,29 +79,36 @@ def get_current_user(
     ).one_or_none()
 
     if current_user is None:
-        # Add avatar image
-        # TODO: get avatar during onboarding flow (there is currently no way for new users to upload an avatar)
-        ROOT_PATH = Path(__file__).parent.parent.parent.parent
-        image_path = ROOT_PATH / Path("images/humans/model.jpg")
-        with open(image_path, "rb") as image_file:
-            avatar_image = db.AvatarImage(image_data=image_file.read())
-            session.add(avatar_image)
-
         # Add user
         print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
-        current_user = db.User(
-            auth0_user_id=auth0_user_id, avatar_image_id=avatar_image.id
-        )
+        current_user = db.User(auth0_user_id=auth0_user_id)
         session.add(current_user)
         session.commit()
 
     return current_user
 
 
-class User(BaseModel):
-    id: UUID
-    auth0_user_id: str
-    avatar_image_url: str
+@app.put("/images/avatars/me")
+def update_avatar_image(
+    *,
+    image: UploadFile,
+    session: Session = Depends(get_session),
+    current_user: db.User = Depends(get_current_user),
+):
+    # Check if the user already has an avatar image
+    if current_user.avatar_image is not None:
+        # Delete the old avatar image
+        session.delete(current_user.avatar_image)
+
+    # Create a new avatar image
+    new_avatar_image = db.AvatarImage(image_data=image.file.read())
+    session.add(new_avatar_image)
+
+    # Update the user's avatar image
+    current_user.avatar_image = new_avatar_image
+    session.commit()
+
+    return Response(status_code=status.HTTP_200_OK)
 
 
 class Wearable(BaseModel):

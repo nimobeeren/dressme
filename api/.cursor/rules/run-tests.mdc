@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-After changing code, always run tests using the command from the README.

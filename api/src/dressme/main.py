@@ -1,6 +1,5 @@
 import io
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Annotated, Any, Literal, Sequence, cast
 from urllib.parse import urlparse
 from uuid import UUID

@@ -3,7 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { HelpCircleIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 
-export function NotFound() {
+export function NotFoundPage() {
   const navigate = useNavigate();
 
   return (

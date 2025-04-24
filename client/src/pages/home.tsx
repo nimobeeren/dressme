@@ -3,17 +3,24 @@ import { AuthenticatedImage } from "@/components/authenticated-image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCreateOutfit, useDeleteOutfit, useOutfits, useWearables } from "@/hooks/api";
+import { useCreateOutfit, useDeleteOutfit, useMe, useOutfits, useWearables } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import { CircleAlertIcon, HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  HourglassIcon,
+  LoaderCircleIcon,
+  PlusIcon,
+  SquareUserIcon,
+  StarIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
 // TODO: seems like the first wearable that is added is immediately active, which causes an error when the outfit image is being requested because there is no WOA image yet
 
-export function Home() {
+export function HomePage() {
   const { data: wearables, isPending, error } = useWearables();
 
   if (isPending) {
@@ -40,7 +47,10 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [activeTopId, setActiveTopId] = useState(tops.at(0)?.id);
   const [activeBottomId, setActiveBottomId] = useState(bottoms.at(0)?.id);
 
+  // TODO: move to parent component?
+  const { data: me } = useMe();
   const { data: outfits } = useOutfits();
+
   const { mutate: createOutfit } = useCreateOutfit();
   const { mutate: deleteOutfit } = useDeleteOutfit();
   const activeOutfit =
@@ -63,16 +73,29 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
         >
           <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
         </Button>
-        {activeTopId && activeBottomId ? (
-          <AuthenticatedImage
-            src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
-            className="h-full"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center px-8">
-            <p className="text-center">Select a top and bottom to see your outfit preview.</p>
-          </div>
-        )}
+        <div className="aspect-3/4 h-full">
+          {me?.has_avatar_image === false ? (
+            <div className="flex h-full flex-col items-center justify-center gap-4">
+              <p className="text-center">
+                Upload a pic of yourself to see how your outfits look on you.
+              </p>
+              <Button asChild>
+                <Link to="/avatar">
+                  Upload <SquareUserIcon className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          ) : activeTopId && activeBottomId ? (
+            <AuthenticatedImage
+              src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center px-8">
+              <p className="text-center">Select a top and bottom to see your outfit preview.</p>
+            </div>
+          )}
+        </div>
       </div>
       <form className="h-full max-h-[75%] w-full max-w-96">
         <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">

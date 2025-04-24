@@ -16,6 +16,8 @@ Start a development server:
 pnpm run dev
 ```
 
+You can then view the app at `http://localhost:5173/`.
+
 ### Generating API client
 
 A TypeScript client is generated in `./src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:

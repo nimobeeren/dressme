@@ -3,10 +3,14 @@ import {
   createOutfit,
   createWearables,
   deleteOutfit,
+  getMe,
   getOutfits,
   getWearables,
+  updateAvatarImage,
   type BodyCreateWearables,
+  type BodyUpdateAvatarImage,
   type Outfit,
+  type User,
   type Wearable,
 } from "@/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,12 +33,59 @@ client.setConfig({
   },
 });
 
+export function useMe() {
+  return useQuery<User>({
+    queryKey: ["me"],
+    queryFn: async () => {
+      const result = await getMe();
+      return result.data;
+    },
+  });
+}
+
+export function useUpdateAvatarImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (image: BodyUpdateAvatarImage["image"]) => {
+      await updateAvatarImage({ body: { image } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
+
 export function useWearables() {
   return useQuery<Wearable[]>({
     queryKey: ["wearables"],
     queryFn: async () => {
       const result = await getWearables();
       return result.data;
+    },
+  });
+}
+
+type WearablesInput = Array<{
+  category: BodyCreateWearables["category"][0];
+  description?: BodyCreateWearables["description"][0];
+  image: BodyCreateWearables["image"][0];
+}>;
+
+export function useCreateWearables() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (wearables: WearablesInput) => {
+      const formData = {
+        category: wearables.map((wearable) => wearable.category),
+        // Description can't be undefined because of HTTP form data limitations when sending
+        // multiple items
+        description: wearables.map((wearable) => wearable.description || ""),
+        image: wearables.map((wearable) => wearable.image),
+      };
+      await createWearables({ body: formData });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wearables"] });
     },
   });
 }
@@ -74,31 +125,6 @@ export function useDeleteOutfit() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });
-    },
-  });
-}
-
-type WearablesInput = Array<{
-  category: BodyCreateWearables["category"][0];
-  description?: BodyCreateWearables["description"][0];
-  image: BodyCreateWearables["image"][0];
-}>;
-
-export function useCreateWearables() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (wearables: WearablesInput) => {
-      const formData = {
-        category: wearables.map((wearable) => wearable.category),
-        // Description can't be undefined because of HTTP form data limitations when sending
-        // multiple items
-        description: wearables.map((wearable) => wearable.description || ""),
-        image: wearables.map((wearable) => wearable.image),
-      };
-      await createWearables({ body: formData });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wearables"] });
     },
   });
 }

@@ -87,7 +87,7 @@ def get_current_user(
     return current_user
 
 
-class Me(BaseModel):
+class User(BaseModel):
     id: UUID
     has_avatar_image: bool
 
@@ -96,8 +96,8 @@ class Me(BaseModel):
 def get_me(
     *,
     current_user: db.User = Depends(get_current_user),
-) -> Me:
-    return Me(
+) -> User:
+    return User(
         id=current_user.id,
         has_avatar_image=current_user.avatar_image is not None,
     )
@@ -110,6 +110,7 @@ def update_avatar_image(
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
 ):
+    # TODO: replacing an existing avatar image should probably not be allowed?
     # Check if the user already has an avatar image
     if current_user.avatar_image is not None:
         # Delete the old avatar image

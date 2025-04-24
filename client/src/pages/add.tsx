@@ -31,7 +31,7 @@ const formSchema = z.object({
     .min(1),
 });
 
-export function Add() {
+export function AddPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 

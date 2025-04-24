@@ -94,6 +94,38 @@ class TestGetCurrentUser:
         assert newly_fetched_user.id is not None  # ID should be populated after commit
 
 
+class TestGetMe:
+    def test_success(self, session: Session, client: TestClient):
+        # Create user and initial avatar image
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
+        session.add(user)
+        session.commit()
+
+        # Make request to get user info
+        response = client.get("/users/me")
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": str(user.id),
+            "has_avatar_image": True,
+        }
+
+    def test_success_no_avatar_image(self, session: Session, client: TestClient):
+        # Create user without an avatar image
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=None)
+        session.add(user)
+        session.commit()
+
+        # Make request to get user info
+        response = client.get("/users/me")
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": str(user.id),
+            "has_avatar_image": False,
+        }
+
+
 class TestUpdateAvatarImage:
     def test_success(self, session: Session, client: TestClient):
         # Create user and initial avatar image

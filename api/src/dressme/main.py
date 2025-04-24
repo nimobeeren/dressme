@@ -87,6 +87,22 @@ def get_current_user(
     return current_user
 
 
+class Me(BaseModel):
+    id: UUID
+    has_avatar_image: bool
+
+
+@app.get("/users/me")
+def get_me(
+    *,
+    current_user: db.User = Depends(get_current_user),
+) -> Me:
+    return Me(
+        id=current_user.id,
+        has_avatar_image=current_user.avatar_image is not None,
+    )
+
+
 @app.put("/images/avatars/me")
 def update_avatar_image(
     *,

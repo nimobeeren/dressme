@@ -12,5 +12,50 @@
   ],
   "settings": {
     "workbench.colorTheme": "Light Pink"
+  },
+  "tasks": {
+    "version":"2.0.0",
+    "tasks": [
+      {
+        "label": "Run API and Client Dev",
+        "dependsOn": ["Start API Server", "Start Client Dev Server"],
+        "runOptions": {
+          "runOn": "folderOpen"
+        },
+        "dependsOrder": "parallel",
+        "presentation": {
+          "reveal": "never"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Start API Server",
+        "type": "shell",
+        "command": "uv run fastapi dev src/dressme/main.py",
+        "options": {
+          "cwd": "${workspaceFolder:api}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "devServers"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Start Client Server",
+        "type": "shell",
+        "command": "pnpm run dev",
+        "options": {
+          "cwd": "${workspaceFolder:client}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "devServers"
+        },
+        "problemMatcher": []
+      }
+    ]
   }
 }

@@ -23,6 +23,7 @@ from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
 from replicate.client import Client  # type: ignore
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
@@ -78,11 +79,21 @@ def get_current_user(
     ).one_or_none()
 
     if current_user is None:
-        # Add user
-        print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
-        current_user = db.User(auth0_user_id=auth0_user_id)
-        session.add(current_user)
-        session.commit()
+        try:
+            print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
+            current_user = db.User(auth0_user_id=auth0_user_id)
+            session.add(current_user)
+            session.commit()
+            session.refresh(current_user)
+        except IntegrityError:
+            # Handle race condition: another request created the user concurrentl
+            print(
+                f"User creation failed due to integrity error (likely race condition) for auth0_user_id: {repr(auth0_user_id)}"
+            )
+            session.rollback()
+            current_user = session.exec(
+                select(db.User).where(db.User.auth0_user_id == auth0_user_id)
+            ).one()
 
     return current_user
 

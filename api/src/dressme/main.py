@@ -121,11 +121,12 @@ def update_avatar_image(
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
 ):
-    # TODO: replacing an existing avatar image should probably not be allowed?
     # Check if the user already has an avatar image
     if current_user.avatar_image is not None:
-        # Delete the old avatar image
-        session.delete(current_user.avatar_image)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="It's currently not possible to replace an existing avatar image.",
+        )
 
     # Create a new avatar image
     new_avatar_image = db.AvatarImage(image_data=image.file.read())

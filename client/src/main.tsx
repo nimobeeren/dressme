@@ -10,7 +10,7 @@ import { AuthProvider } from "./components/auth-provider";
 import "./index.css";
 import { NotFoundPage } from "./pages/404";
 import { AddPage } from "./pages/add";
-import { AvatarPage } from "./pages/avatar";
+import { WelcomePage } from "./pages/welcome";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +39,7 @@ function App() {
           <Routes>
             <Route index Component={withAuthenticationRequired(HomePage)} />
             <Route path="/add" Component={withAuthenticationRequired(AddPage)} />
-            <Route path="/avatar" Component={withAuthenticationRequired(AvatarPage)} />
+            <Route path="/welcome" Component={withAuthenticationRequired(WelcomePage)} />
             <Route path="*" Component={NotFoundPage} />
           </Routes>
         </AuthProvider>

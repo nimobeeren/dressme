@@ -9,7 +9,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { WearableCategoryFormField } from "@/components/wearable-category-form-field";
 import { useCreateWearables } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +39,9 @@ export function AddPage() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      wearables: [],
+    },
   });
 
   const { fields, replace } = useFieldArray({
@@ -94,35 +97,9 @@ export function AddPage() {
               <Card key={wearable.id} className="flex flex-row">
                 <img src={wearable.preview} className="aspect-3/4 h-64 object-cover" />
                 <div className="space-y-8 p-8">
-                  <FormField
+                  <WearableCategoryFormField
                     control={form.control}
                     name={`wearables.${index}.category`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            className="flex space-x-4"
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="upper_body" />
-                              </FormControl>
-                              <FormLabel>Top</FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="lower_body" />
-                              </FormControl>
-                              <FormLabel>Bottom</FormLabel>
-                            </FormItem>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
                   />
                   <FormField
                     control={form.control}
@@ -130,7 +107,10 @@ export function AddPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Description</FormLabel>
-                        <Input {...field} />
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />

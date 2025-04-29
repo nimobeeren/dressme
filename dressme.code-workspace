@@ -17,8 +17,8 @@
     "version":"2.0.0",
     "tasks": [
       {
-        "label": "Run API and Client Dev",
-        "dependsOn": ["Start API Server", "Start Client Dev Server"],
+        "label": "Start API and Client Servers",
+        "dependsOn": ["Start API Server", "Start Client Server"],
         "runOptions": {
           "runOn": "folderOpen"
         },
@@ -37,8 +37,7 @@
         },
         "presentation": {
           "reveal": "always",
-          "panel": "dedicated",
-          "group": "devServers"
+          "panel": "dedicated"
         },
         "problemMatcher": []
       },
@@ -51,8 +50,7 @@
         },
         "presentation": {
           "reveal": "always",
-          "panel": "dedicated",
-          "group": "devServers"
+          "panel": "dedicated"
         },
         "problemMatcher": []
       }

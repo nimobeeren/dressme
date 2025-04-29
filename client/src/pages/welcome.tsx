@@ -14,7 +14,7 @@ import { useCreateWearables, useMe, useUpdateAvatarImage } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useFieldArray, useForm, useWatch, type Control } from "react-hook-form";
 import { Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 
@@ -33,17 +33,12 @@ const formSchema = z.object({
 });
 
 export function WelcomePage() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
+  const { data: me } = useMe();
   const { mutateAsync: updateAvatarImage, isPending: isAvatarUploadPending } =
     useUpdateAvatarImage();
   const { mutateAsync: createWearables, isPending: isWearablesUploadPending } =
     useCreateWearables();
-
   const isPending = isAvatarUploadPending || isWearablesUploadPending;
-
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,25 +47,14 @@ export function WelcomePage() {
       wearables: [],
     },
   });
-  const imageFile = useWatch({ control: form.control, name: "image" });
-
   const { fields, replace } = useFieldArray({
     control: form.control,
     name: "wearables",
   });
 
-  useEffect(() => {
-    if (imageFile instanceof File) {
-      const url = URL.createObjectURL(imageFile);
-      setImagePreview(url);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setImagePreview(null);
-    }
-  }, [imageFile]);
-
-  const { data: me } = useMe();
   if (me?.has_avatar_image) {
     return <Navigate to="/" />;
   }
@@ -128,31 +112,7 @@ export function WelcomePage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold">1. Upload a pic of yourself</h2>
-            <FormField
-              control={form.control}
-              name="image"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          field.onChange(e.target.files.item(0));
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {imagePreview && (
-              <div className="w-64 overflow-hidden rounded-md">
-                <img src={imagePreview} alt="Image Preview" className="object-fit" />
-              </div>
-            )}
+            <AvatarUploader formControl={form.control} />
           </section>
 
           <section className="space-y-4">
@@ -193,5 +153,52 @@ export function WelcomePage() {
         </form>
       </Form>
     </div>
+  );
+}
+
+function AvatarUploader({ formControl }: { formControl: Control<any> }) {
+  const [imageObjectURL, setImageObjectURL] = useState<string | null>(null);
+
+  const imageFile = useWatch({ control: formControl, name: "image" });
+
+  useEffect(() => {
+    if (imageFile instanceof File) {
+      const url = URL.createObjectURL(imageFile);
+      setImageObjectURL(url);
+
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setImageObjectURL(null);
+    }
+  }, [imageFile]);
+
+  return (
+    <>
+      <FormField
+        control={formControl}
+        name="image"
+        render={({ field }) => (
+          <FormItem>
+            <FormControl>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    field.onChange(e.target.files.item(0));
+                  }
+                }}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      {imageObjectURL && (
+        <div className="w-64 overflow-hidden rounded-md">
+          <img src={imageObjectURL} alt="Image Preview" className="object-fit" />
+        </div>
+      )}
+    </>
   );
 }

@@ -10,12 +10,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { WearableCategoryFormField } from "@/components/wearable-category-form-field";
-import { useCreateWearables, useUpdateAvatarImage } from "@/hooks/api";
+import { useCreateWearables, useMe, useUpdateAvatarImage } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 
 const formSchema = z.object({
@@ -69,6 +69,11 @@ export function WelcomePage() {
       setImagePreview(null);
     }
   }, [imageFile]);
+
+  const { data: me } = useMe();
+  if (me?.has_avatar_image) {
+    return <Navigate to="/" />;
+  }
 
   function onWearablesFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();

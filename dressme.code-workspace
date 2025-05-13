@@ -14,7 +14,7 @@
     "workbench.colorTheme": "Light Pink"
   },
   "tasks": {
-    "version":"2.0.0",
+    "version": "2.0.0",
     "tasks": [
       {
         "label": "Start API and Client Servers",
@@ -31,26 +31,30 @@
       {
         "label": "Start API Server",
         "type": "shell",
-        "command": "uv run fastapi dev src/dressme/main.py",
+        // Wrap command in some magic to keep the shell open after interrupting the process
+        "command": "trap '' INT; uv run fastapi dev src/dressme/main.py ; $SHELL",
         "options": {
           "cwd": "${workspaceFolder:api}"
         },
         "presentation": {
           "reveal": "always",
-          "panel": "dedicated"
+          "panel": "dedicated",
+          "close": false
         },
         "problemMatcher": []
       },
       {
         "label": "Start Client Server",
         "type": "shell",
-        "command": "pnpm run dev",
+        // Wrap command in some magic to keep the shell open after interrupting the process
+        "command": "trap '' INT; pnpm run dev ; $SHELL",
         "options": {
           "cwd": "${workspaceFolder:client}"
         },
         "presentation": {
           "reveal": "always",
-          "panel": "dedicated"
+          "panel": "dedicated",
+          "close": false
         },
         "problemMatcher": []
       }

@@ -59,6 +59,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
 
   return (
     <div className="flex h-screen items-center justify-center gap-16">
+      {/* Outfit preview */}
       <div className="relative h-full shrink-0">
         <Button
           variant="ghost"
@@ -97,6 +98,8 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           )}
         </div>
       </div>
+
+      {/* Wearables picker */}
       <form className="h-full max-h-[75%] w-full max-w-96">
         <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">
           <div className="flex justify-between">
@@ -302,7 +305,7 @@ function WearableList({
                 wearable.wearable_image_url,
                 import.meta.env.VITE_API_BASE_URL,
               ).toString()}
-              className="aspect-3/4 object-cover"
+              className="aspect-3/4 min-w-full object-cover"
             />
           </RadioGroup.Item>
         );

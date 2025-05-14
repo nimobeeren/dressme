@@ -150,6 +150,8 @@ export function WelcomePage() {
             <FormItem>
               <div className="grid grid-cols-2 gap-4">
                 {fields.map((wearable, index) => (
+                  // LEFT HERE
+                  // TODO: add remove button
                   <Card key={wearable.id} className="flex h-64 flex-row">
                     <img src={wearable.preview} className="aspect-3/4 object-cover" />
                     <div className="space-y-4 overflow-y-auto px-6 py-4">
@@ -167,7 +169,7 @@ export function WelcomePage() {
                               <Input {...field} />
                             </FormControl>
                             <FormDescription>
-                              One or two words describing the type of item.
+                              One or two words describing the item (like shirt or pants).
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -258,42 +260,47 @@ function AvatarPicker({ formControl }: { formControl: Control<FormFieldValues> }
           control={formControl}
           name="avatarImageCrop"
           render={({ field }) => (
-            <FormControl>
-              <ReactCrop
-                crop={crop}
-                onChange={(_, percentCrop) => field.onChange(percentCrop)}
-                aspect={3 / 4}
-                ruleOfThirds
-                className="max-h-[75vh]"
-              >
-                <img
-                  src={imageObjectURL}
-                  alt="Crop preview of your pic"
-                  onLoad={async (e) => {
-                    const { naturalWidth: width, naturalHeight: height } = e.currentTarget;
+            <FormItem>
+              <FormControl>
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => field.onChange(percentCrop)}
+                  aspect={3 / 4}
+                  ruleOfThirds
+                  className="max-h-[75vh]"
+                >
+                  <img
+                    src={imageObjectURL}
+                    alt="Crop preview of your pic"
+                    onLoad={async (e) => {
+                      const { naturalWidth: width, naturalHeight: height } = e.currentTarget;
 
-                    // Clean up old bitmap if it exists
-                    let bitmap = form.getValues("avatarImageBitmap");
-                    if (bitmap) {
-                      bitmap.close();
-                    }
+                      // Clean up old bitmap if it exists
+                      let bitmap = form.getValues("avatarImageBitmap");
+                      if (bitmap) {
+                        bitmap.close();
+                      }
 
-                    // Create new bitmap
-                    bitmap = await createImageBitmap(e.currentTarget);
-                    form.setValue("avatarImageBitmap", bitmap);
+                      // Create new bitmap
+                      bitmap = await createImageBitmap(e.currentTarget);
+                      form.setValue("avatarImageBitmap", bitmap);
 
-                    // Initialize the crop to maximum size, centered and with 3/4 aspect ratio
-                    const crop = centerCrop(
-                      makeAspectCrop({ unit: "%", height: 100 }, 3 / 4, width, height),
-                      width,
-                      height,
-                    );
+                      // Initialize the crop to maximum size, centered and with 3/4 aspect ratio
+                      const crop = centerCrop(
+                        makeAspectCrop({ unit: "%", height: 100 }, 3 / 4, width, height),
+                        width,
+                        height,
+                      );
 
-                    field.onChange(crop);
-                  }}
-                />
-              </ReactCrop>
-            </FormControl>
+                      field.onChange(crop);
+                    }}
+                  />
+                </ReactCrop>
+              </FormControl>
+              <FormDescription>
+                You can crop the pic if you want to. It has to be this aspect ratio though.
+              </FormDescription>
+            </FormItem>
           )}
         />
       ) : null}

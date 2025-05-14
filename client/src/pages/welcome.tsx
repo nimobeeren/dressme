@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,7 +22,7 @@ import { Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 
 const formSchema = z.object({
-  avatarImageFile: z.instanceof(File),
+  avatarImageFile: z.instanceof(File, { message: "A picture is required to continue" }),
   /** Raw uncropped image data. */
   avatarImageBitmap: z.instanceof(ImageBitmap),
   /** Matches {@link PercentCrop} type. */
@@ -32,16 +33,14 @@ const formSchema = z.object({
     height: z.number(),
     unit: z.literal("%"),
   }),
-  wearables: z
-    .array(
-      z.object({
-        file: z.instanceof(File),
-        preview: z.string(),
-        category: z.enum(["upper_body", "lower_body"]),
-        description: z.string(),
-      }),
-    )
-    .min(1),
+  wearables: z.array(
+    z.object({
+      file: z.instanceof(File),
+      preview: z.string(),
+      category: z.enum(["upper_body", "lower_body"]),
+      description: z.string().min(1, { message: "Required" }),
+    }),
+  ),
 });
 type FormFieldValues = z.infer<typeof formSchema>;
 
@@ -123,24 +122,46 @@ export function WelcomePage() {
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="mb-6 text-3xl font-bold">Welcome! Let's get started</h1>
+    <div className="mx-auto max-w-4xl p-12">
+      <div className="mb-12 flex justify-center">
+        <p className="text-muted-foreground">Welcome to dressme! Let's get you started.</p>
+      </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">1. Upload a pic of yourself</h2>
+            <h2 className="text-2xl font-semibold">
+              <span className="mr-2 inline-block h-8 w-8 rounded-full bg-primary text-center text-primary-foreground">
+                1
+              </span>
+              Upload a picture of yourself
+            </h2>
             <AvatarPicker formControl={form.control} />
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">2. Add some clothes</h2>
-            <Input type="file" multiple accept="image/*" onChange={onWearablesFileInputChange} />
-
+            <h2 className="text-2xl font-semibold">
+              <span className="mr-2 inline-block h-8 w-8 rounded-full bg-primary text-center text-primary-foreground">
+                2
+              </span>
+              Add some pics of your clothes
+            </h2>
+            <FormItem>
+              <Input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={onWearablesFileInputChange}
+                className="max-w-64"
+              />
+              <FormDescription>
+                These can be product images or just quick snaps. You can always add more later.
+              </FormDescription>
+            </FormItem>
             <div className="grid grid-cols-2 gap-4">
               {fields.map((wearable, index) => (
-                <Card key={wearable.id} className="flex flex-row">
-                  <img src={wearable.preview} className="aspect-3/4 h-64 object-cover" />
-                  <div className="space-y-8 p-8">
+                <Card key={wearable.id} className="flex h-64 flex-row">
+                  <img src={wearable.preview} className="aspect-3/4 object-cover" />
+                  <div className="space-y-4 px-6 py-4">
                     <WearableCategoryFormField
                       control={form.control}
                       name={`wearables.${index}.category`}
@@ -164,8 +185,8 @@ export function WelcomePage() {
             </div>
           </section>
 
-          <Button type="submit" disabled={isPending}>
-            Upload All
+          <Button type="submit" disabled={isPending} className="w-full">
+            Done
           </Button>
         </form>
       </Form>
@@ -208,8 +229,13 @@ function AvatarPicker({ formControl }: { formControl: Control<FormFieldValues> }
                     field.onChange(e.target.files.item(0));
                   }
                 }}
+                className="max-w-64"
               />
             </FormControl>
+            <FormDescription>
+              This can be any picture that contains your full body, but it shouldn't contain other
+              people. Be aware that this picture currently <b>cannot be changed</b> after uploading.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -219,40 +245,42 @@ function AvatarPicker({ formControl }: { formControl: Control<FormFieldValues> }
           control={formControl}
           name="avatarImageCrop"
           render={({ field }) => (
-            <ReactCrop
-              crop={crop}
-              onChange={(_, percentCrop) => field.onChange(percentCrop)}
-              aspect={3 / 4}
-              ruleOfThirds
-              className="max-h-[75vh]"
-            >
-              <img
-                src={imageObjectURL}
-                alt="Crop preview of your pic"
-                onLoad={async (e) => {
-                  const { naturalWidth: width, naturalHeight: height } = e.currentTarget;
+            <FormControl>
+              <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => field.onChange(percentCrop)}
+                aspect={3 / 4}
+                ruleOfThirds
+                className="max-h-[75vh]"
+              >
+                <img
+                  src={imageObjectURL}
+                  alt="Crop preview of your pic"
+                  onLoad={async (e) => {
+                    const { naturalWidth: width, naturalHeight: height } = e.currentTarget;
 
-                  // Clean up old bitmap if it exists
-                  let bitmap = form.getValues("avatarImageBitmap");
-                  if (bitmap) {
-                    bitmap.close();
-                  }
+                    // Clean up old bitmap if it exists
+                    let bitmap = form.getValues("avatarImageBitmap");
+                    if (bitmap) {
+                      bitmap.close();
+                    }
 
-                  // Create new bitmap
-                  bitmap = await createImageBitmap(e.currentTarget);
-                  form.setValue("avatarImageBitmap", bitmap);
+                    // Create new bitmap
+                    bitmap = await createImageBitmap(e.currentTarget);
+                    form.setValue("avatarImageBitmap", bitmap);
 
-                  // Initialize the crop to maximum size, centered and with 3/4 aspect ratio
-                  const crop = centerCrop(
-                    makeAspectCrop({ unit: "%", height: 100 }, 3 / 4, width, height),
-                    width,
-                    height,
-                  );
+                    // Initialize the crop to maximum size, centered and with 3/4 aspect ratio
+                    const crop = centerCrop(
+                      makeAspectCrop({ unit: "%", height: 100 }, 3 / 4, width, height),
+                      width,
+                      height,
+                    );
 
-                  field.onChange(crop);
-                }}
-              />
-            </ReactCrop>
+                    field.onChange(crop);
+                  }}
+                />
+              </ReactCrop>
+            </FormControl>
           )}
         />
       ) : null}

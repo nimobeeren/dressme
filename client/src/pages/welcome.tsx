@@ -14,6 +14,7 @@ import { WearableCategoryFormField } from "@/components/wearable-category-form-f
 import { useCreateWearables, useMe, useUpdateAvatarImage } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm, useFormContext, useWatch, type Control } from "react-hook-form";
 import ReactCrop, { centerCrop, makeAspectCrop, type PercentCrop } from "react-image-crop";
@@ -61,7 +62,7 @@ export function WelcomePage() {
       wearables: [],
     },
   });
-  const { fields, replace } = useFieldArray({
+  const { fields, append } = useFieldArray({
     control: form.control,
     name: "wearables",
   });
@@ -76,7 +77,7 @@ export function WelcomePage() {
   function onWearablesFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();
     if (e.target.files) {
-      replace(
+      append(
         Array.from(e.target.files).map((file) => ({
           file,
           preview: URL.createObjectURL(file),
@@ -145,44 +146,56 @@ export function WelcomePage() {
               </span>
               Add some pics of your clothes
             </h2>
+            <FormItem></FormItem>
             <FormItem>
-              <Input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={onWearablesFileInputChange}
-                className="max-w-64"
-              />
+              <div className="grid grid-cols-2 gap-4">
+                {fields.map((wearable, index) => (
+                  <Card key={wearable.id} className="flex h-64 flex-row">
+                    <img src={wearable.preview} className="aspect-3/4 object-cover" />
+                    <div className="space-y-4 overflow-y-auto px-6 py-4">
+                      <WearableCategoryFormField
+                        control={form.control}
+                        name={`wearables.${index}.category`}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`wearables.${index}.description`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              One or two words describing the type of item.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </Card>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="relative aspect-3/4 h-64 border-2 p-4 text-6xl text-foreground"
+                  tabIndex={-1}
+                >
+                  <PlusIcon className="!size-12" />
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={onWearablesFileInputChange}
+                    className="absolute inset-0 text-[0px] text-transparent file:hidden"
+                  />
+                </Button>
+              </div>
               <FormDescription>
                 These can be product images or just quick snaps. You can always add more later.
               </FormDescription>
             </FormItem>
-            <div className="grid grid-cols-2 gap-4">
-              {fields.map((wearable, index) => (
-                <Card key={wearable.id} className="flex h-64 flex-row">
-                  <img src={wearable.preview} className="aspect-3/4 object-cover" />
-                  <div className="space-y-4 px-6 py-4">
-                    <WearableCategoryFormField
-                      control={form.control}
-                      name={`wearables.${index}.category`}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`wearables.${index}.description`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </Card>
-              ))}
-            </div>
           </section>
 
           <Button type="submit" disabled={isPending} className="w-full">

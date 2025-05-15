@@ -28,8 +28,11 @@ dev = [
     "pyright>=1.1.399",
 ]
 
+[project.scripts]
+seed = "dressme.db.seed:seed"
+
 [tool.uv]
-package = false
+package = true
 
 [build-system]
 requires = ["hatchling"]

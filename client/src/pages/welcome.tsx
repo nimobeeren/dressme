@@ -1,20 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Form,
   FormControl,
   FormDescription,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { WearableCategoryFormField } from "@/components/wearable-category-form-field";
+import { WearableAddCard } from "@/components/ui/wearable-add-card";
+import { WearableFileInputButton } from "@/components/ui/wearable-file-input-button";
 import { useCreateWearables, useMe, useUpdateAvatarImage } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm, useFormContext, useWatch, type Control } from "react-hook-form";
 import ReactCrop, { centerCrop, makeAspectCrop, type PercentCrop } from "react-image-crop";
@@ -146,59 +144,18 @@ export function WelcomePage() {
               </span>
               Add some pics of your clothes
             </h2>
-            <FormItem></FormItem>
             <FormItem>
               <div className="grid grid-cols-2 gap-4">
                 {wearablesFieldArray.fields.map((wearable, index) => (
-                  <Card key={wearable.id} className="group relative flex h-64 flex-row">
-                    <img src={wearable.preview} className="aspect-3/4 object-cover" />
-                    <div className="space-y-4 overflow-y-auto px-6 py-4">
-                      <WearableCategoryFormField
-                        control={form.control}
-                        name={`wearables.${index}.category`}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`wearables.${index}.description`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              One or two words describing the item (like shirt or pants).
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => wearablesFieldArray.remove(index)}
-                      className="absolute right-2 top-2 z-10 size-10 -translate-y-1/2 translate-x-1/2 rounded-full opacity-0 duration-75 group-focus-within:opacity-100 group-hover:opacity-100"
-                    >
-                      <Trash2Icon className="!size-6" />
-                    </Button>
-                  </Card>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  tabIndex={-1}
-                  className="relative aspect-3/4 h-64 border-2 p-4 text-6xl text-foreground"
-                >
-                  <PlusIcon className="!size-12" />
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={onWearablesFileInputChange}
-                    className="absolute inset-0 text-[0px] text-transparent file:hidden"
+                  <WearableAddCard
+                    key={wearable.id}
+                    name={`wearables.${index}`}
+                    previewSrc={wearable.preview}
+                    control={form.control}
+                    onRemove={() => wearablesFieldArray.remove(index)}
                   />
-                </Button>
+                ))}
+                <WearableFileInputButton onChange={onWearablesFileInputChange} />
               </div>
               <FormDescription>
                 These can be product images or just quick snaps. You can always add more later.

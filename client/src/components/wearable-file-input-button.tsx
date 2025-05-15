@@ -1,5 +1,5 @@
 import { PlusIcon } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "./ui/button";
 
 export interface WearableFileInputButtonProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;

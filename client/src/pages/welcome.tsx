@@ -8,8 +8,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { WearableAddCard } from "@/components/ui/wearable-add-card";
-import { WearableFileInputButton } from "@/components/ui/wearable-file-input-button";
+import { WearableAddCard } from "@/components/wearable-add-card";
+import { WearableFileInputButton } from "@/components/wearable-file-input-button";
 import { useCreateWearables, useMe, useUpdateAvatarImage } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";

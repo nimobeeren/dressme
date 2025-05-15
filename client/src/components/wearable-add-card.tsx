@@ -1,10 +1,17 @@
 import { Trash2Icon } from "lucide-react";
 import type { Control } from "react-hook-form";
-import { WearableCategoryFormField } from "../wearable-category-form-field";
-import { Button } from "./button";
-import { Card } from "./card";
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "./form";
-import { Input } from "./input";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "./ui/form";
+import { Input } from "./ui/input";
+import { WearableCategoryFormField } from "./wearable-category-form-field";
 
 export interface WearableAddCardProps {
   /** Name of the form field (e.g. `wearables.0` or `wearables.1). */

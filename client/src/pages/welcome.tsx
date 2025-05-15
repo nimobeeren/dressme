@@ -14,7 +14,7 @@ import { WearableCategoryFormField } from "@/components/wearable-category-form-f
 import { useCreateWearables, useMe, useUpdateAvatarImage } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm, useFormContext, useWatch, type Control } from "react-hook-form";
 import ReactCrop, { centerCrop, makeAspectCrop, type PercentCrop } from "react-image-crop";
@@ -62,7 +62,7 @@ export function WelcomePage() {
       wearables: [],
     },
   });
-  const { fields, append } = useFieldArray({
+  const wearablesFieldArray = useFieldArray({
     control: form.control,
     name: "wearables",
   });
@@ -77,7 +77,7 @@ export function WelcomePage() {
   function onWearablesFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();
     if (e.target.files) {
-      append(
+      wearablesFieldArray.append(
         Array.from(e.target.files).map((file) => ({
           file,
           preview: URL.createObjectURL(file),
@@ -149,10 +149,8 @@ export function WelcomePage() {
             <FormItem></FormItem>
             <FormItem>
               <div className="grid grid-cols-2 gap-4">
-                {fields.map((wearable, index) => (
-                  // LEFT HERE
-                  // TODO: add remove button
-                  <Card key={wearable.id} className="flex h-64 flex-row">
+                {wearablesFieldArray.fields.map((wearable, index) => (
+                  <Card key={wearable.id} className="group relative flex h-64 flex-row">
                     <img src={wearable.preview} className="aspect-3/4 object-cover" />
                     <div className="space-y-4 overflow-y-auto px-6 py-4">
                       <WearableCategoryFormField
@@ -176,13 +174,21 @@ export function WelcomePage() {
                         )}
                       />
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => wearablesFieldArray.remove(index)}
+                      className="absolute right-2 top-2 z-10 size-10 -translate-y-1/2 translate-x-1/2 rounded-full opacity-0 duration-75 group-focus-within:opacity-100 group-hover:opacity-100"
+                    >
+                      <Trash2Icon className="!size-6" />
+                    </Button>
                   </Card>
                 ))}
                 <Button
                   type="button"
                   variant="outline"
-                  className="relative aspect-3/4 h-64 border-2 p-4 text-6xl text-foreground"
                   tabIndex={-1}
+                  className="relative aspect-3/4 h-64 border-2 p-4 text-6xl text-foreground"
                 >
                   <PlusIcon className="!size-12" />
                   <input

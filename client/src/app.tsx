@@ -56,10 +56,7 @@ export function App() {
 /** Force the user to go through onboarding if they haven't already. */
 function ForceWelcome({ children }: { children: React.ReactNode }) {
   const match = useMatch({ path: "/welcome" });
-  const { data: me, isFetching, isPending, isStale, error } = useMe();
-
-  console.log({ isFetching, isPending, isStale, error });
-  console.log({ hasAvatarImage: me?.has_avatar_image, match });
+  const { data: me, isPending, error } = useMe();
 
   if (isPending) {
     return <LoaderCircleIcon className="h-16 w-16 animate-spin" />;

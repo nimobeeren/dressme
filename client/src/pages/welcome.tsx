@@ -89,35 +89,31 @@ export function WelcomePage() {
   async function onSubmit(data: FormFieldValues) {
     const croppedImage = await cropImage(data.avatarImageBitmap, data.avatarImageCrop);
 
-    // Kick off both mutations in parallel
-    const avatarUploadPromise = updateAvatarImage(croppedImage);
-    const wearablesUploadPromise = createWearables(
-      data.wearables.map(({ category, description, file }) => ({
-        category: category,
-        description: description,
-        image: file,
-      })),
-    );
+    await updateAvatarImage(croppedImage);
 
-    // Wait for both mutations to finish
-    const [avatarUploadResult, _] = await Promise.allSettled([
-      avatarUploadPromise,
-      wearablesUploadPromise,
-    ]);
-
-    // If avatar upload succeeded, we're good to continue
-    // If wearable upload failed, it's not ideal but not a blocker
-    // (error message should be shown and user can add wearables later)
-    // TODO: if avatar fails but wearables succeed, the user will probably upload the same wearables
-    // again, leading to duplicates. We can't easily roll back either because image generation has
-    // likely already been kicked off. Need to build a better solution.
-    if (avatarUploadResult.status === "fulfilled") {
-      navigate("/");
+    try {
+      await createWearables(
+        data.wearables.map(({ category, description, file }) => ({
+          category: category,
+          description: description,
+          image: file,
+        })),
+      );
+    } catch (e) {
       toast({
-        title: "Success!",
-        description: "Here's your brand new wardrobe ✨",
+        title: "Hmmm",
+        description:
+          "Failed to upload your clothes, but your selfie still made it through. Try adding your clothing items again.",
       });
     }
+
+    // As long as avatar update succeeded, we're good to continue. If wearable upload failed, it's
+    // not ideal but not a blocker (error message should be shown and user can add wearables later)
+    navigate("/");
+    toast({
+      title: "Tada!",
+      description: "Here's your brand new wardrobe ✨",
+    });
   }
 
   return (

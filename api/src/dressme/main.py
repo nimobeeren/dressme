@@ -1,5 +1,6 @@
 import io
 from contextlib import asynccontextmanager
+import logging
 from typing import Annotated, Any, Literal, Sequence, cast
 from urllib.parse import urlparse
 from uuid import UUID
@@ -34,6 +35,12 @@ from .settings import get_settings
 
 settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def get_session():
@@ -80,14 +87,14 @@ def get_current_user(
 
     if current_user is None:
         try:
-            print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
+            logging.info(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
             current_user = db.User(auth0_user_id=auth0_user_id)
             session.add(current_user)
             session.commit()
             session.refresh(current_user)
         except IntegrityError:
             # Handle race condition: another request created the user concurrentl
-            print(
+            logging.error(
                 f"User creation failed due to integrity error (likely race condition) for auth0_user_id: {repr(auth0_user_id)}"
             )
             session.rollback()
@@ -236,7 +243,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
     """
 
     with Session(db.engine) as session:
-        print("Starting WOA generation")
+        logging.info("Starting WOA generation")
         user = session.exec(select(db.User).where(db.User.id == user_id)).one()
         wearable = session.exec(
             select(db.Wearable)
@@ -245,7 +252,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         ).one()
 
         # Generate an image of the avatar wearing the wearable
-        print("Generating WOA image")
+        logging.info("Generating WOA image")
         assert wearable.wearable_image is not None
         assert user.avatar_image is not None
         woa_image_url_raw = replicate.run(
@@ -260,7 +267,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         woa_image_url = urlparse(str(woa_image_url_raw)).geturl()
 
         # Get a mask of the wearable on the avatar using an image segmentation model
-        print("Generating mask")
+        logging.info("Generating mask")
         mask_results = replicate.run(
             "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
             input={
@@ -282,14 +289,14 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         if mask_image_url is None:
             raise ValueError("Could not get mask URL")
 
-        print("Fetching results")
+        logging.info("Fetching results")
         woa_image_response = requests.get(woa_image_url, stream=True)
         woa_image_response.raise_for_status()
 
         mask_image_response = requests.get(mask_image_url, stream=True)
         mask_image_response.raise_for_status()
 
-        print("Saving results to DB")
+        logging.info("Saving results to DB")
         assert user.avatar_image is not None
         assert wearable.wearable_image is not None
         woa_image = db.WearableOnAvatarImage(
@@ -300,7 +307,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         )
         session.add(woa_image)
         session.commit()
-        print("Finished generating WOA image")
+        logging.info("Finished generating WOA image")
 
 
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)

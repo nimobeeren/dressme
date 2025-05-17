@@ -135,8 +135,13 @@ def update_avatar_image(
             detail="It's currently not possible to replace an existing avatar image.",
         )
 
-    # Create a new avatar image
-    new_avatar_image = db.AvatarImage(image_data=image.file.read())
+    # Convert the image to JPG and compress
+    img = Image.open(image.file)
+    compressed_img_buf = io.BytesIO()
+    img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
+
+    # Create a new avatar image with the compressed data
+    new_avatar_image = db.AvatarImage(image_data=compressed_img_buf.getvalue())
     session.add(new_avatar_image)
 
     # Update the user's avatar image
@@ -340,7 +345,12 @@ def create_wearables(
     for item_category, item_description, item_image in zip(
         category, description, image, strict=True
     ):
-        wearable_image = db.WearableImage(image_data=item_image.file.read())
+        # Convert the image to JPG and compress
+        img = Image.open(item_image.file)
+        compressed_img_buf = io.BytesIO()
+        img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
+
+        wearable_image = db.WearableImage(image_data=compressed_img_buf.getvalue())
         session.add(wearable_image)
 
         wearable = db.Wearable(

@@ -241,6 +241,7 @@ function AvatarPicker({ formControl }: { formControl: Control<FormFieldValues> }
                       }
 
                       // Create new bitmap
+                      // TODO: this seems to create a much larger file than the original in some cases
                       bitmap = await createImageBitmap(e.currentTarget);
                       form.setValue("avatarImageBitmap", bitmap);
 

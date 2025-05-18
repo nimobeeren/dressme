@@ -1,10 +1,10 @@
 import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { HomePage } from "@/pages/home";
 import { withAuthenticationRequired } from "@auth0/auth0-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CircleAlertIcon, LoaderCircleIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useMatch } from "react-router";
 import { AuthProvider } from "./components/auth-provider";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
@@ -17,9 +17,7 @@ import { WelcomePage } from "./pages/welcome";
 const queryClient = new QueryClient();
 
 export function App() {
-  const { toast } = useToast();
-
-  useMemo(() => {
+  useEffect(() => {
     queryClient.setDefaultOptions({
       mutations: {
         onError: (error) => {
@@ -32,7 +30,7 @@ export function App() {
         },
       },
     });
-  }, [toast]);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

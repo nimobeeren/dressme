@@ -203,7 +203,7 @@ function FavoriteOutfitList({
             key={outfit.id}
             value={outfit.id}
             className={cn(
-              "relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block",
+              "relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring data-[state=checked]:before:block",
               !isCompleted && "cursor-progress",
             )}
           >
@@ -264,7 +264,7 @@ function WearableList({
             key={wearable.id}
             value={wearable.id}
             className={cn(
-              "relative overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+              "relative overflow-hidden rounded-xl outline-2 -outline-offset-2 focus-visible:outline focus-visible:outline-ring data-[state=checked]:outline",
               !isCompleted && "cursor-progress",
             )}
             onClick={(e) => {

@@ -3,22 +3,13 @@ import { AuthenticatedImage } from "@/components/authenticated-image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCreateOutfit, useDeleteOutfit, useMe, useOutfits, useWearables } from "@/hooks/api";
+import { useCreateOutfit, useDeleteOutfit, useOutfits, useWearables } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import {
-  CircleAlertIcon,
-  HourglassIcon,
-  LoaderCircleIcon,
-  PlusIcon,
-  SquareUserIcon,
-  StarIcon,
-} from "lucide-react";
+import { CircleAlertIcon, HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-
-// TODO: seems like the first wearable that is added is immediately active, which causes an error when the outfit image is being requested because there is no WOA image yet
 
 export function HomePage() {
   const { data: wearables, isPending, error } = useWearables();
@@ -44,11 +35,15 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
-  const [activeTopId, setActiveTopId] = useState(tops.at(0)?.id);
-  const [activeBottomId, setActiveBottomId] = useState(bottoms.at(0)?.id);
+  // Set active top/bottom to the first completed wearable by default
+  const [activeTopId, setActiveTopId] = useState(
+    tops.find((top) => top.generation_status === "completed")?.id,
+  );
+  const [activeBottomId, setActiveBottomId] = useState(
+    bottoms.find((bottom) => bottom.generation_status === "completed")?.id,
+  );
 
   // TODO: move to parent component?
-  const { data: me } = useMe();
   const { data: outfits } = useOutfits();
 
   const { mutate: createOutfit } = useCreateOutfit();
@@ -75,18 +70,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
         </Button>
         <div className="aspect-3/4 h-full">
-          {me?.has_avatar_image === false ? (
-            <div className="flex h-full flex-col items-center justify-center gap-4">
-              <p className="text-center">
-                Upload a pic of yourself to see how your outfits look on you.
-              </p>
-              <Button asChild>
-                <Link to="/avatar">
-                  Upload <SquareUserIcon className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          ) : activeTopId && activeBottomId ? (
+          {activeTopId && activeBottomId ? (
             <AuthenticatedImage
               src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
               className="h-full w-full object-cover"
@@ -211,7 +195,7 @@ function FavoriteOutfitList({
       className="grid grid-cols-2 content-start gap-4"
     >
       {outfits.map((outfit) => {
-        const isReady =
+        const isCompleted =
           outfit.top.generation_status === "completed" &&
           outfit.bottom.generation_status === "completed";
         return (
@@ -220,10 +204,10 @@ function FavoriteOutfitList({
             value={outfit.id}
             className={cn(
               "relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block",
-              !isReady && "cursor-progress",
+              !isCompleted && "cursor-progress",
             )}
           >
-            {!isReady && (
+            {!isCompleted && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-muted/50">
                 <div className="rounded-full bg-muted p-4">
                   <HourglassIcon className="size-12 stroke-foreground" />
@@ -274,17 +258,17 @@ function WearableList({
       className="grid grid-cols-2 content-start gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
       {wearables.map((wearable) => {
-        const isReady = wearable.generation_status === "completed";
+        const isCompleted = wearable.generation_status === "completed";
         return (
           <RadioGroup.Item
             key={wearable.id}
             value={wearable.id}
             className={cn(
               "relative overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-              !isReady && "cursor-progress",
+              !isCompleted && "cursor-progress",
             )}
             onClick={(e) => {
-              if (!isReady) {
+              if (!isCompleted) {
                 e.preventDefault();
                 toast({
                   title: "Just a sec!",
@@ -293,7 +277,7 @@ function WearableList({
               }
             }}
           >
-            {!isReady && (
+            {!isCompleted && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
                 <div className="rounded-full bg-muted p-4">
                   <HourglassIcon className="size-12 stroke-foreground" />

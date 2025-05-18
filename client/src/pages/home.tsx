@@ -12,26 +12,36 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 export function HomePage() {
-  const { data: wearables, isPending, error } = useWearables();
+  const { data: wearables, isPending: wearablesIsPending, error: wearablesError } = useWearables();
+  const { data: outfits, isPending: outfitsIsPending, error: outfitsError } = useOutfits();
 
-  if (isPending) {
+  if (wearablesIsPending || outfitsIsPending) {
     return <LoaderCircleIcon className="h-16 w-16 animate-spin" />;
   }
 
-  if (error) {
+  if (wearablesError || outfitsError) {
     return (
       <Alert variant={"destructive"}>
         <CircleAlertIcon className="h-4 w-4" />
         <AlertTitle>Something went wrong</AlertTitle>
-        <AlertDescription>{error.message}</AlertDescription>
+        <AlertDescription>
+          {[wearablesError, outfitsError]
+            .filter(Boolean)
+            .map((error) => error!.message)
+            .join("\n\n")}
+        </AlertDescription>
       </Alert>
     );
   }
 
-  return <OutfitPicker wearables={wearables} />;
+  return <Picker wearables={wearables} outfits={outfits} />;
 }
 
-function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
+/**
+ * Lets the user pick wearables and outfits and shows a preview of the selected items on the
+ * user's avatar.
+ */
+function Picker({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
@@ -42,9 +52,6 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   const [activeBottomId, setActiveBottomId] = useState(
     bottoms.find((bottom) => bottom.generation_status === "completed")?.id,
   );
-
-  // TODO: move to parent component?
-  const { data: outfits } = useOutfits();
 
   const { mutate: createOutfit } = useCreateOutfit();
   const { mutate: deleteOutfit } = useDeleteOutfit();
@@ -103,7 +110,7 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           </div>
           <div className="min-h-full w-full grow overflow-y-auto">
             <TabsContent value="favorites" className="h-full">
-              <FavoriteOutfitList
+              <OutfitList
                 outfits={outfits}
                 activeOutfit={activeOutfit}
                 onOutfitChange={({ topId, bottomId }) => {
@@ -133,24 +140,17 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
   );
 }
 
-function FavoriteOutfitList({
+function OutfitList({
   outfits,
   activeOutfit,
   onOutfitChange,
 }: {
-  outfits?: Outfit[];
+  outfits: Outfit[];
   activeOutfit?: Outfit;
   onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;
 }) {
   const { toast } = useToast();
 
-  if (!outfits) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <LoaderCircleIcon className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
   if (outfits.length === 0) {
     return (
       <div className="flex min-h-[33%] items-center justify-center px-8">

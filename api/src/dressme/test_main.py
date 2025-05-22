@@ -14,6 +14,8 @@ test_user_id = "auth0|1"
 
 # Minimal valid WebP image data
 test_webp_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
+# JPEG header data
+test_jpeg_header_data = b"\xff\xd8\xff"
 
 
 @pytest.fixture(name="session")
@@ -156,7 +158,8 @@ class TestUpdateAvatarImage:
         # Check the new avatar image data
         new_avatar_image = session.get(db.AvatarImage, user.avatar_image_id)
         assert new_avatar_image is not None
-        assert new_avatar_image.image_data == new_avatar_data
+        # Verify it's a JPEG by checking the header
+        assert new_avatar_image.image_data.startswith(test_jpeg_header_data)
 
     def test_already_exists(self, session: Session, client: TestClient):
         # Create user and initial avatar image
@@ -369,7 +372,8 @@ class TestCreateWearables:
                 db.WearableImage.id == wearable_1.wearable_image_id
             )
         ).one()
-        assert wearable_image_1.image_data == test_image_data_1
+        # Verify it's a JPEG by checking the header
+        assert wearable_image_1.image_data.startswith(test_jpeg_header_data)
 
         # Verify database state for second wearable
         wearable_2 = session.exec(
@@ -384,7 +388,8 @@ class TestCreateWearables:
                 db.WearableImage.id == wearable_2.wearable_image_id
             )
         ).one()
-        assert wearable_image_2.image_data == test_image_data_2
+        # Verify it's a JPEG by checking the header
+        assert wearable_image_2.image_data.startswith(test_jpeg_header_data)
 
         # WOA image creation should have been triggered twice
         assert mock_create_woa_image.call_count == 2

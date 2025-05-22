@@ -1,20 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Form, FormDescription, FormItem } from "@/components/ui/form";
+import { WearableAddCard } from "@/components/wearable-add-card";
+import { WearableFileInputButton } from "@/components/wearable-file-input-button";
 import { useCreateWearables } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeftIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { CheckIcon, CircleSlashIcon, LoaderCircleIcon } from "lucide-react";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 
@@ -25,13 +17,13 @@ const formSchema = z.object({
         file: z.instanceof(File),
         preview: z.string(),
         category: z.enum(["upper_body", "lower_body"]),
-        description: z.string(),
+        description: z.string().min(1, { message: "Required" }),
       }),
     )
     .min(1),
 });
 
-export function Add() {
+export function AddPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -39,17 +31,22 @@ export function Add() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      wearables: [],
+    },
   });
 
-  const { fields, replace } = useFieldArray({
+  const wearablesFieldArray = useFieldArray({
     control: form.control,
     name: "wearables",
   });
 
+  const wearables = useWatch({ control: form.control, name: "wearables" });
+
   function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();
     if (e.target.files) {
-      replace(
+      wearablesFieldArray.replace(
         Array.from(e.target.files).map((file) => ({
           file,
           preview: URL.createObjectURL(file),
@@ -83,75 +80,47 @@ export function Add() {
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="mb-6 text-3xl font-bold">Add Your Clothes</h1>
+    <div className="mx-auto max-w-4xl p-12">
+      <div className="mb-12 flex justify-center">
+        <p className="text-muted-foreground">Let's add some clothes!</p>
+      </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Input type="file" multiple accept="image/*" onChange={onFileInputChange} />
-
-          <div className="grid grid-cols-2 gap-4">
-            {fields.map((wearable, index) => (
-              <Card key={wearable.id} className="flex flex-row">
-                <img src={wearable.preview} className="aspect-3/4 h-64 object-cover" />
-                <div className="space-y-8 p-8">
-                  <FormField
-                    control={form.control}
-                    name={`wearables.${index}.category`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            className="flex space-x-4"
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="upper_body" />
-                              </FormControl>
-                              <FormLabel>Top</FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value="lower_body" />
-                              </FormControl>
-                              <FormLabel>Bottom</FormLabel>
-                            </FormItem>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`wearables.${index}.description`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <Input {...field} />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </Card>
-            ))}
-          </div>
-          <div className="grid w-full max-w-2xl grid-cols-2 gap-4">
-            <Button className="col-span-1" variant="outline" type="button" asChild>
+          <FormItem>
+            <div className="grid grid-cols-2 gap-4">
+              {wearablesFieldArray.fields.map((wearable, index) => (
+                <WearableAddCard
+                  key={wearable.id}
+                  name={`wearables.${index}`}
+                  previewSrc={wearable.preview}
+                  control={form.control}
+                  onRemove={() => wearablesFieldArray.remove(index)}
+                />
+              ))}
+              <WearableFileInputButton onChange={onFileInputChange} />
+            </div>
+            <FormDescription>These can be product images or just quick snaps.</FormDescription>
+          </FormItem>
+          <div className="grid w-full grid-cols-2 gap-4">
+            <Button
+              asChild
+              type="button"
+              disabled={isPending}
+              variant="outline"
+              className="col-span-1"
+            >
               <Link to="/">
-                <ChevronLeftIcon />
-                Back
+                Cancel
+                <CircleSlashIcon />
               </Link>
             </Button>
             <Button
-              className="col-span-1"
               type="submit"
-              disabled={isPending || fields.length === 0}
+              disabled={isPending || wearables.length === 0}
+              className="col-span-1"
             >
-              Add
-              {isPending ? <LoaderCircleIcon className="animate-spin" /> : <PlusIcon />}
+              Done
+              {isPending ? <LoaderCircleIcon className="animate-spin" /> : <CheckIcon />}
             </Button>
           </div>
         </form>

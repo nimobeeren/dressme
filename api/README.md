@@ -18,10 +18,10 @@ This will start a development server on `http://localhost:8000`.
 
 ### Adding test data
 
-When you first start the backend, the database will be empty. To add some test data, you should set the `AUTH0_SEED_USER_ID` environment variable, then run the seed script:
+When you first start the backend, the database will be empty. To add some test data, you should set the `AUTH0_SEED_USER_ID` environment variable (in your `.env` file or your shell), then run the seed script:
 
 ```bash
-uv run -m dressme.db.seed
+uv run seed
 ```
 
 This will add some wearables to the database stored in the `dressme.db` file.

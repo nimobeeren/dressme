@@ -1,72 +1,122 @@
-import type { Outfit, Wearable } from "@/api";
+import { type Outfit, type Wearable } from "@/api";
 import { AuthenticatedImage } from "@/components/authenticated-image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCreateOutfit, useDeleteOutfit, useOutfits, useWearables } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { CircleAlertIcon, HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
-import { useState } from "react";
+import { useForm, useFormContext, useWatch } from "react-hook-form";
 import { Link } from "react-router";
 
-// TODO: seems like the first wearable that is added is immediately active, which causes an error when the outfit image is being requested because there is no WOA image yet
+export function HomePage() {
+  const { data: wearables, isPending: wearablesIsPending, error: wearablesError } = useWearables();
+  const { data: outfits, isPending: outfitsIsPending, error: outfitsError } = useOutfits();
 
-export function Home() {
-  const { data: wearables, isPending, error } = useWearables();
-
-  if (isPending) {
+  if (wearablesIsPending || outfitsIsPending) {
     return <LoaderCircleIcon className="h-16 w-16 animate-spin" />;
   }
 
-  if (error) {
+  if (wearablesError || outfitsError) {
     return (
       <Alert variant={"destructive"}>
         <CircleAlertIcon className="h-4 w-4" />
         <AlertTitle>Something went wrong</AlertTitle>
-        <AlertDescription>{error.message}</AlertDescription>
+        <AlertDescription>
+          {[wearablesError, outfitsError]
+            .filter(Boolean)
+            .map((error) => error!.message)
+            .join("\n\n")}
+        </AlertDescription>
       </Alert>
     );
   }
 
-  return <OutfitPicker wearables={wearables} />;
+  return <Main wearables={wearables} outfits={outfits} />;
 }
 
-function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
+type FormFieldValues = {
+  topId?: Wearable["id"];
+  bottomId?: Wearable["id"];
+};
+
+/**
+ * Lets the user pick wearables and outfits and shows a generated image of the selected items on the
+ * user's avatar.
+ */
+function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[] }) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
-  const [activeTopId, setActiveTopId] = useState(tops.at(0)?.id);
-  const [activeBottomId, setActiveBottomId] = useState(bottoms.at(0)?.id);
+  const form = useForm<FormFieldValues>({
+    defaultValues: {
+      // Default top/bottom to the first completed one, if it exists
+      topId: tops.find((top) => top.generation_status === "completed")?.id,
+      bottomId: bottoms.find((bottom) => bottom.generation_status === "completed")?.id,
+    },
+  });
 
-  const { data: outfits } = useOutfits();
-  const { mutate: createOutfit } = useCreateOutfit();
-  const { mutate: deleteOutfit } = useDeleteOutfit();
-  const activeOutfit =
-    outfits &&
-    outfits.find((outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId);
+  const activeTopId = useWatch({ control: form.control, name: "topId" });
+  const activeBottomId = useWatch({ control: form.control, name: "bottomId" });
+
+  // The outfit is not a form value, instead it is derived from the top/bottom form values.
+  // This makes it easier to keep them in sync; we only need to set the top/bottom when selecting
+  // an outfit, and the outfit is automatically set when top/bottom are selected.
+  const activeOutfit = outfits.find(
+    (outfit) => outfit.top.id === activeTopId && outfit.bottom.id === activeBottomId,
+  );
 
   return (
-    <div className="flex h-screen items-center justify-center gap-16">
-      <div className="relative h-full shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-4"
-          disabled={!activeTopId || !activeBottomId}
-          onClick={() =>
-            activeOutfit
-              ? deleteOutfit(activeOutfit.id)
-              : createOutfit({ topId: activeTopId!, bottomId: activeBottomId! })
-          }
-        >
-          <StarIcon className={cn("!size-6", activeOutfit && "fill-current")} />
-        </Button>
+    <Form {...form}>
+      <form className="flex h-screen items-center justify-center gap-16">
+        <Preview
+          activeTopId={activeTopId}
+          activeBottomId={activeBottomId}
+          activeOutfitId={activeOutfit?.id}
+        />
+        <Picker tops={tops} bottoms={bottoms} outfits={outfits} activeOutfitId={activeOutfit?.id} />
+      </form>
+    </Form>
+  );
+}
+
+/** Shows a generated image of the active wearables/outfit on the user's avatar. */
+function Preview({
+  activeTopId,
+  activeBottomId,
+  activeOutfitId,
+}: {
+  activeTopId: string | undefined;
+  activeBottomId: string | undefined;
+  activeOutfitId: string | undefined;
+}) {
+  const { mutate: createOutfit } = useCreateOutfit();
+  const { mutate: deleteOutfit } = useDeleteOutfit();
+
+  return (
+    <div className="relative h-full shrink-0">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute right-4 top-4"
+        disabled={!activeTopId || !activeBottomId}
+        onClick={() =>
+          activeOutfitId
+            ? deleteOutfit(activeOutfitId)
+            : createOutfit({ topId: activeTopId!, bottomId: activeBottomId! })
+        }
+      >
+        <StarIcon className={cn("!size-6", activeOutfitId && "fill-current")} />
+      </Button>
+      <div className="aspect-3/4 h-full">
         {activeTopId && activeBottomId ? (
           <AuthenticatedImage
             src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
-            className="h-full"
+            className="h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center px-8">
@@ -74,73 +124,66 @@ function OutfitPicker({ wearables }: { wearables: Wearable[] }) {
           </div>
         )}
       </div>
-      <form className="h-full max-h-[75%] w-full max-w-96">
-        <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">
-          <div className="flex justify-between">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="favorites">
-                <StarIcon className="h-4 w-4 fill-current" aria-label="favorites" />
-              </TabsTrigger>
-              <TabsTrigger value="tops">Tops</TabsTrigger>
-              <TabsTrigger value="bottoms">Bottoms</TabsTrigger>
-            </TabsList>
-            <Button asChild>
-              <Link to="/add">
-                Add
-                <PlusIcon />
-              </Link>
-            </Button>
-          </div>
-          <div className="min-h-full w-full grow overflow-y-auto">
-            <TabsContent value="favorites" className="h-full">
-              <FavoriteOutfitList
-                outfits={outfits}
-                activeOutfit={activeOutfit}
-                onOutfitChange={({ topId, bottomId }) => {
-                  setActiveTopId(topId);
-                  setActiveBottomId(bottomId);
-                }}
-              />
-            </TabsContent>
-            <TabsContent value="tops" className="z-100 relative">
-              <WearableList
-                value={activeTopId}
-                onValueChange={(value) => setActiveTopId(value)}
-                wearables={tops}
-              />
-            </TabsContent>
-            <TabsContent value="bottoms">
-              <WearableList
-                value={activeBottomId}
-                onValueChange={(value) => setActiveBottomId(value)}
-                wearables={bottoms}
-              />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </form>
     </div>
   );
 }
 
-function FavoriteOutfitList({
+/** Lets the user pick wearables or an outfit. */
+function Picker({
+  tops,
+  bottoms,
   outfits,
-  activeOutfit,
-  onOutfitChange,
+  activeOutfitId,
 }: {
-  outfits?: Outfit[];
-  activeOutfit?: Outfit;
-  onOutfitChange?: ({ topId, bottomId }: { topId: string; bottomId: string }) => void;
+  tops: Wearable[];
+  bottoms: Wearable[];
+  outfits: Outfit[];
+  activeOutfitId?: string;
 }) {
+  return (
+    <div className="h-full max-h-[75%] w-full max-w-96">
+      <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">
+        <div className="flex justify-between">
+          <TabsList className="shrink-0">
+            <TabsTrigger value="favorites">
+              <StarIcon className="h-4 w-4 fill-current" aria-label="favorites" />
+            </TabsTrigger>
+            <TabsTrigger value="tops">Tops</TabsTrigger>
+            <TabsTrigger value="bottoms">Bottoms</TabsTrigger>
+          </TabsList>
+          <Button asChild>
+            <Link to="/add">
+              Add
+              <PlusIcon />
+            </Link>
+          </Button>
+        </div>
+        <div className="min-h-full w-full grow overflow-y-auto">
+          <TabsContent value="favorites" className="h-full">
+            <OutfitList outfits={outfits} activeOutfitId={activeOutfitId} />
+          </TabsContent>
+          <TabsContent value="tops" className="z-100 relative">
+            <WearableList name="topId" wearables={tops} />
+          </TabsContent>
+          <TabsContent value="bottoms">
+            <WearableList name="bottomId" wearables={bottoms} />
+          </TabsContent>
+        </div>
+      </Tabs>
+    </div>
+  );
+}
+
+/**
+ * List of outfits which the user can pick from.
+ *
+ * This is not a form field, so it does not need a name.
+ * */
+function OutfitList({ outfits, activeOutfitId }: { outfits: Outfit[]; activeOutfitId?: string }) {
+  const form = useFormContext<FormFieldValues>();
+
   const { toast } = useToast();
 
-  if (!outfits) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <LoaderCircleIcon className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
   if (outfits.length === 0) {
     return (
       <div className="flex min-h-[33%] items-center justify-center px-8">
@@ -154,7 +197,7 @@ function FavoriteOutfitList({
 
   return (
     <RadioGroup.Root
-      value={activeOutfit?.id}
+      value={activeOutfitId}
       onValueChange={(value) => {
         const newOutfit = outfits.find((outfit) => outfit.id === value);
         if (!newOutfit) {
@@ -167,25 +210,15 @@ function FavoriteOutfitList({
           });
           return;
         }
-        if (
-          !(
-            newOutfit.top.generation_status === "completed" &&
-            newOutfit.bottom.generation_status === "completed"
-          )
-        ) {
-          toast({
-            title: "Just a sec!",
-            description:
-              "One or more items in this outfit are still being generated. Check back later!",
-          });
-          return;
-        }
-        onOutfitChange?.({ topId: newOutfit.top.id, bottomId: newOutfit.bottom.id });
+
+        // Set form values for top/bottom because they need to stay in sync with the active outfit
+        form.setValue("topId", newOutfit.top.id);
+        form.setValue("bottomId", newOutfit.bottom.id);
       }}
       className="grid grid-cols-2 content-start gap-4"
     >
       {outfits.map((outfit) => {
-        const isReady =
+        const isCompleted =
           outfit.top.generation_status === "completed" &&
           outfit.bottom.generation_status === "completed";
         return (
@@ -193,11 +226,21 @@ function FavoriteOutfitList({
             key={outfit.id}
             value={outfit.id}
             className={cn(
-              "relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring focus-visible:before:block",
-              !isReady && "cursor-progress",
+              "relative overflow-hidden rounded-xl outline-none transition-all before:absolute before:inset-0 before:z-20 before:hidden before:rounded-xl before:outline before:outline-2 before:-outline-offset-2 before:outline-ring data-[state=checked]:before:block",
+              !isCompleted && "cursor-progress",
             )}
+            onClick={(e) => {
+              if (!isCompleted) {
+                e.preventDefault();
+                toast({
+                  title: "Just a sec!",
+                  description:
+                    "One or more items in this outfit are still being generated. Check back later!",
+                });
+              }
+            }}
           >
-            {!isReady && (
+            {!isCompleted && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-muted/50">
                 <div className="rounded-full bg-muted p-4">
                   <HourglassIcon className="size-12 stroke-foreground" />
@@ -231,59 +274,77 @@ function FavoriteOutfitList({
   );
 }
 
+/**
+ * List of wearables which the user can pick from.
+ *
+ * This is a form field, so it must be given a name.
+ * */
 function WearableList({
-  value,
-  onValueChange,
+  name,
   wearables,
 }: {
-  value?: string;
-  onValueChange: (value: string) => void;
+  /** Form field name. */
+  name: keyof FormFieldValues;
   wearables: Wearable[];
 }) {
   const { toast } = useToast();
+
+  const form = useFormContext<FormFieldValues>();
+
   return (
-    <RadioGroup.Root
-      value={value}
-      onValueChange={onValueChange}
-      className="grid grid-cols-2 content-start gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-    >
-      {wearables.map((wearable) => {
-        const isReady = wearable.generation_status === "completed";
-        return (
-          <RadioGroup.Item
-            key={wearable.id}
-            value={wearable.id}
-            className={cn(
-              "relative overflow-hidden rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-              !isReady && "cursor-progress",
-            )}
-            onClick={(e) => {
-              if (!isReady) {
-                e.preventDefault();
-                toast({
-                  title: "Just a sec!",
-                  description: "This item is still being generated. Check back later!",
-                });
-              }
-            }}
-          >
-            {!isReady && (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-                <div className="rounded-full bg-muted p-4">
-                  <HourglassIcon className="size-12 stroke-foreground" />
-                </div>
-              </div>
-            )}
-            <AuthenticatedImage
-              src={new URL(
-                wearable.wearable_image_url,
-                import.meta.env.VITE_API_BASE_URL,
-              ).toString()}
-              className="aspect-3/4 object-cover"
-            />
-          </RadioGroup.Item>
-        );
-      })}
-    </RadioGroup.Root>
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field: { onChange, ...restField } }) => (
+        <FormItem>
+          <FormControl>
+            <RadioGroup.Root
+              // Renaming onChange prop because Radix uses different name for the prop
+              onValueChange={onChange}
+              {...restField}
+              className="grid grid-cols-2 content-start gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            >
+              {wearables.map((wearable) => {
+                const isCompleted = wearable.generation_status === "completed";
+                return (
+                  <RadioGroup.Item
+                    key={wearable.id}
+                    value={wearable.id}
+                    className={cn(
+                      "relative overflow-hidden rounded-xl outline-2 -outline-offset-2 focus-visible:outline focus-visible:outline-ring data-[state=checked]:outline",
+                      !isCompleted && "cursor-progress",
+                    )}
+                    onClick={(e) => {
+                      if (!isCompleted) {
+                        e.preventDefault();
+                        toast({
+                          title: "Just a sec!",
+                          description: "This item is still being generated. Check back later!",
+                        });
+                      }
+                    }}
+                  >
+                    {!isCompleted && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+                        <div className="rounded-full bg-muted p-4">
+                          <HourglassIcon className="size-12 stroke-foreground" />
+                        </div>
+                      </div>
+                    )}
+                    <AuthenticatedImage
+                      src={new URL(
+                        wearable.wearable_image_url,
+                        import.meta.env.VITE_API_BASE_URL,
+                      ).toString()}
+                      className="aspect-3/4 min-w-full object-cover"
+                    />
+                  </RadioGroup.Item>
+                );
+              })}
+            </RadioGroup.Root>
+          </FormControl>
+        </FormItem>
+      )}
+    />
   );
 }

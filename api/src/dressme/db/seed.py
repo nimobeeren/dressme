@@ -62,7 +62,7 @@ wearables_data = {
 }
 
 # Path to the repo root
-ROOT_PATH = Path(__file__).parent.parent.parent.parent
+ROOT_PATH = Path(__file__).parent.parent.parent.parent.parent
 
 
 def seed():

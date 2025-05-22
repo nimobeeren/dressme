@@ -1,6 +1,6 @@
 import io
 from contextlib import asynccontextmanager
-from pathlib import Path
+import logging
 from typing import Annotated, Any, Literal, Sequence, cast
 from urllib.parse import urlparse
 from uuid import UUID
@@ -24,6 +24,7 @@ from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
 from replicate.client import Client  # type: ignore
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
@@ -34,6 +35,12 @@ from .settings import get_settings
 
 settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def get_session():
@@ -79,29 +86,69 @@ def get_current_user(
     ).one_or_none()
 
     if current_user is None:
-        # Add avatar image
-        # TODO: get avatar during onboarding flow (there is currently no way for new users to upload an avatar)
-        ROOT_PATH = Path(__file__).parent.parent.parent.parent
-        image_path = ROOT_PATH / Path("images/humans/model.jpg")
-        with open(image_path, "rb") as image_file:
-            avatar_image = db.AvatarImage(image_data=image_file.read())
-            session.add(avatar_image)
-
-        # Add user
-        print(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
-        current_user = db.User(
-            auth0_user_id=auth0_user_id, avatar_image_id=avatar_image.id
-        )
-        session.add(current_user)
-        session.commit()
+        try:
+            logging.info(f"Creating new user with auth0_user_id: {repr(auth0_user_id)}")
+            current_user = db.User(auth0_user_id=auth0_user_id)
+            session.add(current_user)
+            session.commit()
+            session.refresh(current_user)
+        except IntegrityError:
+            # Handle race condition: another request created the user concurrentl
+            logging.error(
+                f"User creation failed due to integrity error (likely race condition) for auth0_user_id: {repr(auth0_user_id)}"
+            )
+            session.rollback()
+            current_user = session.exec(
+                select(db.User).where(db.User.auth0_user_id == auth0_user_id)
+            ).one()
 
     return current_user
 
 
 class User(BaseModel):
     id: UUID
-    auth0_user_id: str
-    avatar_image_url: str
+    has_avatar_image: bool
+
+
+@app.get("/users/me")
+def get_me(
+    *,
+    current_user: db.User = Depends(get_current_user),
+) -> User:
+    return User(
+        id=current_user.id,
+        has_avatar_image=current_user.avatar_image is not None,
+    )
+
+
+@app.put("/images/avatars/me")
+def update_avatar_image(
+    *,
+    image: UploadFile,
+    session: Session = Depends(get_session),
+    current_user: db.User = Depends(get_current_user),
+):
+    # Check if the user already has an avatar image
+    if current_user.avatar_image is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="It's currently not possible to replace an existing avatar image.",
+        )
+
+    # Convert the image to JPG and compress
+    img = Image.open(image.file)
+    compressed_img_buf = io.BytesIO()
+    img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
+
+    # Create a new avatar image with the compressed data
+    new_avatar_image = db.AvatarImage(image_data=compressed_img_buf.getvalue())
+    session.add(new_avatar_image)
+
+    # Update the user's avatar image
+    current_user.avatar_image = new_avatar_image
+    session.commit()
+
+    return Response(status_code=status.HTTP_200_OK)
 
 
 class Wearable(BaseModel):
@@ -201,7 +248,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
     """
 
     with Session(db.engine) as session:
-        print("Starting WOA generation")
+        logging.info("Starting WOA generation")
         user = session.exec(select(db.User).where(db.User.id == user_id)).one()
         wearable = session.exec(
             select(db.Wearable)
@@ -210,7 +257,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         ).one()
 
         # Generate an image of the avatar wearing the wearable
-        print("Generating WOA image")
+        logging.info("Generating WOA image")
         assert wearable.wearable_image is not None
         assert user.avatar_image is not None
         woa_image_url_raw = replicate.run(
@@ -225,7 +272,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         woa_image_url = urlparse(str(woa_image_url_raw)).geturl()
 
         # Get a mask of the wearable on the avatar using an image segmentation model
-        print("Generating mask")
+        logging.info("Generating mask")
         mask_results = replicate.run(
             "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
             input={
@@ -247,14 +294,14 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         if mask_image_url is None:
             raise ValueError("Could not get mask URL")
 
-        print("Fetching results")
+        logging.info("Fetching results")
         woa_image_response = requests.get(woa_image_url, stream=True)
         woa_image_response.raise_for_status()
 
         mask_image_response = requests.get(mask_image_url, stream=True)
         mask_image_response.raise_for_status()
 
-        print("Saving results to DB")
+        logging.info("Saving results to DB")
         assert user.avatar_image is not None
         assert wearable.wearable_image is not None
         woa_image = db.WearableOnAvatarImage(
@@ -265,7 +312,7 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         )
         session.add(woa_image)
         session.commit()
-        print("Finished generating WOA image")
+        logging.info("Finished generating WOA image")
 
 
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
@@ -298,7 +345,12 @@ def create_wearables(
     for item_category, item_description, item_image in zip(
         category, description, image, strict=True
     ):
-        wearable_image = db.WearableImage(image_data=item_image.file.read())
+        # Convert the image to JPG and compress
+        img = Image.open(item_image.file)
+        compressed_img_buf = io.BytesIO()
+        img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
+
+        wearable_image = db.WearableImage(image_data=compressed_img_buf.getvalue())
         session.add(wearable_image)
 
         wearable = db.Wearable(

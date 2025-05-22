@@ -1,15 +1,16 @@
-from uuid import UUID, uuid4
-from fastapi.testclient import TestClient
-import pytest
-from sqlmodel import Session, create_engine, SQLModel, select
-from sqlmodel.pool import StaticPool
 from unittest.mock import MagicMock, patch
+from uuid import UUID, uuid4
 
-from .main import app, get_session
-from .auth import verify_token
+import pytest
+from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel.pool import StaticPool
+
 from . import db
+from .auth import verify_token
+from .main import app, get_current_user, get_session
 
-current_user_id = "auth0|1"
+test_user_id = "auth0|1"
 
 # Minimal valid WebP image data
 test_webp_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
@@ -31,7 +32,7 @@ def client_fixture(session: Session):
         return session
 
     def verify_token_override():
-        return {"sub": current_user_id}
+        return {"sub": test_user_id}
 
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[verify_token] = verify_token_override
@@ -41,12 +42,160 @@ def client_fixture(session: Session):
     app.dependency_overrides.clear()
 
 
+class TestGetCurrentUser:
+    def test_get_current_user_existing_user(self, session: Session):
+        # Arrange: Create an existing user in the database using the fixture session
+        existing_user_in_fixture_session = db.User(auth0_user_id=test_user_id)
+        session.add(existing_user_in_fixture_session)
+        session.commit()
+        # Ensure the ID is available for assertion later
+        existing_user_id = existing_user_in_fixture_session.id
+
+        # Act: Call the function under test using a *separate* DB session
+        engine = session.get_bind()
+        with Session(engine) as test_session:
+            test_jwt_payload = {"sub": test_user_id}
+            # get_current_user should find the user committed by the fixture session
+            user_from_test_session = get_current_user(
+                jwt_payload=test_jwt_payload, session=test_session
+            )
+
+            # Assert: Check if the correct user is returned within the test_session
+            assert user_from_test_session is not None
+            # Compare ID with the one we got from the fixture session commit
+            assert user_from_test_session.id == existing_user_id
+            assert user_from_test_session.auth0_user_id == test_user_id
+
+    def test_get_current_user_new_user(self, session: Session):
+        existing_user = session.exec(
+            select(db.User).where(db.User.auth0_user_id == test_user_id)
+        ).one_or_none()
+        assert existing_user is None
+
+        # Call the function under test using a *separate* DB session
+        engine = session.get_bind()  # Get the engine from the fixture session
+        with Session(engine) as test_session:
+            test_jwt_payload = {"sub": test_user_id}
+            # This call attempts to add and commit the user within session_for_action
+            _ = get_current_user(jwt_payload=test_jwt_payload, session=test_session)
+
+        # Verify persistence using the original fixture session
+        # Expire all instances in the session to ensure the test fails if the session
+        # is not committed
+        session.expire_all()
+        newly_fetched_user = session.exec(
+            select(db.User).where(db.User.auth0_user_id == test_user_id)
+        ).one_or_none()
+
+        # This assertion will fail if the user wasn't committed to the DB
+        assert newly_fetched_user is not None
+        # Check properties of the *fetched* user
+        assert newly_fetched_user.auth0_user_id == test_user_id
+        assert newly_fetched_user.id is not None  # ID should be populated after commit
+
+
+class TestGetMe:
+    def test_success(self, session: Session, client: TestClient):
+        # Create user and initial avatar image
+        avatar_image = db.AvatarImage(image_data=b"avatar_data")
+        session.add(avatar_image)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
+        session.add(user)
+        session.commit()
+
+        # Make request to get user info
+        response = client.get("/users/me")
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": str(user.id),
+            "has_avatar_image": True,
+        }
+
+    def test_success_no_avatar_image(self, session: Session, client: TestClient):
+        # Create user without an avatar image
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=None)
+        session.add(user)
+        session.commit()
+
+        # Make request to get user info
+        response = client.get("/users/me")
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": str(user.id),
+            "has_avatar_image": False,
+        }
+
+
+class TestUpdateAvatarImage:
+    def test_success(self, session: Session, client: TestClient):
+        # Create user without an initial avatar image
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=None)
+        session.add(user)
+        session.commit()
+        assert user.avatar_image_id is None
+
+        # New avatar data to upload
+        new_avatar_data = test_webp_image_data
+
+        # Make request to update avatar image
+        response = client.put(
+            "/images/avatars/me",
+            files={"image": ("new_avatar.webp", new_avatar_data, "image/webp")},
+        )
+
+        # Assert response status code
+        assert response.status_code == 200
+
+        # Refresh user object to get updated relationships
+        session.refresh(user)
+
+        # Assert database state
+        # Check that the user now has an avatar image ID
+        assert user.avatar_image_id is not None
+
+        # Check the new avatar image data
+        new_avatar_image = session.get(db.AvatarImage, user.avatar_image_id)
+        assert new_avatar_image is not None
+        assert new_avatar_image.image_data == new_avatar_data
+
+    def test_already_exists(self, session: Session, client: TestClient):
+        # Create user and initial avatar image
+        initial_avatar_data = b"initial_avatar"
+        avatar_image = db.AvatarImage(image_data=initial_avatar_data)
+        session.add(avatar_image)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
+        session.add(user)
+        session.commit()
+        initial_avatar_id = avatar_image.id
+
+        # New avatar data to upload
+        new_avatar_data = test_webp_image_data
+
+        # Make request to update avatar image
+        response = client.put(
+            "/images/avatars/me",
+            files={"image": ("new_avatar.webp", new_avatar_data, "image/webp")},
+        )
+
+        # Assert response status code
+        assert response.status_code == 400
+
+        # Refresh user object to get updated relationships
+        session.refresh(user)
+
+        # Assert database state
+        # Check that the user's avatar image ID has not changed
+        assert user.avatar_image is not None
+        assert user.avatar_image.id == initial_avatar_id
+        assert user.avatar_image.image_data == initial_avatar_data
+
+
 class TestGetWearables:
     def test_success(self, session: Session, client: TestClient):
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
 
         # Create test wearables with images, associated with the current user
@@ -103,7 +252,7 @@ class TestGetWearables:
 
 class TestGetWearableImage:
     def _create_user_and_wearable(
-        self, session: Session, auth0_user_id: str = current_user_id
+        self, session: Session, auth0_user_id: str = test_user_id
     ):
         # Create avatar image for the user
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
@@ -146,7 +295,7 @@ class TestGetWearableImage:
             session, auth0_user_id="auth0|2"
         )
         # Create user 1 (the authenticated user)
-        _, _, _ = self._create_user_and_wearable(session, auth0_user_id=current_user_id)
+        _, _, _ = self._create_user_and_wearable(session, auth0_user_id=test_user_id)
 
         # Make request as user 1 to get wearable image belonging to user 2
         response = client.get(f"/images/wearables/{wearable_image_2.id}")
@@ -163,7 +312,7 @@ class TestCreateWearables:
         # Create user and avatar first
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
         session.commit()
 
@@ -266,7 +415,7 @@ class TestGetOutfitImage:
         session.add(avatar_image)
 
         # Create user with avatar
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
 
         # Create top wearable and its WOA image
@@ -322,7 +471,7 @@ class TestGetOutfitImage:
         # Create avatar image and user
         avatar_image = db.AvatarImage(image_data=b"")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
 
         # Create only the top wearable
@@ -349,7 +498,7 @@ class TestGetOutfitImage:
         # Create avatar image and user
         avatar_image = db.AvatarImage(image_data=b"")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
 
         # Create top wearable without WOA image
@@ -399,7 +548,7 @@ class TestGetOutfits:
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
 
         # Create top wearable (completed WOA)
@@ -467,7 +616,7 @@ class TestGetOutfits:
         # Create user but no outfits
         avatar_image = db.AvatarImage(image_data=b"")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
         session.commit()
 
@@ -482,7 +631,7 @@ class TestCreateOutfit:
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")
         session.add(avatar_image)
-        user = db.User(auth0_user_id=current_user_id, avatar_image_id=avatar_image.id)
+        user = db.User(auth0_user_id=test_user_id, avatar_image_id=avatar_image.id)
         session.add(user)
 
         # Create top wearable
@@ -655,7 +804,7 @@ class TestCreateOutfit:
 
 class TestDeleteOutfit:
     def _create_user_wearables_outfit(
-        self, session: Session, auth0_user_id: str = current_user_id
+        self, session: Session, auth0_user_id: str = test_user_id
     ):
         # Create user and avatar
         avatar_image = db.AvatarImage(image_data=b"avatar_data")

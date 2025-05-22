@@ -6,6 +6,10 @@ export type BodyCreateWearables = {
     image: Array<Blob | File>;
 };
 
+export type BodyUpdateAvatarImage = {
+    image: Blob | File;
+};
+
 export type HttpValidationError = {
     detail?: Array<ValidationError>;
 };
@@ -14,6 +18,11 @@ export type Outfit = {
     id: string;
     top: Wearable;
     bottom: Wearable;
+};
+
+export type User = {
+    id: string;
+    has_avatar_image: boolean;
 };
 
 export type ValidationError = {
@@ -28,6 +37,45 @@ export type Wearable = {
     description: string | null;
     wearable_image_url: string;
     generation_status: 'pending' | 'completed';
+};
+
+export type GetMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/users/me';
+};
+
+export type GetMeResponses = {
+    /**
+     * Successful Response
+     */
+    200: User;
+};
+
+export type GetMeResponse = GetMeResponses[keyof GetMeResponses];
+
+export type UpdateAvatarImageData = {
+    body: BodyUpdateAvatarImage;
+    path?: never;
+    query?: never;
+    url: '/images/avatars/me';
+};
+
+export type UpdateAvatarImageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateAvatarImageError = UpdateAvatarImageErrors[keyof UpdateAvatarImageErrors];
+
+export type UpdateAvatarImageResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type GetWearablesData = {
@@ -93,10 +141,8 @@ export type GetWearableImageResponses = {
     /**
      * Successful Response
      */
-    200: Blob | File;
+    200: unknown;
 };
-
-export type GetWearableImageResponse = GetWearableImageResponses[keyof GetWearableImageResponses];
 
 export type GetOutfitImageData = {
     body?: never;
@@ -121,10 +167,8 @@ export type GetOutfitImageResponses = {
     /**
      * Successful Response
      */
-    200: Blob | File;
+    200: unknown;
 };
-
-export type GetOutfitImageResponse = GetOutfitImageResponses[keyof GetOutfitImageResponses];
 
 export type DeleteOutfitData = {
     body?: never;

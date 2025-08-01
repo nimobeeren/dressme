@@ -11,6 +11,7 @@
   },
   "scripts": {
     "build": "tsc -b && vite build",
+    "deploy": "pnpm run build && wrangler deploy",
     "dev": "vite",
     "generate-client": "openapi-ts",
     "lint": "eslint .",
@@ -43,6 +44,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.11.0",
     "@eslint/js": "^9.9.0",
     "@types/node": "^22.17.0",
     "@types/react": "^18.3.3",
@@ -62,6 +64,7 @@
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.0.1",
     "vite": "^7.0.6",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "wrangler": "^4.27.0"
   }
 }

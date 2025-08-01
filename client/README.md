@@ -28,12 +28,10 @@ pnpm run generate-client
 
 Note that the API server must be running for this to work.
 
-## Building
+## Deployment
 
-Create a production build:
+Deploy to Cloudflare Workers:
 
 ```bash
-pnpm run build
+pnpm run deploy
 ```
-
-This will create a `dist` directory containing a static bundle which can be deployed somewhere.

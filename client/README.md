@@ -27,3 +27,13 @@ pnpm run generate-client
 ```
 
 Note that the API server must be running for this to work.
+
+## Building
+
+Create a production build:
+
+```bash
+pnpm run build
+```
+
+This will create a `dist` directory containing a static bundle which can be deployed somewhere.

@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.18.0"
+  },
+  "volta": {
+    "node": "22.18.0"
+  },
   "scripts": {
     "build": "tsc -b && vite build",
     "dev": "vite",
@@ -38,10 +44,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
-    "@types/node": "^22.7.4",
+    "@types/node": "^22.17.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
@@ -55,7 +61,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1",
+    "vite": "^7.0.6",
     "vitest": "^2.1.8"
   }
 }

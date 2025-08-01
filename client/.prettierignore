@@ -1,2 +1,3 @@
-pnpm-lock.yaml
+.wrangler/
 src/api/
+pnpm-lock.yaml

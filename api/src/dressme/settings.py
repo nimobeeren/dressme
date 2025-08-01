@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     AUTH0_SEED_USER_ID: str | None = None
     """Auth0 User ID of the user who should own the data added during database seeding."""
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 @lru_cache

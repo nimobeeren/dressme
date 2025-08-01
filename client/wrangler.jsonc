@@ -5,7 +5,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dressme-client",
-  "main": "worker/index.ts",
   "compatibility_date": "2025-08-01",
   "assets": {
     "not_found_handling": "single-page-application",

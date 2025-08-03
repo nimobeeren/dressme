@@ -69,3 +69,21 @@ Run the type checker:
 ```bash
 uv run pyright
 ```
+
+## Docker
+
+You can run the API in a Docker container as follows:
+
+1. Build the Docker image
+
+```sh
+docker build . -t dressme-api
+```
+
+2. Run a Docker container from the image
+
+```sh
+docker run -p 8000:8000 --env-file .env dressme-api
+```
+
+The API will then be available on `http://localhost:8000`.

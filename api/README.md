@@ -2,7 +2,11 @@
 
 ## Installation
 
-Install the [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager.
+1. Install the [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager.
+
+2. Make a copy of `.env.example` named `.env` and fill in the missing environment variables.
+
+See `src/dressme/settings.py` for more information about the environment variables.
 
 ## Development
 

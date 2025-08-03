@@ -7,5 +7,3 @@ archive/
 *.psd
 *.db
 *.db-journal
-.env*
-!.env.example

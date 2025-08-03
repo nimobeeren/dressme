@@ -63,6 +63,7 @@ app = FastAPI(
     lifespan=lifespan,
     generate_unique_id_function=custom_generate_unique_id,
     dependencies=[Security(verify_token)],  # ensures all routes require authentication
+    root_path="/api"
 )
 
 app.add_middleware(

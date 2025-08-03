@@ -15,6 +15,7 @@ dist
 dist-ssr
 *.local
 *.tsbuildinfo
+.wrangler
 
 # Local environment variables
 *.local

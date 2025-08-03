@@ -1,2 +1,2 @@
 .venv/
-.env
+# TODO: ignore .env* and use wrangler to load env vars

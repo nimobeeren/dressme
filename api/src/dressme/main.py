@@ -105,6 +105,11 @@ def get_current_user(
     return current_user
 
 
+@app.get("/healthz")
+def health():
+    return {"status": "ok"}
+
+
 class User(BaseModel):
     id: UUID
     has_avatar_image: bool

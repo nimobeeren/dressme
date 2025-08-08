@@ -32,6 +32,20 @@ export function App() {
     });
   }, []);
 
+  // Show an informational toast in production to indicate alpha status (once per session)
+  useEffect(() => {
+    if (import.meta.env.PROD) {
+      const storageKey = "alpha_notice_shown";
+      const hasShown = sessionStorage.getItem(storageKey) === "true";
+      if (!hasShown) {
+        alert(
+          "This is an alpha version of dressme. Expect your data to vanish with no notice. Have fun!",
+        );
+        sessionStorage.setItem(storageKey, "true");
+      }
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

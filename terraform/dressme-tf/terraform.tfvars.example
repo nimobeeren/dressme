@@ -1,0 +1,6 @@
+auth0_algorithms      = "<your_auth0_algorithms>"
+auth0_api_audience    = "https://dressme.fashion"
+auth0_domain          = "dev-tltqqpttqldrmx6d.us.auth0.com"
+auth0_issuer          = "https://dev-tltqqpttqldrmx6d.us.auth0.com/"
+azure_subscription_id = "<your_azure_subscription_id>"
+replicate_api_token   = "<your_replicate_api_token>"

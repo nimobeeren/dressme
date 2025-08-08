@@ -94,9 +94,10 @@ resource "azurerm_container_app" "aca" {
 
       # Readiness probe is required
       readiness_probe {
-        path      = "/healthz"
-        port      = 8000
-        transport = "HTTP"
+        path             = "/healthz"
+        port             = 8000
+        transport        = "HTTP"
+        interval_seconds = 240  # maximum
       }
     }
 

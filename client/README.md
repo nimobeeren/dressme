@@ -27,3 +27,11 @@ pnpm run generate-client
 ```
 
 Note that the API server must be running for this to work.
+
+## Deployment
+
+Deploy to Cloudflare Workers:
+
+```bash
+pnpm run deploy
+```

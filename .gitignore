@@ -1,11 +1,2 @@
 .DS_Store
-__pycache__/
-
 .vscode/
-
-archive/
-*.psd
-*.db
-*.db-journal
-.env*
-!.env.example

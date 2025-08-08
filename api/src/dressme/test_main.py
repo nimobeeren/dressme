@@ -44,6 +44,13 @@ def client_fixture(session: Session):
     app.dependency_overrides.clear()
 
 
+class TestHealth:
+    def test_health(self, client: TestClient):
+        response = client.get("/healthz")
+        assert response.status_code == 200
+
+
+
 class TestGetCurrentUser:
     def test_get_current_user_existing_user(self, session: Session):
         # Arrange: Create an existing user in the database using the fixture session

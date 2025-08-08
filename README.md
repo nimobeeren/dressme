@@ -8,20 +8,22 @@ https://github.com/user-attachments/assets/0fa75362-c705-416c-bdb5-738ddb5e8c99
 
 ## Tech Stack
 
+- shadcn/ui
+- Tailwind
+- React
+- Auth0
 - FastAPI
 - SQLModel
-- React
-- Tailwind
-- shadcn/ui
+- Cloudflare Workers
+- Azure Container Apps
 - Replicate
-- Auth0
 
 ## Repository Structure
 
 This repo contains three main components:
 
-- 📁 `api`: the backend API
-- 📁 `client`: the frontend client
-- 📁 `terraform`: the infrastructure configuration for the API
+- 📁 [`api`](./api): the backend API
+- 📁 [`client`](./client): the frontend client
+- 📁 [`terraform`](./terraform): the infrastructure configuration for the API
 
 Each component has its own README with more specific information.

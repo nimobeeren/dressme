@@ -97,11 +97,11 @@ resource "azurerm_container_app" "aca" {
         path             = "/healthz"
         port             = 8000
         transport        = "HTTP"
-        interval_seconds = 240  # maximum
+        interval_seconds = 240 # maximum
       }
     }
 
-    min_replicas = 1
+    min_replicas = 0
     max_replicas = 1
   }
 

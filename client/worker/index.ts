@@ -22,11 +22,12 @@ export default {
       // it works when changing the port manually to 8000 here, but not when leaving it as 5173
       // the static-frontend-container-backend template works just fine
       // next step maybe adjust this template to use the vite plugin and see if it breaks?
-      const newReq = new Request(`http://localhost:8000${url.pathname}`, {
+      const newReq = new Request(`http://localhost:8000${url.pathname}${url.search}`, {
         method: request.method,
         headers: request.headers,
         body: request.clone().body,
       });
+      console.log(`${request.url} -> ${newReq.url}`);
       return await containerInstance.fetch(newReq);
       // return await containerInstance.fetch(request);
     }

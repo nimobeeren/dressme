@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     AUTH0_SEED_USER_ID: str | None = None
     """Auth0 User ID of the user who should own the data added during database seeding."""
     DATABASE_URL: str
-    """PostgreSQL connection string."""
+    """PostgreSQL connection string. We use the psycopg 3 adapter, which requires that the
+    protocol of the URL is `postgresql+psycopg:`."""
     REPLICATE_API_TOKEN: str
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

@@ -43,9 +43,3 @@ jobs:
         run: |
           cd api
           uv run pytest
-        env:
-          AUTH0_ALGORITHMS: ${{ secrets.AUTH0_ALGORITHMS }}
-          AUTH0_API_AUDIENCE: ${{ secrets.AUTH0_API_AUDIENCE }}
-          AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
-          AUTH0_ISSUER: ${{ secrets.AUTH0_ISSUER }}
-          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}

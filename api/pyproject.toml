@@ -27,6 +27,7 @@ dev = [
     "ipywidgets>=8.1.5,<9",
     "pytest>=8.3.4,<9",
     "pyright>=1.1.399,<2",
+    "pytest-env>=1.1.5",
 ]
 
 [project.scripts]
@@ -41,3 +42,12 @@ build-backend = "hatchling.build"
 
 [tool.pyright]
 typeCheckingMode = "strict"
+
+[tool.pytest_env]
+# Set some default values for env vars that are not used in tests
+AUTH0_ALGORITHMS = ""
+AUTH0_API_AUDIENCE = ""
+AUTH0_DOMAIN = ""
+AUTH0_ISSUER = ""
+DATABASE_URL = "sqlite://"
+REPLICATE_API_TOKEN = ""

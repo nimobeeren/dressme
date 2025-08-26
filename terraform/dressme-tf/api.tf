@@ -88,6 +88,10 @@ resource "azurerm_container_app" "aca" {
         value = var.auth0_issuer
       }
       env {
+        name  = "DATABASE_URL"
+        value = var.database_url
+      }
+      env {
         name  = "REPLICATE_API_TOKEN"
         value = var.replicate_api_token
       }

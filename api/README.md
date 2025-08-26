@@ -10,15 +10,23 @@ See `src/dressme/settings.py` for more information about the environment variabl
 
 ## Development
 
-### Starting the server
+To run the API locally, follow these steps.
 
-Start a HTTP server for development:
+1. Start a local PostgreSQL server:
+
+```bash
+docker compose up
+```
+
+You can check that the server is running and interact with it by running `psql postgresql://dressme:dressme@localhost:5432/dressme`.
+
+2. Start a the API server for development:
 
 ```bash
 uv run fastapi dev src/dressme/main.py
 ```
 
-This will start a development server on `http://localhost:8000`.
+This will start a development server on `http://localhost:8000` and will auto-reload on code changes.
 
 ### Adding test data
 
@@ -28,7 +36,7 @@ When you first start the backend, the database will be empty. To add some test d
 uv run seed
 ```
 
-This will add some wearables to the database stored in the `dressme.db` file.
+This will add some wearables to the database.
 
 ### Getting an access token
 
@@ -45,7 +53,7 @@ curl -X POST 'https://$AUTH0_DOMAIN/oauth/token' \
     }'
 ```
 
-(You should have all of these variables in your `.env` file)
+(You can get these variables from the [Auth0 Dashboard](https://manage.auth0.com/), and you probably already have some in your `.env` file)
 
 You can then use this access token when making API requests, for example:
 
@@ -54,7 +62,7 @@ curl -X GET 'http://localhost:8000/wearables' \
     --header 'Authorization: Bearer $YOUR_ACCESS_TOKEN'
 ```
 
-### Running locally with Docker
+### Running with Docker
 
 It may be useful to run the application locally in a Docker container to match the deployed environment more closely. You can do so as follows:
 

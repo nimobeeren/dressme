@@ -14,6 +14,10 @@ variable "auth0_issuer" {
 variable "azure_subscription_id" {
   type = string
 }
+variable "database_url" {
+  type      = string
+  sensitive = true
+}
 variable "replicate_api_token" {
   type      = string
   sensitive = true

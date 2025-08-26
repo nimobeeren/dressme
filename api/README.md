@@ -10,6 +10,8 @@ See `src/dressme/settings.py` for more information about the environment variabl
 
 ## Development
 
+To run the API locally, follow these steps.
+
 1. Start a local PostgreSQL server:
 
 ```bash
@@ -60,7 +62,7 @@ curl -X GET 'http://localhost:8000/wearables' \
     --header 'Authorization: Bearer $YOUR_ACCESS_TOKEN'
 ```
 
-### Running locally with Docker
+### Running with Docker
 
 It may be useful to run the application locally in a Docker container to match the deployed environment more closely. You can do so as follows:
 

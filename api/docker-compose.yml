@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_DB: dressme
+      POSTGRES_DB: local
       POSTGRES_USER: dressme
       POSTGRES_PASSWORD: dressme
     ports:
@@ -10,7 +10,7 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dressme"]
+      test: ["CMD-SHELL", "pg_isready -U dressme -d local"]
       interval: 10s
       timeout: 5s
       retries: 5

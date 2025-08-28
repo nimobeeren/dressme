@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
-    "@cloudflare/containers": "^0.0.25",
+    "@cloudflare/containers": "^0.0.26",
     "@hey-api/client-fetch": "^0.6.0",
     "@hey-api/openapi-ts": "^0.61.2",
     "@hookform/resolvers": "^3.10.0",

@@ -7,6 +7,9 @@
       "path": "client"
     },
     {
+      "path": "terraform"
+    },
+    {
       "path": "."
     }
   ],
@@ -17,14 +20,28 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "Start API and Client Servers",
-        "dependsOn": ["Start API Server", "Start Client Server"],
+        "label": "Start DB, API and Client Servers",
+        "dependsOn": ["Start DB", "Start API Server", "Start Client Server"],
         "runOptions": {
           "runOn": "folderOpen"
         },
         "dependsOrder": "parallel",
         "presentation": {
           "reveal": "never"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Start DB",
+        "type": "shell",
+        "command": "docker compose up",
+        "options": {
+          "cwd": "${workspaceFolder:api}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "close": false
         },
         "problemMatcher": []
       },

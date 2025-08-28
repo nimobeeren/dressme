@@ -1,2 +1,10 @@
+# Environment variables
 .env*
 !.env.example
+
+# SQLite databases
+*.db
+*.db-journal
+
+# Python
+__pycache__/

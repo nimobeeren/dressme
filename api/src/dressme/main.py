@@ -62,8 +62,7 @@ def custom_generate_unique_id(route: APIRoute):
 app = FastAPI(
     lifespan=lifespan,
     generate_unique_id_function=custom_generate_unique_id,
-    dependencies=[Security(verify_token)],  # ensures all routes require authentication
-    root_path="/api"
+    root_path="/api",
 )
 
 app.add_middleware(
@@ -104,6 +103,11 @@ def get_current_user(
             ).one()
 
     return current_user
+
+
+@app.get("/healthz")
+def health():
+    return {"status": "ok"}
 
 
 class User(BaseModel):

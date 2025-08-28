@@ -1,2 +1,7 @@
+.env*
 .venv/
-# TODO: ignore .env* and use wrangler to load env vars
+__pycache__/
+.pytest_cache/
+.ropeproject/
+*.db
+# TODO: use wrangler to load env vars?

@@ -1,6 +1,7 @@
 import { Container, getRandom } from "@cloudflare/containers";
 
-const INSTANCE_COUNT = 3;
+// Use only one instance since we don't really need more and makes following logs a lot easier
+const INSTANCE_COUNT = 1;
 
 export class DressmeAPI extends Container<Env> {
   defaultPort = 8000;

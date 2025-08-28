@@ -27,6 +27,9 @@ This repo contains three primary components:
 - 📁 [`client`](./client): the frontend client
 - 📁 [`terraform`](./terraform): the infrastructure configuration for the API
 
+<!-- TODO: move the API into the client directory -->
+<!-- TODO: remove terraform -->
+
 Each component has its own README with more specific information.
 
 Next to that, there are some secondary directories:

@@ -4,7 +4,7 @@
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "dressme-client", // TODO: change to just dressme
+  "name": "dressme",
   "compatibility_date": "2025-08-01",
   "main": "worker/index.ts",
   "routes": [
@@ -20,7 +20,7 @@
     {
       "class_name": "DressmeAPI",
       "image": "../api/Dockerfile",
-      "max_instances": 3,
+      "max_instances": 1,
     },
   ],
   "durable_objects": {

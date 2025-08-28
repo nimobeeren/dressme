@@ -1,7 +1,6 @@
-.env*
 .venv/
 __pycache__/
 .pytest_cache/
 .ropeproject/
 *.db
-# TODO: use wrangler to load env vars?
+# TODO: ignore .env* and use wrangler to load env vars? (or check for recently added dotenv support)

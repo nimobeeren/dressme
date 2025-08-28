@@ -1,4 +1,4 @@
-import { Container, getRandom, getContainer } from "@cloudflare/containers";
+import { Container, getRandom } from "@cloudflare/containers";
 
 const INSTANCE_COUNT = 3;
 
@@ -17,19 +17,7 @@ export default {
     if (url.pathname.startsWith("/api")) {
       // note: "getRandom" to be replaced with latency-aware routing in the near future
       const containerInstance = await getRandom(env.DRESSME_API, INSTANCE_COUNT);
-      // LEFT HERE
-      // TODO: it seems like the request is not being sent to the right port
-      // it works when changing the port manually to 8000 here, but not when leaving it as 5173
-      // the static-frontend-container-backend template works just fine
-      // next step maybe adjust this template to use the vite plugin and see if it breaks?
-      const newReq = new Request(`http://localhost:8000${url.pathname}${url.search}`, {
-        method: request.method,
-        headers: request.headers,
-        body: request.clone().body,
-      });
-      console.log(`${request.url} -> ${newReq.url}`);
-      return await containerInstance.fetch(newReq);
-      // return await containerInstance.fetch(request);
+      return await containerInstance.fetch(request);
     }
     return new Response("Not Found", { status: 404 });
   },

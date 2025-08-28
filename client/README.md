@@ -55,3 +55,6 @@ Deploy to Cloudflare Workers:
 ```bash
 pnpm run deploy
 ```
+
+NOTE: deploying a new version of the API to Cloudflare Containers seems to fail consistently, need to delete the container in [Cloudflare Dashboard](https://dash.cloudflare.com/402c5118e1fd5c6dca2ac98a918eef35/workers/containers)
+NOTE: the API currently uses environment vars from the `.env` file in production, not from `.env.production`

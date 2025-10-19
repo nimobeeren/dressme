@@ -15,20 +15,17 @@ A virtual wardrobe that shows you how clothes look on you.
 - FastAPI
 - SQLModel
 - Neon
-- Cloudflare Workers
-- Azure Container Apps
+- Cloudflare Containers
 - Replicate
 
 ## Repository Structure
 
-This repo contains three primary components:
+This repo contains two primary components:
 
 - 📁 [`api`](./api): the backend API
 - 📁 [`client`](./client): the frontend client
-- 📁 [`terraform`](./terraform): the infrastructure configuration for the API
 
 <!-- TODO: move the API into the client directory -->
-<!-- TODO: remove terraform -->
 
 Each component has its own README with more specific information.
 

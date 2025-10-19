@@ -7,9 +7,6 @@
       "path": "client"
     },
     {
-      "path": "terraform"
-    },
-    {
       "path": "."
     }
   ],

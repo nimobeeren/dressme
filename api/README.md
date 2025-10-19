@@ -98,6 +98,8 @@ uv run pyright
 
 ## Deployment
 
+<!-- TODO: update after migrating to Cloudflare Containers -->
+
 ### Prerequisites
 
 1. Install [Docker](https://docs.docker.com/desktop/).

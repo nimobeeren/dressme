@@ -1,6 +1,18 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _find_env_file() -> Path | None:
+    """Find .env file in client/ directory (for local dev). Returns None in container."""
+    try:
+        # Local: api/src/dressme/settings.py -> client/.env
+        env_path = Path(__file__).resolve().parents[4] / "client" / ".env"
+        return env_path if env_path.exists() else None
+    except IndexError:
+        # Inside container: path is shorter, no .env file needed
+        return None
 
 
 class Settings(BaseSettings):
@@ -14,7 +26,7 @@ class Settings(BaseSettings):
     """PostgreSQL connection string."""
     REPLICATE_API_TOKEN: str
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore", env_file=_find_env_file())
 
 
 @lru_cache

@@ -18,7 +18,7 @@ pnpm run dev
 
 You can then view the app at `http://localhost:5173/`.
 
-<!-- TODO: document how this also runs the backend -->
+This also runs the API server on `http://localhost:8000`.
 
 ### Viewing API Logs
 

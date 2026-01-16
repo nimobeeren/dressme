@@ -2,9 +2,9 @@
 
 ## Installation
 
-1. Install the [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager.
+Some development commands require the [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager. No other setup is required for the API.
 
-2. Make a copy of `.env.example` named `.env` and fill in the missing environment variables.
+## Environment variables
 
 See `src/dressme/settings.py` for more information about the environment variables.
 
@@ -20,13 +20,12 @@ docker compose up
 
 You can check that the server is running and interact with it by running `psql postgresql://dressme:dressme@localhost:5432/dressme`.
 
-2. Start a the API server for development:
+2. Start the client which will also start the API server:
 
 ```bash
-uv run fastapi dev src/dressme/main.py
+cd ../client
+pnpm run dev
 ```
-
-This will start a development server on `http://localhost:8000` and will auto-reload on code changes.
 
 ### Adding test data
 
@@ -98,62 +97,4 @@ uv run pyright
 
 ## Deployment
 
-<!-- TODO: update after migrating to Cloudflare Containers -->
-
-### Prerequisites
-
-1. Install [Docker](https://docs.docker.com/desktop/).
-
-2. Install the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli):
-
-```bash
-brew install azure-cli
-```
-
-### Deploying Manually
-
-> [!NOTE]
-> There is currently no CI/CD pipeline for the backend, so this needs to be done manually.
-
-1. Set some environment variables you'll need later:
-
-```bash
-ACR_NAME="dressmeapiacr"
-ACA_NAME="dressme-api-aca"
-RESOURCE_GROUP="dressme-api-rg"
-```
-
-2. Log in to the Azure CLI:
-
-```bash
-az login
-```
-
-3. Log in to the Azure Container Registry:
-
-```bash
-az acr login --name $ACR_NAME
-```
-
-4. Build the Docker image:
-
-```bash
-docker build --platform linux/amd64 --tag $ACR_NAME.azurecr.io/$ACA_NAME\:$(git rev-parse --short HEAD) .
-```
-
-5. Push the Docker image to the Azure Container Registry:
-
-```bash
-docker push $ACR_NAME.azurecr.io/$ACA_NAME\:$(git rev-parse --short HEAD)
-```
-
-6. Create a new revision in the Azure Container App:
-
-```bash
-az containerapp up \
-  --name $ACA_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --image $ACR_NAME.azurecr.io/$ACA_NAME\:$(git rev-parse --short HEAD)
-```
-
-The reason we use the commit SHA as a tag is that the Azure Container App does not seem to update the revision when pushing to an existing tag like `latest`.
+The API is deployed automatically when deploying the client (see [client README](../client/README.md)).

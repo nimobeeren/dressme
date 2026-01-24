@@ -22,7 +22,14 @@ You can then view the app at `http://localhost:5173/`.
 
 ### Viewing API Logs
 
-API logs are not shown by default. To see them, first look up the Docker container ID:
+API logs are not shown by default. While Wrangler is running, you can tail them
+in one command:
+
+```bash
+pnpm run api-logs
+```
+
+If you need to run it manually, first look up the Docker container ID:
 
 ```bash
 docker ps

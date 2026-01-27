@@ -19,9 +19,6 @@
       {
         "label": "Start DB and App",
         "dependsOn": ["Start DB", "Start App"],
-        "runOptions": {
-          "runOn": "folderOpen"
-        },
         "dependsOrder": "parallel",
         "presentation": {
           "reveal": "never"

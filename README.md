@@ -20,16 +20,164 @@ A virtual wardrobe that shows you how clothes look on you.
 
 ## Repository Structure
 
-This repo contains two primary components:
-
 - 📁 [`api`](./api): the backend API
 - 📁 [`client`](./client): the frontend client
-
-<!-- TODO: move the API into the client directory -->
-
-Each component has its own README with more specific information.
-
-Next to that, there are some secondary directories:
-
 - 📁 [`.github`](./.github): GitHub Actions CI configuration
-- 📁 [`images`](./images): some sample images useful for seeding the development database
+- 📁 [`images`](./images): sample images for seeding the development database
+
+## Prerequisites
+
+1. Install the required tools:
+   - [Docker](https://docs.docker.com/get-docker/)
+   - [uv](https://docs.astral.sh/uv/getting-started/installation/)
+   - [pnpm](https://pnpm.io/installation)
+
+2. Install dependencies:
+
+```bash
+cd client
+pnpm install
+```
+
+3. Copy the example environment file and fill in the missing values:
+
+```bash
+cp .env.example .env
+```
+
+## Environment Variables
+
+All environment variables are stored in `client/.env` (see `.env.example` for the template). Variables prefixed with `VITE_` are used by the client. See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`client/worker/index.ts`](./client/worker/index.ts) when running with Wrangler.
+
+## Usage
+
+### Full App (with Wrangler)
+
+Runs both the client and API together, similar to the production setup.
+
+```bash
+# Run required services
+docker compose up -d
+# Start the app
+cd client
+pnpm run dev
+```
+
+The client will be available at `http://localhost:5173` and the API at `http://localhost:8000`.
+
+#### Viewing API Logs
+
+API logs are not shown by default. While Wrangler is running, you can tail them
+in one command:
+
+```bash
+pnpm run api-logs
+```
+
+If you need to do it manually, look up the Docker container ID with `docker ps` (image name `cloudflare-dev/dressmeapi`), then run `docker logs -f <CONTAINER_ID>`.
+
+### Standalone API (with uv)
+
+Faster to start and iterate when working on the API only.
+
+```bash
+# Run required services
+docker compose up -d
+# Start the API
+cd api
+uv run fastapi dev src/dressme/main.py
+```
+
+The API will be available at `http://localhost:8000`.
+
+### Standalone API (with Docker)
+
+Faster than running the whole app, but matches the production environment more closely than running directly with uv.
+
+```bash
+# Run required services
+docker compose up -d
+# Build and run the API
+cd api
+docker build . -t dressme-api
+docker run -p 8000:8000 --env-file ../client/.env dressme-api
+```
+
+The API will be available at `http://localhost:8000`.
+
+## Development
+
+### Adding Test Data
+
+When you first start the backend, the database will be empty. To add some test data, set the `AUTH0_SEED_USER_ID` environment variable (in your `.env` file or your shell), then run the seed script:
+
+```bash
+cd api
+uv run seed
+```
+
+This will add some wearables to the database.
+
+### Getting an Access Token
+
+When making API requests, you'll need to pass a valid access token. The frontend gets this token automatically from Auth0 after you log in, but you can also get it yourself by making a request like this:
+
+```bash
+curl -X POST 'https://$AUTH0_DOMAIN/oauth/token' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "client_id": "$AUTH0_CLIENT_ID",
+        "client_secret": "$AUTH0_CLIENT_SECRET",
+        "audience": "$AUTH0_API_AUDIENCE",
+        "grant_type": "client_credentials"
+    }'
+```
+
+(You can get these variables from the [Auth0 Dashboard](https://manage.auth0.com/), and you probably already have some in your `.env` file)
+
+You can then use this access token when making API requests, for example:
+
+```bash
+curl -X GET 'http://localhost:8000/wearables' \
+    --header 'Authorization: Bearer $YOUR_ACCESS_TOKEN'
+```
+
+### Generating API Client
+
+A TypeScript client is generated in `client/src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
+
+```bash
+cd client
+pnpm run generate-client
+```
+
+Note that the API server must be running for this to work.
+
+### Testing
+
+Run the tests:
+
+```bash
+cd api
+uv run pytest
+```
+
+### Type Checking
+
+Run the type checker:
+
+```bash
+cd api
+uv run pyright
+```
+
+## Deployment
+
+The app is deployed to Cloudflare using:
+
+```bash
+cd client
+pnpm run deploy
+```
+
+This deploys both the client (Cloudflare Workers) and the API (Cloudflare Containers).

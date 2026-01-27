@@ -112,6 +112,33 @@ The API will be available at `http://localhost:8000`.
 
 ### Client
 
+#### Tests
+
+Run the tests:
+
+```bash
+cd client
+pnpm run test
+```
+
+#### Type Checking
+
+Run the type checker:
+
+```bash
+cd client
+pnpm run typecheck
+```
+
+#### Linting
+
+Run the linter:
+
+```bash
+cd client
+pnpm run lint
+```
+
 #### Generating API Client
 
 A TypeScript client is generated in `client/src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:

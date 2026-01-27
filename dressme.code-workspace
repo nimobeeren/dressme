@@ -7,9 +7,6 @@
       "path": "client"
     },
     {
-      "path": "terraform"
-    },
-    {
       "path": "."
     }
   ],
@@ -20,11 +17,8 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "Start DB, API and Client Servers",
-        "dependsOn": ["Start DB", "Start API Server", "Start Client Server"],
-        "runOptions": {
-          "runOn": "folderOpen"
-        },
+        "label": "Start DB and App",
+        "dependsOn": ["Start DB", "Start App"],
         "dependsOrder": "parallel",
         "presentation": {
           "reveal": "never"
@@ -34,22 +28,8 @@
       {
         "label": "Start DB",
         "type": "shell",
-        "command": "docker compose up",
-        "options": {
-          "cwd": "${workspaceFolder:api}"
-        },
-        "presentation": {
-          "reveal": "always",
-          "panel": "dedicated",
-          "close": false
-        },
-        "problemMatcher": []
-      },
-      {
-        "label": "Start API Server",
-        "type": "shell",
         // Wrap command in some magic to keep the shell open after interrupting the process
-        "command": "trap '' INT; uv run fastapi dev src/dressme/main.py ; $SHELL",
+        "command": "trap '' INT; docker compose up; $SHELL",
         "options": {
           "cwd": "${workspaceFolder:api}"
         },
@@ -61,7 +41,7 @@
         "problemMatcher": []
       },
       {
-        "label": "Start Client Server",
+        "label": "Start App",
         "type": "shell",
         // Wrap command in some magic to keep the shell open after interrupting the process
         "command": "trap '' INT; pnpm run dev ; $SHELL",

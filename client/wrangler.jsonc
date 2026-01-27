@@ -4,8 +4,9 @@
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "dressme-client",
+  "name": "dressme",
   "compatibility_date": "2025-08-01",
+  "main": "worker/index.ts",
   "routes": [
     {
       "pattern": "dressme.fashion",
@@ -15,6 +16,28 @@
   "assets": {
     "not_found_handling": "single-page-application",
   },
+  "containers": [
+    {
+      "class_name": "DressmeAPI",
+      "image": "../api/Dockerfile",
+      "max_instances": 1,
+      "instance_type": "standard-1",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "DressmeAPI",
+        "name": "DRESSME_API",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "new_sqlite_classes": ["DressmeAPI"],
+      "tag": "v1",
+    },
+  ],
   "observability": {
     "enabled": true,
   },

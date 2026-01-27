@@ -5,10 +5,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _find_env_file() -> Path | None:
-    """Find .env file in client/ directory (for local dev). Returns None in container."""
+    """Find .env file in repo root (for local dev). Returns None in container."""
     try:
-        # Local: api/src/dressme/settings.py -> client/.env
-        env_path = Path(__file__).resolve().parents[3] / "client" / ".env"
+        # Local: api/src/dressme/settings.py -> .env
+        env_path = Path(__file__).resolve().parents[3] / ".env"
         return env_path if env_path.exists() else None
     except IndexError:
         # Inside container: no .env file needed

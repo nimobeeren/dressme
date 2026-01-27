@@ -20,16 +20,16 @@ A virtual wardrobe that shows you how clothes look on you.
 
 ## Repository Structure
 
-- 📁 [`api`](./api): the backend API
-- 📁 [`client`](./client): the frontend client
 - 📁 [`.github`](./.github): GitHub Actions CI configuration
+- 📁 [`api`](./api): the backend API
 - 📁 [`images`](./images): sample images for seeding the development database
-
-<!-- TODO: move the client to the root directory and keep api as a subdir -->
+- 📁 [`src`](./src): the frontend client source code
+- 📁 [`worker`](./worker): the Cloudflare Worker entrypoint
 
 ## Installation
 
 1. Install the required tools:
+
    - [Docker](https://docs.docker.com/get-docker/)
    - [uv](https://docs.astral.sh/uv/getting-started/installation/)
    - [pnpm](https://pnpm.io/installation)
@@ -37,7 +37,6 @@ A virtual wardrobe that shows you how clothes look on you.
 2. Install dependencies:
 
 ```bash
-cd client
 pnpm install
 ```
 
@@ -49,7 +48,7 @@ cp .env.example .env
 
 ## Environment Variables
 
-All environment variables are stored in `client/.env` (see `.env.example` for the template). Variables prefixed with `VITE_` are used by the client. See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`client/worker/index.ts`](./client/worker/index.ts) when running with Wrangler.
+All environment variables are stored in `.env` (see `.env.example` for the template). Variables prefixed with `VITE_` are used by the client. See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`worker/index.ts`](./worker/index.ts) when running with Wrangler.
 
 ## Usage
 
@@ -61,7 +60,6 @@ Runs both the client and API together, similar to the production setup.
 # Run required services
 docker compose up -d
 # Start the app
-cd client
 pnpm run dev
 ```
 
@@ -101,9 +99,8 @@ Faster than running the whole app, but matches the production environment more c
 # Run required services
 docker compose up -d
 # Build and run the API
-cd api
-docker build . -t dressme-api
-docker run -p 8000:8000 --env-file ../client/.env dressme-api
+docker build api/ -t dressme-api
+docker run -p 8000:8000 --env-file .env dressme-api
 ```
 
 The API will be available at `http://localhost:8000`.
@@ -117,7 +114,6 @@ The API will be available at `http://localhost:8000`.
 Run the tests:
 
 ```bash
-cd client
 pnpm test
 ```
 
@@ -126,7 +122,6 @@ pnpm test
 Run the type checker:
 
 ```bash
-cd client
 pnpm typecheck
 ```
 
@@ -135,16 +130,14 @@ pnpm typecheck
 Run the linter:
 
 ```bash
-cd client
 pnpm lint
 ```
 
 #### Generating API Client
 
-A TypeScript client is generated in `client/src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
+A TypeScript client is generated in `src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
 
 ```bash
-cd client
 pnpm generate-client
 ```
 
@@ -210,7 +203,6 @@ curl -X GET 'http://localhost:8000/wearables' \
 The app is deployed to Cloudflare using:
 
 ```bash
-cd client
 pnpm run deploy
 ```
 

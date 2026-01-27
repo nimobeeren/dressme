@@ -17,7 +17,7 @@
     "dev": "vite",
     "generate-client": "openapi-ts",
     "lint": "eslint .",
-    "prepare": "cd .. && husky",
+    "prepare": "husky",
     "preview": "vite preview",
     "test": "vitest",
     "typecheck": "tsc -b --noEmit"

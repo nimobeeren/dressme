@@ -1,3 +1,4 @@
 .wrangler/
+api/
 src/api/
 pnpm-lock.yaml

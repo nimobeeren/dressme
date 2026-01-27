@@ -25,6 +25,8 @@ A virtual wardrobe that shows you how clothes look on you.
 - 📁 [`.github`](./.github): GitHub Actions CI configuration
 - 📁 [`images`](./images): sample images for seeding the development database
 
+<!-- TODO: move the client to the root directory and keep api as a subdir -->
+
 ## Prerequisites
 
 1. Install the required tools:

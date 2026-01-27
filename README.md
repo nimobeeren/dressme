@@ -63,11 +63,19 @@ cd client
 pnpm run dev
 ```
 
-The client will be available at `http://localhost:5173` and the API at `http://localhost:8000`.
+The client will be available at `http://localhost:5173`. After making a request to the client, the API will start and be available at `http://localhost:8000`.
 
 #### Viewing API Logs
 
-API logs are not shown by default. To see them, look up the Docker container ID with `docker ps` (image name `cloudflare-dev/dressmeapi`), then run `docker logs -f <CONTAINER_ID>`.
+API logs are not shown by default when running with Wrangler. To view them while the API is running:
+
+```bash
+pnpm run api-logs
+```
+
+Note that you need to make a request to the client before the API will start.
+
+If you need to do it manually, look up the Docker container ID with `docker ps` (image name `cloudflare-dev/dressmeapi`), then run `docker logs -f <CONTAINER_ID>`.
 
 ### Standalone API (with uv)
 

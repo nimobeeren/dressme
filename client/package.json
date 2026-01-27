@@ -10,6 +10,7 @@
     "node": "22.18.0"
   },
   "scripts": {
+    "api-logs": "node ./tail-api-logs.mjs",
     "build": "tsc -b && vite build",
     "cf-typegen": "wrangler types",
     "deploy": "pnpm run build && wrangler deploy",

@@ -27,7 +27,7 @@ A virtual wardrobe that shows you how clothes look on you.
 
 <!-- TODO: move the client to the root directory and keep api as a subdir -->
 
-## Prerequisites
+## Installation
 
 1. Install the required tools:
    - [Docker](https://docs.docker.com/get-docker/)
@@ -110,7 +110,40 @@ The API will be available at `http://localhost:8000`.
 
 ## Development
 
-### Adding Test Data
+### Client
+
+#### Generating API Client
+
+A TypeScript client is generated in `client/src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
+
+```bash
+cd client
+pnpm run generate-client
+```
+
+Note that the API server must be running for this to work.
+
+### API
+
+#### Tests
+
+Run the tests:
+
+```bash
+cd api
+uv run pytest
+```
+
+#### Type Checking
+
+Run the type checker:
+
+```bash
+cd api
+uv run pyright
+```
+
+#### Adding Test Data
 
 When you first start the backend, the database will be empty. To add some test data, set the `AUTH0_SEED_USER_ID` environment variable (in your `.env` file or your shell), then run the seed script:
 
@@ -121,7 +154,7 @@ uv run seed
 
 This will add some wearables to the database.
 
-### Getting an Access Token
+#### Getting an Access Token
 
 When making API requests, you'll need to pass a valid access token. The frontend gets this token automatically from Auth0 after you log in, but you can also get it yourself by making a request like this:
 
@@ -143,35 +176,6 @@ You can then use this access token when making API requests, for example:
 ```bash
 curl -X GET 'http://localhost:8000/wearables' \
     --header 'Authorization: Bearer $YOUR_ACCESS_TOKEN'
-```
-
-### Generating API Client
-
-A TypeScript client is generated in `client/src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
-
-```bash
-cd client
-pnpm run generate-client
-```
-
-Note that the API server must be running for this to work.
-
-### Testing
-
-Run the tests:
-
-```bash
-cd api
-uv run pytest
-```
-
-### Type Checking
-
-Run the type checker:
-
-```bash
-cd api
-uv run pyright
 ```
 
 ## Deployment

@@ -39,6 +39,20 @@ export type Wearable = {
     generation_status: 'pending' | 'completed';
 };
 
+export type HealthData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/healthz';
+};
+
+export type HealthResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type GetMeData = {
     body?: never;
     path?: never;

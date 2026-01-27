@@ -63,7 +63,7 @@ cd client
 pnpm run dev
 ```
 
-The client will be available at `http://localhost:5173`. After making a request to the client, the API will start and be available at `http://localhost:8000`.
+The client will be available at `http://localhost:5173`. After making an (authenticated) request to the client, the API will start and be available at `http://localhost:8000`.
 
 #### Viewing API Logs
 

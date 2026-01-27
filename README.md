@@ -118,7 +118,7 @@ Run the tests:
 
 ```bash
 cd client
-pnpm run test
+pnpm test
 ```
 
 #### Type Checking
@@ -127,7 +127,7 @@ Run the type checker:
 
 ```bash
 cd client
-pnpm run typecheck
+pnpm typecheck
 ```
 
 #### Linting
@@ -136,7 +136,7 @@ Run the linter:
 
 ```bash
 cd client
-pnpm run lint
+pnpm lint
 ```
 
 #### Generating API Client
@@ -145,7 +145,7 @@ A TypeScript client is generated in `client/src/api` to easily interact with the
 
 ```bash
 cd client
-pnpm run generate-client
+pnpm generate-client
 ```
 
 Note that the API server must be running for this to work.

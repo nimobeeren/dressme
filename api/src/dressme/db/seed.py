@@ -1,10 +1,13 @@
 from pathlib import Path
+from uuid import uuid4
 
 from sqlmodel import Session
 
 from ..settings import get_settings
+from ..blob_storage import get_blob_storage
+from ..image_utils import get_content_type_from_path
 from . import create_db_and_tables, engine
-from .models import AvatarImage, User, Wearable, WearableImage, WearableOnAvatarImage
+from .models import User, Wearable, WearableOnAvatarImage
 
 settings = get_settings()
 
@@ -67,13 +70,21 @@ ROOT_PATH = Path(__file__).parent.parent.parent.parent.parent
 
 def seed():
     create_db_and_tables()
+    blob_storage = get_blob_storage()
 
     with Session(engine) as session:
-        # Add avatar image
-        image_path = ROOT_PATH / Path(avatar_data["image_path"])
-        with open(image_path, "rb") as image_file:
-            avatar_image = AvatarImage(image_data=image_file.read())
-            session.add(avatar_image)
+        # Upload avatar image
+        avatar_image_path = ROOT_PATH / Path(avatar_data["image_path"])
+        with open(avatar_image_path, "rb") as image_file:
+            avatar_image_data = image_file.read()
+
+        avatar_image_key = f"{uuid4()}.jpg"
+        blob_storage.upload(
+            settings.AVATARS_BUCKET,
+            avatar_image_key,
+            avatar_image_data,
+            get_content_type_from_path(avatar_image_path),
+        )
 
         # Add user
         if settings.AUTH0_SEED_USER_ID is None:
@@ -82,29 +93,36 @@ def seed():
             )
         user = User(
             auth0_user_id=settings.AUTH0_SEED_USER_ID,
-            avatar_image_id=avatar_image.id,
+            avatar_image_key=avatar_image_key,
         )
         session.add(user)
 
         # Add wearables
         for wearable_data in wearables_data.values():
-            # Add wearable image
-            image_path = ROOT_PATH / Path(wearable_data["image_path"])
-            with open(image_path, "rb") as image_file:
-                wearable_image = WearableImage(image_data=image_file.read())
-            session.add(wearable_image)
+            # Upload wearable image
+            wearable_image_path = ROOT_PATH / Path(wearable_data["image_path"])
+            with open(wearable_image_path, "rb") as image_file:
+                wearable_image_data = image_file.read()
+
+            wearable_image_key = f"{uuid4()}{wearable_image_path.suffix}"
+            blob_storage.upload(
+                settings.WEARABLES_BUCKET,
+                wearable_image_key,
+                wearable_image_data,
+                get_content_type_from_path(wearable_image_path),
+            )
 
             # Add wearable
             wearable = Wearable(
                 category=wearable_data["category"],
                 description=wearable_data["description"],
-                wearable_image_id=wearable_image.id,
+                image_key=wearable_image_key,
                 user_id=user.id,
             )
             session.add(wearable)
 
-            # Add wearable on avatar image
-            image_path = (
+            # Upload WOA image
+            woa_image_path = (
                 ROOT_PATH
                 / "images"
                 / "results"
@@ -112,8 +130,18 @@ def seed():
                 / "single"
                 / f"{wearable_data['name']}.jpg"
             )
-            with open(image_path, "rb") as image_file:
-                image_data = image_file.read()
+            with open(woa_image_path, "rb") as image_file:
+                woa_image_data = image_file.read()
+
+            woa_image_key = f"{uuid4()}.jpg"
+            blob_storage.upload(
+                settings.WOA_BUCKET,
+                woa_image_key,
+                woa_image_data,
+                "image/jpeg",
+            )
+
+            # Upload mask image
             mask_image_path = (
                 ROOT_PATH
                 / "images"
@@ -124,11 +152,22 @@ def seed():
             )
             with open(mask_image_path, "rb") as mask_image_file:
                 mask_image_data = mask_image_file.read()
+
+            mask_image_key = f"{uuid4()}.jpg"
+            blob_storage.upload(
+                settings.WOA_BUCKET,
+                mask_image_key,
+                mask_image_data,
+                "image/jpeg",
+            )
+
+            # Add WearableOnAvatarImage
             wearable_on_avatar_image = WearableOnAvatarImage(
-                avatar_image_id=avatar_image.id,
-                wearable_image_id=wearable_image.id,
-                image_data=image_data,
-                mask_image_data=mask_image_data,
+                user_id=user.id,
+                avatar_image_key=avatar_image_key,
+                wearable_image_key=wearable_image_key,
+                image_key=woa_image_key,
+                mask_image_key=mask_image_key,
             )
             session.add(wearable_on_avatar_image)
 

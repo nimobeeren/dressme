@@ -59,11 +59,13 @@ Runs both the client and API together, similar to the production setup.
 ```bash
 # Run required services
 docker compose up -d
-# Start the app
+# Start the app (rebuilds container)
 pnpm run dev
 ```
 
 The client will be available at `http://localhost:5173`. After making an (authenticated) request to the client, the API will start and be available at `http://localhost:8000`.
+
+Changes to the client and worker are auto-reloaded, but changes to the API require a restart to take effect.
 
 #### Viewing API Logs
 

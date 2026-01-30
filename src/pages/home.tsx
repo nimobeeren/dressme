@@ -249,15 +249,15 @@ function OutfitList({ outfits, activeOutfitId }: { outfits: Outfit[]; activeOutf
             )}
             <div className="absolute inset-0 z-10 drop-shadow-md">
               <div className="[clip-path:polygon(0%0%,100%0%,0%100%)]">
-                <AuthenticatedImage
-                  src={`${import.meta.env.VITE_API_BASE_URL}${outfit.top.wearable_image_url}`}
+                <img
+                  src={outfit.top.wearable_image_url}
                   className="aspect-3/4 translate-x-[-5%] translate-y-[-5%] scale-[120%] object-cover"
                 />
               </div>
             </div>
             <div>
-              <AuthenticatedImage
-                src={`${import.meta.env.VITE_API_BASE_URL}${outfit.bottom.wearable_image_url}`}
+              <img
+                src={outfit.bottom.wearable_image_url}
                 className="aspect-3/4 translate-x-[5%] translate-y-[5%] scale-[120%] object-cover"
               />
             </div>
@@ -325,8 +325,9 @@ function WearableList({
                         </div>
                       </div>
                     )}
-                    <AuthenticatedImage
-                      src={`${import.meta.env.VITE_API_BASE_URL}${wearable.wearable_image_url}`}
+                    {/* Wearable images use signed URLs directly from R2 */}
+                    <img
+                      src={wearable.wearable_image_url}
                       className="aspect-3/4 min-w-full object-cover"
                     />
                   </RadioGroup.Item>

@@ -9,6 +9,8 @@ from botocore.config import Config
 
 from .settings import get_settings
 
+settings = get_settings()
+
 
 class BlobStorage(ABC):
     """Abstract interface for blob storage operations."""
@@ -33,7 +35,6 @@ class R2Storage(BlobStorage):
     """Cloudflare R2 implementation of blob storage."""
 
     def __init__(self):
-        settings = get_settings()
         self._client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
             "s3",
             endpoint_url=settings.R2_S3_URL,
@@ -62,7 +63,17 @@ class R2Storage(BlobStorage):
 
     @override
     def get_signed_url(self, bucket: str, key: str, expires_in: int = 3600) -> str:
-        """Generate a presigned URL for accessing an object."""
+        """Generate a URL for accessing an object.
+
+        In development mode (MinIO with public buckets), returns a direct URL.
+        In production mode (R2), returns a presigned URL.
+        """
+        if settings.MODE == "development":
+            public_endpoint = settings.R2_S3_URL.replace(
+                "host.docker.internal", "localhost"
+            )
+            return f"{public_endpoint}/{bucket}/{key}"
+
         return self._client.generate_presigned_url(
             "get_object",
             Params={"Bucket": bucket, "Key": key},

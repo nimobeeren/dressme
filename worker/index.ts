@@ -7,6 +7,7 @@ export class DressmeAPI extends Container<Env> {
   defaultPort = 8000;
   sleepAfter = "5m";
   envVars = {
+    MODE: this.env.MODE,
     AUTH0_ALGORITHMS: this.env.AUTH0_ALGORITHMS,
     AUTH0_API_AUDIENCE: this.env.AUTH0_API_AUDIENCE,
     AUTH0_DOMAIN: this.env.AUTH0_DOMAIN,
@@ -21,6 +22,7 @@ export class DressmeAPI extends Container<Env> {
 
 export interface Env {
   DRESSME_API: DurableObjectNamespace<DressmeAPI>;
+  MODE: string;
   AUTH0_ALGORITHMS: string;
   AUTH0_API_AUDIENCE: string;
   AUTH0_DOMAIN: string;

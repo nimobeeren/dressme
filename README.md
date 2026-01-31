@@ -69,9 +69,19 @@ pnpm wrangler secret put <SECRET_NAME>
 
 Production environment variables for the client are sourced from `.env` and set on build/deploy. Only variables starting with `VITE_` are included. To use different values in production than in local development, you can create a `.env.production` file with only the variables you want to override.
 
-### R2 Credentials
+### Blob Storage (MinIO / R2)
 
-In production, we use a scoped-down API token that only has permission to read and write objects in specific buckets. For development, create your own API token in the Cloudflare dashboard under **R2 > API Tokens > Manage**. How much access you grant is up to you, but scoping it to just read/write on specific buckets is generally safest.
+For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It runs via docker-compose and requires no external credentials. Configure your `.env` with:
+
+```bash
+R2_ACCESS_KEY_ID=minioadmin
+R2_SECRET_ACCESS_KEY=minioadmin
+R2_S3_URL=http://host.docker.internal:9000
+```
+
+The MinIO console is available at http://localhost:9001 (login: `minioadmin` / `minioadmin`).
+
+In production, we use Cloudflare R2 with a scoped-down API token that only has permission to read and write objects in specific buckets. A new API token can be created in the Cloudflare dashboard under **R2 > API Tokens > Manage**.
 
 ### Placeholders for Testing
 

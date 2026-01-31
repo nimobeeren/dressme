@@ -34,11 +34,12 @@ class R2Storage(BlobStorage):
 
     def __init__(self):
         settings = get_settings()
-        self._client = boto3.client(
+        self._client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
             "s3",
             endpoint_url=settings.R2_S3_URL,
             aws_access_key_id=settings.R2_ACCESS_KEY_ID,
             aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+            # R2 requires region_name "auto" and signature_version "s3v4"
             region_name="auto",
             config=Config(signature_version="s3v4"),
         )

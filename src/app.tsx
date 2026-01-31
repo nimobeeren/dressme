@@ -8,7 +8,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useMatch } from "react-router";
 import { AuthProvider } from "./components/auth-provider";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
-import { useMe } from "./hooks/api";
+import { useHealth, useMe } from "./hooks/api";
 import "./index.css";
 import { NotFoundPage } from "./pages/404";
 import { AddPage } from "./pages/add";
@@ -49,20 +49,47 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider>
-          <ForceWelcome>
-            <Routes>
-              <Route index Component={withAuthenticationRequired(HomePage)} />
-              <Route path="/add" Component={withAuthenticationRequired(AddPage)} />
-              <Route path="/welcome" Component={withAuthenticationRequired(WelcomePage)} />
-              <Route path="*" Component={NotFoundPage} />
-            </Routes>
-          </ForceWelcome>
-        </AuthProvider>
+        <ApiWarmupGate>
+          <AuthProvider>
+            <ForceWelcome>
+              <Routes>
+                <Route index Component={withAuthenticationRequired(HomePage)} />
+                <Route path="/add" Component={withAuthenticationRequired(AddPage)} />
+                <Route path="/welcome" Component={withAuthenticationRequired(WelcomePage)} />
+                <Route path="*" Component={NotFoundPage} />
+              </Routes>
+            </ForceWelcome>
+          </AuthProvider>
+        </ApiWarmupGate>
       </BrowserRouter>
       <Toaster />
     </QueryClientProvider>
   );
+}
+
+/** Blocks UI until the backend responds to a simple health check. */
+function ApiWarmupGate({ children }: { children: React.ReactNode }) {
+  const { isPending, error } = useHealth();
+
+  if (isPending || error) {
+    return (
+      // Use delayed appear to prevent flashing this alert on every page load
+      <div className="animate-delayed-appear flex h-screen items-center justify-center px-6">
+        <div className="w-full max-w-xl">
+          <Alert>
+            <LoaderCircleIcon className="h-4 w-4 animate-spin" />
+            <AlertTitle>We're getting ready! 💅</AlertTitle>
+            <AlertDescription>
+              Our backend is getting its things in order (probably restarting). Should be ready to
+              go in just a minute...
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  return children;
 }
 
 /** Force the user to go through onboarding if they haven't already. */

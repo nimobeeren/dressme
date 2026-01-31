@@ -36,9 +36,20 @@ export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api")) {
-      // note: "getRandom" to be replaced with latency-aware routing in the near future
-      const containerInstance = await getRandom(env.DRESSME_API, INSTANCE_COUNT);
-      return await containerInstance.fetch(request);
+      const cfRay = request.headers.get("cf-ray");
+      try {
+        // note: "getRandom" to be replaced with latency-aware routing in the near future
+        const containerInstance = await getRandom(env.DRESSME_API, INSTANCE_COUNT);
+        return await containerInstance.fetch(request);
+      } catch (error) {
+        console.error("Container fetch error:", { cfRay, error });
+        return new Response("Service temporarily unavailable", {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      }
     }
     return new Response("Not Found", { status: 404 });
   },

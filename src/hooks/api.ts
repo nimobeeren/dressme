@@ -3,6 +3,7 @@ import {
   createOutfit,
   createWearables,
   deleteOutfit,
+  health,
   getMe,
   getOutfits,
   getWearables,
@@ -40,6 +41,18 @@ export function useMe() {
       const result = await getMe();
       return result.data;
     },
+  });
+}
+
+export function useHealth() {
+  return useQuery({
+    queryKey: ["health"],
+    queryFn: async () => {
+      const result = await health();
+      return result.data;
+    },
+    retry: false,
+    refetchInterval: (query) => (query.state.status === "error" ? 5000 : false),
   });
 }
 

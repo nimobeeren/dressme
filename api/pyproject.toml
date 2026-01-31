@@ -44,10 +44,13 @@ build-backend = "hatchling.build"
 typeCheckingMode = "strict"
 
 [tool.pytest_env]
-# Set some default values for env vars that are not used in tests
-AUTH0_ALGORITHMS = ""
-AUTH0_API_AUDIENCE = ""
-AUTH0_DOMAIN = ""
-AUTH0_ISSUER = ""
+# Set some placeholder values for env vars that are not used in tests
+AUTH0_ALGORITHMS = "placeholder"
+AUTH0_API_AUDIENCE = "placeholder"
+AUTH0_DOMAIN = "placeholder"
+AUTH0_ISSUER = "placeholder"
 DATABASE_URL = "sqlite://"
-REPLICATE_API_TOKEN = ""
+REPLICATE_API_TOKEN = "placeholder"
+R2_ACCESS_KEY_ID = "placeholder"
+R2_SECRET_ACCESS_KEY = "placeholder"
+R2_S3_URL = "placeholder"

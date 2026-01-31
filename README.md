@@ -48,7 +48,29 @@ cp .env.example .env
 
 ## Environment Variables
 
-All environment variables are stored in `.env` (see `.env.example` for the template). Variables prefixed with `VITE_` are used by the client. See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`worker/index.ts`](./worker/index.ts) when running with Wrangler.
+See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`worker/index.ts`](./worker/index.ts) when running with Wrangler (both for development and production).
+
+### Development
+
+All environment variables are stored in `.env` (see `.env.example` for the template). Variables prefixed with `VITE_` are used by the client.
+
+### Production
+
+Production environment variables are managed via the Cloudflare dashboard or the Wrangler CLI. To set a secret:
+
+```bash
+pnpm wrangler secret put <SECRET_NAME>
+```
+
+To list all secrets:
+
+```bash
+pnpm wrangler secret list
+```
+
+### R2 Credentials
+
+In production, we use a scoped-down API token that only has permission to read and write objects in specific buckets. For development, create your own API token in the Cloudflare dashboard under **R2 > API Tokens > Manage**. How much access you grant is up to you, but scoping it to just read/write on specific buckets is generally safest.
 
 ## Usage
 

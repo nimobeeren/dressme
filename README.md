@@ -72,6 +72,10 @@ pnpm wrangler secret list
 
 In production, we use a scoped-down API token that only has permission to read and write objects in specific buckets. For development, create your own API token in the Cloudflare dashboard under **R2 > API Tokens > Manage**. How much access you grant is up to you, but scoping it to just read/write on specific buckets is generally safest.
 
+### Placeholders for Testing
+
+Some environment variables are not needed to run tests, because they don't rely on external services. To allow settings validation to pass without weakening types by allowing `None`, we set placeholder values in the `[tool.pytest_env]` section in [`pyproject.toml`](./api/pyproject.toml).
+
 ## Usage
 
 ### Full App (with Wrangler)

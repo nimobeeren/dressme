@@ -14,6 +14,7 @@ dependencies = [
     "pydantic-settings>=2.7.1,<3",
     "pyjwt[crypto]>=2.10.1,<3",
     "psycopg2-binary>=2.9.10,<3",
+    "boto3>=1.42.39",
 ]
 
 [dependency-groups]
@@ -27,6 +28,7 @@ dev = [
     "pytest>=8.3.4,<9",
     "pyright>=1.1.399,<2",
     "pytest-env>=1.1.5",
+    "boto3-stubs[essential]>=1.42.39",
 ]
 
 [project.scripts]
@@ -43,10 +45,13 @@ build-backend = "hatchling.build"
 typeCheckingMode = "strict"
 
 [tool.pytest_env]
-# Set some default values for env vars that are not used in tests
-AUTH0_ALGORITHMS = ""
-AUTH0_API_AUDIENCE = ""
-AUTH0_DOMAIN = ""
-AUTH0_ISSUER = ""
+# Set some placeholder values for env vars that are not used in tests
+AUTH0_ALGORITHMS = "placeholder"
+AUTH0_API_AUDIENCE = "placeholder"
+AUTH0_DOMAIN = "placeholder"
+AUTH0_ISSUER = "placeholder"
 DATABASE_URL = "sqlite://"
-REPLICATE_API_TOKEN = ""
+REPLICATE_API_TOKEN = "placeholder"
+R2_ACCESS_KEY_ID = "placeholder"
+R2_SECRET_ACCESS_KEY = "placeholder"
+R2_S3_URL = "placeholder"

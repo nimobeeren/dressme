@@ -16,42 +16,37 @@ from sqlmodel import (
 class User(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     auth0_user_id: str = Field(index=True, unique=True)
-    avatar_image_id: Optional[UUID] = Field(
-        foreign_key="avatarimage.id", index=True, default=None
-    )
-    avatar_image: Optional["AvatarImage"] = Relationship()
+    avatar_image_key: str | None = Field(default=None)
     outfits: list["Outfit"] = Relationship(back_populates="user")
     wearables: list["Wearable"] = Relationship(back_populates="user")
 
 
-class AvatarImage(SQLModel, table=True):
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
-    image_data: bytes
-
-
 class Wearable(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    category: str
-    description: str | None
-    wearable_image_id: UUID = Field(foreign_key="wearableimage.id", index=True)
-    wearable_image: Optional["WearableImage"] = Relationship()
     user_id: UUID = Field(foreign_key="user.id", index=True)
     user: Optional["User"] = Relationship(back_populates="wearables")
-
-
-class WearableImage(SQLModel, table=True):
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
-    image_data: bytes
+    category: str
+    description: str | None
+    image_key: str
 
 
 class WearableOnAvatarImage(SQLModel, table=True):
+    """
+    Cached result of rendering a wearable on a user's avatar.
+    Contains both the rendered image and the mask used for combining outfits.
+
+    This model references image keys directly instead of foreign keys to User/Wearable models.
+    This is intentional: the cached image becomes invalid when the underlying avatar or
+    wearable image changes, so we track the specific image versions used to generate it.
+    """
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    wearable_image_id: UUID = Field(foreign_key="wearableimage.id", index=True)
-    wearable_image: Optional["WearableImage"] = Relationship()
-    avatar_image_id: UUID = Field(foreign_key="avatarimage.id", index=True)
-    avatar_image: Optional["AvatarImage"] = Relationship()
-    image_data: bytes
-    mask_image_data: bytes
+    user_id: UUID = Field(foreign_key="user.id", index=True)
+    user: Optional["User"] = Relationship()
+    avatar_image_key: str = Field(index=True)
+    wearable_image_key: str = Field(index=True)
+    image_key: str
+    mask_image_key: str
 
 
 class Outfit(SQLModel, table=True):
@@ -61,6 +56,8 @@ class Outfit(SQLModel, table=True):
     """
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="user.id", index=True)
+    user: Optional["User"] = Relationship(back_populates="outfits")
     top_id: UUID = Field(foreign_key="wearable.id", index=True)
     top: Optional["Wearable"] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "Outfit.top_id"}
@@ -69,5 +66,3 @@ class Outfit(SQLModel, table=True):
     bottom: Optional["Wearable"] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "Outfit.bottom_id"}
     )
-    user_id: UUID = Field(foreign_key="user.id", index=True)
-    user: Optional["User"] = Relationship(back_populates="outfits")

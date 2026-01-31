@@ -2,5 +2,9 @@
 __pycache__/
 .pytest_cache/
 .ropeproject/
+.pyright/
+.git/
+.env*
+tests/
 *.db
-# TODO: ignore .env* and use wrangler to load env vars? (or check for recently added dotenv support)
+*.md

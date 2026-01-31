@@ -3,13 +3,21 @@
 # Use a Python image with uv pre-installed
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-# Install the project into `/app`
+# Create non-root user
+RUN useradd --create-home --no-log-init appuser
 WORKDIR /app
+RUN chown appuser:appuser /app
+USER appuser
 
-# Copy the project into the image
-ADD . /app
+# Copy files needed for installing dependencies
+COPY --chown=appuser:appuser pyproject.toml uv.lock ./
 
 # Sync the project into a new environment, asserting the lockfile is up to date
+# Use --no-install-project because this requires the source code to be present
+RUN uv sync --locked --no-dev --no-install-project
+
+# Copy source code and install project
+COPY --chown=appuser:appuser . .
 RUN uv sync --locked --no-dev
 
 # Place executables in the environment at the front of the path

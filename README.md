@@ -138,27 +138,11 @@ The API will be available at `http://localhost:8000`.
 
 ### Client
 
-#### Tests
-
-Run the tests:
+#### Checks
 
 ```bash
 pnpm test
-```
-
-#### Type Checking
-
-Run the type checker:
-
-```bash
 pnpm typecheck
-```
-
-#### Linting
-
-Run the linter:
-
-```bash
 pnpm lint
 ```
 
@@ -174,22 +158,12 @@ Note that the API server must be running for this to work.
 
 ### API
 
-#### Tests
-
-Run the tests:
+#### Checks
 
 ```bash
 cd api
-uv run pytest
-```
-
-#### Type Checking
-
-Run the type checker:
-
-```bash
-cd api
-uv run pyright
+uv run pytest  # tests
+uv run pyright  # type checking
 ```
 
 #### Adding Test Data
@@ -202,6 +176,14 @@ uv run seed
 ```
 
 This will add some wearables to the database.
+
+#### Dropping the Database
+
+To reset your local database, stop the containers and remove the volume:
+
+```bash
+docker compose down -v
+```
 
 #### Getting an Access Token
 

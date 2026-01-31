@@ -1,7 +1,14 @@
 from functools import lru_cache
+import logging
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _is_running_in_docker() -> bool:
+    """Check if the application is running inside a Docker container."""
+    return Path("/.dockerenv").exists()
 
 
 def _find_env_file() -> Path | None:
@@ -35,7 +42,18 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     """PostgreSQL connection string."""
-    
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def transform_database_url_for_local(cls, v: str) -> str:
+        """Replace host.docker.internal with localhost when running outside Docker."""
+        if not _is_running_in_docker() and "host.docker.internal" in v:
+            logging.info(
+                "Running outside Docker, replacing 'host.docker.internal' -> 'localhost' for DATABASE_URL"
+            )
+            return v.replace("host.docker.internal", "localhost")
+        return v
+
     REPLICATE_API_TOKEN: str
     """Replicate API token.
     Found in the Replicate → Account settings → API tokens."""

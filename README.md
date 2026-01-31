@@ -52,21 +52,22 @@ See [`settings.py`](./api/src/dressme/settings.py) for documentation of environm
 
 ### Development
 
-All environment variables are stored in `.env` (see `.env.example` for the template). Variables prefixed with `VITE_` are used by the client.
+All environment variables are stored in `.env` (see `.env.example` for the template).
 
 ### Production
 
-Production environment variables are managed via the Cloudflare dashboard or the Wrangler CLI. To set a secret:
+#### API
 
-```bash
-pnpm wrangler secret put <SECRET_NAME>
-```
-
-To list all secrets:
+Production environment variables for the API are managed via the Cloudflare dashboard or the Wrangler CLI:
 
 ```bash
 pnpm wrangler secret list
+pnpm wrangler secret put <SECRET_NAME>
 ```
+
+#### Client
+
+Production environment variables for the client are sourced from `.env` and set on build/deploy. Only variables starting with `VITE_` are included. To use different values in production than in local development, you can create a `.env.production` file with only the variables you want to override.
 
 ### R2 Credentials
 

@@ -74,9 +74,9 @@ Production environment variables for the client are sourced from `.env` and set 
 For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It runs via docker-compose and requires no external credentials. Configure your `.env` with:
 
 ```bash
-R2_ACCESS_KEY_ID=minioadmin
-R2_SECRET_ACCESS_KEY=minioadmin
-R2_S3_URL=http://host.docker.internal:9000
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_ENDPOINT_URL=http://host.docker.internal:9000
 ```
 
 The MinIO console is available at http://localhost:9001 (login: `minioadmin` / `minioadmin`).

@@ -14,9 +14,9 @@ export class DressmeAPI extends Container<Env> {
     AUTH0_ISSUER: this.env.AUTH0_ISSUER,
     DATABASE_URL: this.env.DATABASE_URL,
     REPLICATE_API_TOKEN: this.env.REPLICATE_API_TOKEN,
-    R2_ACCESS_KEY_ID: this.env.R2_ACCESS_KEY_ID,
-    R2_SECRET_ACCESS_KEY: this.env.R2_SECRET_ACCESS_KEY,
-    R2_S3_URL: this.env.R2_S3_URL,
+    S3_ACCESS_KEY_ID: this.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: this.env.S3_SECRET_ACCESS_KEY,
+    S3_ENDPOINT_URL: this.env.S3_ENDPOINT_URL,
   };
 }
 
@@ -29,9 +29,9 @@ export interface Env {
   AUTH0_ISSUER: string;
   DATABASE_URL: string;
   REPLICATE_API_TOKEN: string;
-  R2_ACCESS_KEY_ID: string;
-  R2_SECRET_ACCESS_KEY: string;
-  R2_S3_URL: string;
+  S3_ACCESS_KEY_ID: string;
+  S3_SECRET_ACCESS_KEY: string;
+  S3_ENDPOINT_URL: string;
 }
 
 export default {

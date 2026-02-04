@@ -37,9 +37,9 @@ class R2Storage(BlobStorage):
     def __init__(self):
         self._client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
             "s3",
-            endpoint_url=settings.R2_S3_URL,
-            aws_access_key_id=settings.R2_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+            endpoint_url=settings.S3_ENDPOINT_URL,
+            aws_access_key_id=settings.S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
             # R2 requires region_name "auto" and signature_version "s3v4"
             region_name="auto",
             config=Config(signature_version="s3v4"),
@@ -69,7 +69,7 @@ class R2Storage(BlobStorage):
         In production mode (R2), returns a presigned URL.
         """
         if settings.MODE == "development":
-            public_endpoint = settings.R2_S3_URL.replace(
+            public_endpoint = settings.S3_ENDPOINT_URL.replace(
                 "host.docker.internal", "localhost"
             )
             return f"{public_endpoint}/{bucket}/{key}"

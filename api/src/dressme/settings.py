@@ -46,7 +46,27 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     """PostgreSQL connection string."""
 
-    @field_validator("DATABASE_URL", "R2_S3_URL")
+    REPLICATE_API_TOKEN: str
+    """Replicate API token.
+    Found in the Replicate → Account settings → API tokens."""
+
+    # Blob Storage
+    S3_ACCESS_KEY_ID: str
+    """Access key ID for S3-compatible blob storage API (e.g. R2, MinIO)."""
+    S3_SECRET_ACCESS_KEY: str
+    """Secret access key for S3-compatible blob storage API (e.g. R2, MinIO)."""
+    S3_ENDPOINT_URL: str
+    """Endpoint URL for S3-compatible blob storage API (e.g. R2, MinIO)."""
+
+    # Bucket names
+    AVATARS_BUCKET: str = "dressme-avatars"
+    """Bucket name for avatar images."""
+    WEARABLES_BUCKET: str = "dressme-wearables"
+    """Bucket name for wearable images."""
+    WOA_BUCKET: str = "dressme-woa"
+    """Bucket name for WearableOnAvatar images and masks."""
+
+    @field_validator("DATABASE_URL", "S3_ENDPOINT_URL")
     @classmethod
     def transform_url_for_local(cls, v: str, info: Any) -> str:
         """Replace host.docker.internal with localhost when running outside Docker."""
@@ -56,26 +76,6 @@ class Settings(BaseSettings):
             )
             return v.replace("host.docker.internal", "localhost")
         return v
-
-    REPLICATE_API_TOKEN: str
-    """Replicate API token.
-    Found in the Replicate → Account settings → API tokens."""
-
-    # R2
-    R2_ACCESS_KEY_ID: str
-    """Cloudflare R2 access key ID for S3-compatible API access."""
-    R2_SECRET_ACCESS_KEY: str
-    """Cloudflare R2 secret access key for S3-compatible API access."""
-    R2_S3_URL: str
-    """Cloudflare R2 S3-compatible API endpoint URL (e.g., https://<account_id>.r2.cloudflarestorage.com)."""
-
-    # Bucket names
-    AVATARS_BUCKET: str = "dressme-avatars"
-    """Bucket name for avatar images."""
-    WEARABLES_BUCKET: str = "dressme-wearables"
-    """Bucket name for wearable images."""
-    WOA_BUCKET: str = "dressme-woa"
-    """Bucket name for WearableOnAvatar images and masks."""
 
     model_config = SettingsConfigDict(extra="ignore", env_file=_find_env_file())
 

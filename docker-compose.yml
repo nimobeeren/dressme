@@ -1,5 +1,5 @@
 services:
-  db:
+  postgres:
     image: postgres:17.7
     environment:
       POSTGRES_DB: local
@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dressme -d local"]
       interval: 10s
@@ -52,5 +52,5 @@ services:
       "
 
 volumes:
-  db-data:
+  postgres-data:
   minio-data:

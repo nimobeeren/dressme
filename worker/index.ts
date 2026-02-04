@@ -7,6 +7,8 @@ export class DressmeAPI extends Container<Env> {
   defaultPort = 8000;
   sleepAfter = "5m";
   envVars = {
+    // Need to set a default value because env vars default to the string "undefined"
+    // when not set
     MODE: this.env.MODE ?? "production",
     AUTH0_ALGORITHMS: this.env.AUTH0_ALGORITHMS,
     AUTH0_API_AUDIENCE: this.env.AUTH0_API_AUDIENCE,
@@ -22,7 +24,7 @@ export class DressmeAPI extends Container<Env> {
 
 export interface Env {
   DRESSME_API: DurableObjectNamespace<DressmeAPI>;
-  MODE: string | undefined;
+  MODE: string;
   AUTH0_ALGORITHMS: string;
   AUTH0_API_AUDIENCE: string;
   AUTH0_DOMAIN: string;

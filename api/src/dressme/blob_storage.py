@@ -37,9 +37,9 @@ class R2Storage(BlobStorage):
     def __init__(self):
         self._client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
             "s3",
-            endpoint_url=settings.S3_ENDPOINT_URL,
-            aws_access_key_id=settings.S3_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
+            endpoint_url=settings.S3_ENDPOINT_URL.get_secret_value(),
+            aws_access_key_id=settings.S3_ACCESS_KEY_ID.get_secret_value(),
+            aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY.get_secret_value(),
             # R2 requires region_name "auto" and signature_version "s3v4"
             region_name="auto",
             config=Config(signature_version="s3v4"),
@@ -69,7 +69,7 @@ class R2Storage(BlobStorage):
         if settings.MODE == "development":
             # We need to replace host.docker.internal with localhost because the request
             # is coming from a browser (outside Docker)
-            public_endpoint = settings.S3_ENDPOINT_URL.replace(
+            public_endpoint = settings.S3_ENDPOINT_URL.get_secret_value().replace(
                 "host.docker.internal", "localhost"
             )
             return f"{public_endpoint}/{bucket}/{key}"

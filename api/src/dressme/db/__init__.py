@@ -7,7 +7,7 @@ from .models import *  # noqa: F403
 
 settings = get_settings()
 
-engine = create_engine(settings.DATABASE_URL, echo=True)
+engine = create_engine(settings.DATABASE_URL.get_secret_value(), echo=True)
 
 
 def create_db_and_tables():

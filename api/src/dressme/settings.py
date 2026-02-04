@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import field_validator
+from pydantic import SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,19 +43,19 @@ class Settings(BaseSettings):
     """Auth0 User ID of the user who should own the data added during database seeding.
     You can find this ID in the database."""
 
-    DATABASE_URL: str
+    DATABASE_URL: SecretStr
     """PostgreSQL connection string."""
 
-    REPLICATE_API_TOKEN: str
+    REPLICATE_API_TOKEN: SecretStr
     """Replicate API token.
     Found in the Replicate → Account settings → API tokens."""
 
     # Blob Storage
-    S3_ACCESS_KEY_ID: str
+    S3_ACCESS_KEY_ID: SecretStr
     """Access key ID for S3-compatible blob storage API (e.g. R2, MinIO)."""
-    S3_SECRET_ACCESS_KEY: str
+    S3_SECRET_ACCESS_KEY: SecretStr
     """Secret access key for S3-compatible blob storage API (e.g. R2, MinIO)."""
-    S3_ENDPOINT_URL: str
+    S3_ENDPOINT_URL: SecretStr
     """Endpoint URL for S3-compatible blob storage API (e.g. R2, MinIO)."""
 
     # Bucket names
@@ -68,18 +68,25 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL", "S3_ENDPOINT_URL")
     @classmethod
-    def transform_url_for_local(cls, v: str, info: Any) -> str:
+    def transform_url_for_local(cls, secret: SecretStr, info: Any) -> SecretStr:
         """Replace host.docker.internal with localhost when running outside Docker."""
-        if not _is_running_in_docker() and "host.docker.internal" in v:
+        value = secret.get_secret_value()
+        if not _is_running_in_docker() and "host.docker.internal" in value:
             logging.info(
                 f"Running outside Docker, replacing 'host.docker.internal' -> 'localhost' for {info.field_name}"
             )
-            return v.replace("host.docker.internal", "localhost")
-        return v
+            value = value.replace("host.docker.internal", "localhost")
+        return SecretStr(value)
 
-    model_config = SettingsConfigDict(extra="ignore", env_file=_find_env_file())
+    model_config = SettingsConfigDict(
+        extra="ignore", env_file=_find_env_file(), hide_input_in_errors=True
+    )
 
 
 @lru_cache
-def get_settings():
-    return Settings()  # type: ignore
+def get_settings() -> Settings:
+    try:
+        return Settings()  # type: ignore
+    except ValidationError as e:
+        # Re-raise to prevent printing sensitive values as locals
+        raise RuntimeError(e)

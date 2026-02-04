@@ -35,7 +35,7 @@ from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
 
 settings = get_settings()
-replicate = Client(api_token=settings.REPLICATE_API_TOKEN)
+replicate = Client(api_token=settings.REPLICATE_API_TOKEN.get_secret_value())
 
 logging.basicConfig(
     level=logging.INFO,
@@ -150,7 +150,9 @@ def update_avatar_image(
 
     # Upload to blob storage
     key = f"{uuid4()}.jpg"
-    blob_storage.upload(settings.AVATARS_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg")
+    blob_storage.upload(
+        settings.AVATARS_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg"
+    )
 
     # Update the user's avatar image key
     current_user.avatar_image_key = key
@@ -179,7 +181,9 @@ def get_wearables(
     woa_image_subquery = (
         select(db.WearableOnAvatarImage)
         .where(db.WearableOnAvatarImage.user_id == current_user.id)
-        .where(db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key)
+        .where(
+            db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key
+        )
         .subquery()
     )
 
@@ -201,7 +205,9 @@ def get_wearables(
             id=wearable.id,
             category=wearable.category,
             description=wearable.description,
-            wearable_image_url=blob_storage.get_signed_url(settings.WEARABLES_BUCKET, wearable.image_key),
+            wearable_image_url=blob_storage.get_signed_url(
+                settings.WEARABLES_BUCKET, wearable.image_key
+            ),
             generation_status="pending" if woa_image_id is None else "completed",
         )
         for wearable, woa_image_id in results
@@ -232,8 +238,12 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         if user.avatar_image_key is None:
             raise ValueError("User does not have an avatar image")
 
-        wearable_image_data = blob_storage.download(settings.WEARABLES_BUCKET, wearable.image_key)
-        avatar_image_data = blob_storage.download(settings.AVATARS_BUCKET, user.avatar_image_key)
+        wearable_image_data = blob_storage.download(
+            settings.WEARABLES_BUCKET, wearable.image_key
+        )
+        avatar_image_data = blob_storage.download(
+            settings.AVATARS_BUCKET, user.avatar_image_key
+        )
 
         woa_image_url_raw = replicate.run(
             "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
@@ -281,8 +291,12 @@ def create_woa_image(*, wearable_id: UUID, user_id: UUID):
         woa_key = f"{uuid4()}.jpg"
         mask_key = f"{uuid4()}.jpg"
 
-        blob_storage.upload(settings.WOA_BUCKET, woa_key, woa_image_response.content, "image/jpeg")
-        blob_storage.upload(settings.WOA_BUCKET, mask_key, mask_image_response.content, "image/jpeg")
+        blob_storage.upload(
+            settings.WOA_BUCKET, woa_key, woa_image_response.content, "image/jpeg"
+        )
+        blob_storage.upload(
+            settings.WOA_BUCKET, mask_key, mask_image_response.content, "image/jpeg"
+        )
 
         logging.info("Saving results to DB")
         woa_image = db.WearableOnAvatarImage(
@@ -335,7 +349,9 @@ def create_wearables(
         compressed_img_buf.seek(0)
 
         key = f"{uuid4()}.jpg"
-        blob_storage.upload(settings.WEARABLES_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg")
+        blob_storage.upload(
+            settings.WEARABLES_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg"
+        )
 
         wearable = db.Wearable(
             category=item_category,
@@ -362,7 +378,9 @@ def create_wearables(
             id=wearable.id,
             category=wearable.category,
             description=wearable.description,
-            wearable_image_url=blob_storage.get_signed_url(settings.WEARABLES_BUCKET, wearable.image_key),
+            wearable_image_url=blob_storage.get_signed_url(
+                settings.WEARABLES_BUCKET, wearable.image_key
+            ),
             generation_status="pending",  # since the generation of the WOA image happens in the background
         )
         for wearable in wearables
@@ -410,14 +428,18 @@ def get_outfit_image(
     top_on_avatar = session.exec(
         select(db.WearableOnAvatarImage)
         .where(db.WearableOnAvatarImage.user_id == current_user.id)
-        .where(db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key)
+        .where(
+            db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key
+        )
         .where(db.WearableOnAvatarImage.wearable_image_key == top_wearable.image_key)
     ).first()
 
     bottom_on_avatar = session.exec(
         select(db.WearableOnAvatarImage)
         .where(db.WearableOnAvatarImage.user_id == current_user.id)
-        .where(db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key)
+        .where(
+            db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key
+        )
         .where(db.WearableOnAvatarImage.wearable_image_key == bottom_wearable.image_key)
     ).first()
 
@@ -427,10 +449,14 @@ def get_outfit_image(
         )
 
     # Download images from blob storage
-    avatar_data = blob_storage.download(settings.AVATARS_BUCKET, current_user.avatar_image_key)
+    avatar_data = blob_storage.download(
+        settings.AVATARS_BUCKET, current_user.avatar_image_key
+    )
     top_data = blob_storage.download(settings.WOA_BUCKET, top_on_avatar.image_key)
     bottom_data = blob_storage.download(settings.WOA_BUCKET, bottom_on_avatar.image_key)
-    top_mask_data = blob_storage.download(settings.WOA_BUCKET, top_on_avatar.mask_image_key)
+    top_mask_data = blob_storage.download(
+        settings.WOA_BUCKET, top_on_avatar.mask_image_key
+    )
 
     avatar_im = Image.open(io.BytesIO(avatar_data))
     top_im = Image.open(io.BytesIO(top_data))
@@ -466,7 +492,9 @@ def get_outfits(
     woa_images = session.exec(
         select(db.WearableOnAvatarImage)
         .where(db.WearableOnAvatarImage.user_id == current_user.id)
-        .where(db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key)
+        .where(
+            db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key
+        )
     ).all()
     completed_wearable_image_keys = {woa.wearable_image_key for woa in woa_images}
 
@@ -487,24 +515,32 @@ def get_outfits(
         assert outfit.bottom is not None
 
         top_status: Literal["pending", "completed"] = (
-            "completed" if outfit.top.image_key in completed_wearable_image_keys else "pending"
+            "completed"
+            if outfit.top.image_key in completed_wearable_image_keys
+            else "pending"
         )
         bottom_status: Literal["pending", "completed"] = (
-            "completed" if outfit.bottom.image_key in completed_wearable_image_keys else "pending"
+            "completed"
+            if outfit.bottom.image_key in completed_wearable_image_keys
+            else "pending"
         )
 
         top = Wearable(
             id=outfit.top.id,
             category=outfit.top.category,
             description=outfit.top.description,
-            wearable_image_url=blob_storage.get_signed_url(settings.WEARABLES_BUCKET, outfit.top.image_key),
+            wearable_image_url=blob_storage.get_signed_url(
+                settings.WEARABLES_BUCKET, outfit.top.image_key
+            ),
             generation_status=top_status,
         )
         bottom = Wearable(
             id=outfit.bottom.id,
             category=outfit.bottom.category,
             description=outfit.bottom.description,
-            wearable_image_url=blob_storage.get_signed_url(settings.WEARABLES_BUCKET, outfit.bottom.image_key),
+            wearable_image_url=blob_storage.get_signed_url(
+                settings.WEARABLES_BUCKET, outfit.bottom.image_key
+            ),
             generation_status=bottom_status,
         )
         api_outfits.append(Outfit(id=outfit.id, top=top, bottom=bottom))

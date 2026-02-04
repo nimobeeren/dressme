@@ -14,6 +14,7 @@ A virtual wardrobe that shows you how clothes look on you.
 - Auth0
 - FastAPI
 - SQLModel
+- PostgreSQL
 - Neon
 - Cloudflare Containers
 - Replicate
@@ -48,15 +49,15 @@ cp .env.example .env
 
 ## Environment Variables
 
-See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`worker/index.ts`](./worker/index.ts) when running with Wrangler (both for development and production).
+### API
 
-### Development
+See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`worker/index.ts`](./worker/index.ts) when running through the worker (both for development and production).
 
-All environment variables are stored in `.env` (see `.env.example` for the template).
+#### Development
 
-### Production
+All environment variables are sourced from `.env` (see `.env.example` for the template).
 
-#### API
+#### Production
 
 Production environment variables for the API are managed via the Cloudflare dashboard or the Wrangler CLI:
 
@@ -65,21 +66,31 @@ pnpm wrangler secret list
 pnpm wrangler secret put <SECRET_NAME>
 ```
 
-#### Client
+### Client
 
-Production environment variables for the client are sourced from `.env` and set on build/deploy. Only variables starting with `VITE_` are included. To use different values in production than in local development, you can create a `.env.production` file with only the variables you want to override.
+#### Development
 
-### R2 Credentials
+All environment variables are sourced from `.env` (see `.env.example` for the template).
 
-In production, we use a scoped-down API token that only has permission to read and write objects in specific buckets. For development, create your own API token in the Cloudflare dashboard under **R2 > API Tokens > Manage**. How much access you grant is up to you, but scoping it to just read/write on specific buckets is generally safest.
+Some environment variables are not needed to run tests, because they don't rely on external services. To allow settings validation to pass without weakening types by allowing `None`, placeholder values are set in the `[tool.pytest_env]` section in [`pyproject.toml`](./api/pyproject.toml).
 
-### Placeholders for Testing
+#### Production
 
-Some environment variables are not needed to run tests, because they don't rely on external services. To allow settings validation to pass without weakening types by allowing `None`, we set placeholder values in the `[tool.pytest_env]` section in [`pyproject.toml`](./api/pyproject.toml).
+Production environment variables for the client are sourced from `.env` and set on build/deploy. Only variables starting with `VITE_` are included. To use different values in production than in local development, create a `.env.production` file with only the variables you want to override.
 
-## Usage
+### Blob Storage (MinIO / R2)
 
-### Full App (with Wrangler)
+#### Development
+
+For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It requires no extra configuration when copying the default values from `.env.example`.
+
+#### Production
+
+In production, we use Cloudflare R2 with a scoped-down API token that only has permission to read and write objects in specific buckets. A new API token can be created in the Cloudflare dashboard under **R2 > API Tokens > Manage**.
+
+## Development Tasks
+
+### Running the App
 
 Runs both the client and API together, similar to the production setup.
 
@@ -96,7 +107,7 @@ Changes to the client and worker are auto-reloaded, but changes to the API requi
 
 #### Viewing API Logs
 
-API logs are not shown by default when running with Wrangler. To view them while the API is running:
+API logs are not shown by default when running with `pnpm run dev`. To view them while the API is running:
 
 ```bash
 pnpm run api-logs
@@ -104,9 +115,9 @@ pnpm run api-logs
 
 Note that you need to make a request to the client before the API will start.
 
-If you need to do it manually, look up the Docker container ID with `docker ps` (image name `cloudflare-dev/dressmeapi`), then run `docker logs -f <CONTAINER_ID>`.
+If you need to do it manually, look up the Docker container ID with `docker ps` (image name `cloudflare-dev/dressme`), then run `docker logs -f <CONTAINER_ID>`.
 
-### Standalone API (with uv)
+### Running Standalone API (with uv)
 
 Faster to start and iterate when working on the API only.
 
@@ -120,7 +131,7 @@ uv run fastapi dev src/dressme/main.py
 
 The API will be available at `http://localhost:8000`.
 
-### Standalone API (with Docker)
+### Running Standalone API (with Docker)
 
 Faster than running the whole app, but matches the production environment more closely than running directly with uv.
 
@@ -134,11 +145,9 @@ docker run -p 8000:8000 --env-file .env dressme-api
 
 The API will be available at `http://localhost:8000`.
 
-## Development
+### Code Checks
 
-### Client
-
-#### Checks
+#### Client
 
 ```bash
 pnpm test
@@ -146,7 +155,15 @@ pnpm typecheck
 pnpm lint
 ```
 
-#### Generating API Client
+#### API
+
+```bash
+cd api
+uv run pytest
+uv run pyright  # type checking
+```
+
+### Generating API Client
 
 A TypeScript client is generated in `src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
 
@@ -156,17 +173,7 @@ pnpm generate-client
 
 Note that the API server must be running for this to work.
 
-### API
-
-#### Checks
-
-```bash
-cd api
-uv run pytest  # tests
-uv run pyright  # type checking
-```
-
-#### Adding Test Data
+### Adding Test Data
 
 When you first start the backend, the database will be empty. To add some test data, set the `AUTH0_SEED_USER_ID` environment variable (in your `.env` file or your shell), then run the seed script:
 
@@ -177,7 +184,7 @@ uv run seed
 
 This will add some wearables to the database.
 
-#### Dropping the Database
+### Dropping the Database
 
 To reset your local database, stop the containers and remove the volume:
 
@@ -185,9 +192,9 @@ To reset your local database, stop the containers and remove the volume:
 docker compose down -v
 ```
 
-#### Getting an Access Token
+### Getting an Access Token
 
-When making API requests, you'll need to pass a valid access token. The frontend gets this token automatically from Auth0 after you log in, but you can also get it yourself by making a request like this:
+When making API requests, you'll need to pass a valid access token. The client gets this token automatically from Auth0 after you log in, but you can also get it yourself by making a request like this:
 
 ```bash
 curl -X POST 'https://$AUTH0_DOMAIN/oauth/token' \

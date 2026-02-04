@@ -9,6 +9,8 @@ from botocore.config import Config
 
 from .settings import get_settings
 
+settings = get_settings()
+
 
 class BlobStorage(ABC):
     """Abstract interface for blob storage operations."""
@@ -33,12 +35,11 @@ class R2Storage(BlobStorage):
     """Cloudflare R2 implementation of blob storage."""
 
     def __init__(self):
-        settings = get_settings()
         self._client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
             "s3",
-            endpoint_url=settings.R2_S3_URL,
-            aws_access_key_id=settings.R2_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+            endpoint_url=settings.S3_ENDPOINT_URL,
+            aws_access_key_id=settings.S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
             # R2 requires region_name "auto" and signature_version "s3v4"
             region_name="auto",
             config=Config(signature_version="s3v4"),
@@ -62,7 +63,17 @@ class R2Storage(BlobStorage):
 
     @override
     def get_signed_url(self, bucket: str, key: str, expires_in: int = 3600) -> str:
-        """Generate a presigned URL for accessing an object."""
+        """Generate a URL for accessing an object."""
+        # In development, return a direct URL without signing
+        # because MinIO has anonymous access enabled
+        if settings.MODE == "development":
+            # We need to replace host.docker.internal with localhost because the request
+            # is coming from a browser (outside Docker)
+            public_endpoint = settings.S3_ENDPOINT_URL.replace(
+                "host.docker.internal", "localhost"
+            )
+            return f"{public_endpoint}/{bucket}/{key}"
+
         return self._client.generate_presigned_url(
             "get_object",
             Params={"Bucket": bucket, "Key": key},

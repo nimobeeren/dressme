@@ -1,6 +1,7 @@
 from functools import lru_cache
 import logging
 from pathlib import Path
+from typing import Any, Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +24,8 @@ def _find_env_file() -> Path | None:
 
 
 class Settings(BaseSettings):
+    MODE: Literal["development", "production"] = "production"
+
     # Auth0
     AUTH0_ALGORITHMS: str
     """Algorithms used to sign access tokens.
@@ -43,28 +46,17 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     """PostgreSQL connection string."""
 
-    @field_validator("DATABASE_URL")
-    @classmethod
-    def transform_database_url_for_local(cls, v: str) -> str:
-        """Replace host.docker.internal with localhost when running outside Docker."""
-        if not _is_running_in_docker() and "host.docker.internal" in v:
-            logging.info(
-                "Running outside Docker, replacing 'host.docker.internal' -> 'localhost' for DATABASE_URL"
-            )
-            return v.replace("host.docker.internal", "localhost")
-        return v
-
     REPLICATE_API_TOKEN: str
     """Replicate API token.
     Found in the Replicate → Account settings → API tokens."""
 
-    # R2
-    R2_ACCESS_KEY_ID: str
-    """Cloudflare R2 access key ID for S3-compatible API access."""
-    R2_SECRET_ACCESS_KEY: str
-    """Cloudflare R2 secret access key for S3-compatible API access."""
-    R2_S3_URL: str
-    """Cloudflare R2 S3-compatible API endpoint URL (e.g., https://<account_id>.r2.cloudflarestorage.com)."""
+    # Blob Storage
+    S3_ACCESS_KEY_ID: str
+    """Access key ID for S3-compatible blob storage API (e.g. R2, MinIO)."""
+    S3_SECRET_ACCESS_KEY: str
+    """Secret access key for S3-compatible blob storage API (e.g. R2, MinIO)."""
+    S3_ENDPOINT_URL: str
+    """Endpoint URL for S3-compatible blob storage API (e.g. R2, MinIO)."""
 
     # Bucket names
     AVATARS_BUCKET: str = "dressme-avatars"
@@ -73,6 +65,17 @@ class Settings(BaseSettings):
     """Bucket name for wearable images."""
     WOA_BUCKET: str = "dressme-woa"
     """Bucket name for WearableOnAvatar images and masks."""
+
+    @field_validator("DATABASE_URL", "S3_ENDPOINT_URL")
+    @classmethod
+    def transform_url_for_local(cls, v: str, info: Any) -> str:
+        """Replace host.docker.internal with localhost when running outside Docker."""
+        if not _is_running_in_docker() and "host.docker.internal" in v:
+            logging.info(
+                f"Running outside Docker, replacing 'host.docker.internal' -> 'localhost' for {info.field_name}"
+            )
+            return v.replace("host.docker.internal", "localhost")
+        return v
 
     model_config = SettingsConfigDict(extra="ignore", env_file=_find_env_file())
 

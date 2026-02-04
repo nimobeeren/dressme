@@ -7,29 +7,33 @@ export class DressmeAPI extends Container<Env> {
   defaultPort = 8000;
   sleepAfter = "5m";
   envVars = {
+    // Need to set a default value because env vars default to the string "undefined"
+    // when not set
+    MODE: this.env.MODE ?? "production",
     AUTH0_ALGORITHMS: this.env.AUTH0_ALGORITHMS,
     AUTH0_API_AUDIENCE: this.env.AUTH0_API_AUDIENCE,
     AUTH0_DOMAIN: this.env.AUTH0_DOMAIN,
     AUTH0_ISSUER: this.env.AUTH0_ISSUER,
     DATABASE_URL: this.env.DATABASE_URL,
     REPLICATE_API_TOKEN: this.env.REPLICATE_API_TOKEN,
-    R2_ACCESS_KEY_ID: this.env.R2_ACCESS_KEY_ID,
-    R2_SECRET_ACCESS_KEY: this.env.R2_SECRET_ACCESS_KEY,
-    R2_S3_URL: this.env.R2_S3_URL,
+    S3_ACCESS_KEY_ID: this.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: this.env.S3_SECRET_ACCESS_KEY,
+    S3_ENDPOINT_URL: this.env.S3_ENDPOINT_URL,
   };
 }
 
 export interface Env {
   DRESSME_API: DurableObjectNamespace<DressmeAPI>;
+  MODE: string;
   AUTH0_ALGORITHMS: string;
   AUTH0_API_AUDIENCE: string;
   AUTH0_DOMAIN: string;
   AUTH0_ISSUER: string;
   DATABASE_URL: string;
   REPLICATE_API_TOKEN: string;
-  R2_ACCESS_KEY_ID: string;
-  R2_SECRET_ACCESS_KEY: string;
-  R2_S3_URL: string;
+  S3_ACCESS_KEY_ID: string;
+  S3_SECRET_ACCESS_KEY: string;
+  S3_ENDPOINT_URL: string;
 }
 
 export default {

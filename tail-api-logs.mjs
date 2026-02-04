@@ -12,7 +12,7 @@ const containerIds = output
 
 if (containerIds.length === 0) {
   throw new Error(
-    `No running API container found for ${imageName}. Make sure you run \`pnpm run dev\` and make a request to the client to start the container.`,
+    `No running API container found for ${imageName}. Make sure you run \`pnpm run dev\` and make an (authenticated) request to the client to start the container.`,
   );
 }
 

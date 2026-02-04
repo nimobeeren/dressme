@@ -63,12 +63,12 @@ class R2Storage(BlobStorage):
 
     @override
     def get_signed_url(self, bucket: str, key: str, expires_in: int = 3600) -> str:
-        """Generate a URL for accessing an object.
-
-        In development mode (MinIO with public buckets), returns a direct URL.
-        In production mode (R2), returns a presigned URL.
-        """
+        """Generate a URL for accessing an object."""
+        # In development, return a direct URL without signing
+        # because MinIO has anonymous access enabled
         if settings.MODE == "development":
+            # We need to replace host.docker.internal with localhost because the request
+            # is coming from a browser (outside Docker)
             public_endpoint = settings.S3_ENDPOINT_URL.replace(
                 "host.docker.internal", "localhost"
             )

@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 
 // Find containers by image name prefix (the image may have a dynamic tag like :bcaff440)
-const imageName = "cloudflare-dev/dressmeapi";
+const imageName = "cloudflare-dev/dressme";
 const command = `docker ps --format "{{.ID}} {{.Image}}"`;
 const output = execSync(command, { encoding: "utf8" }).trim();
 const containerIds = output
@@ -11,7 +11,9 @@ const containerIds = output
   .filter(Boolean);
 
 if (containerIds.length === 0) {
-  throw new Error(`No running API container found for ${imageName}. Start wrangler dev first.`);
+  throw new Error(
+    `No running API container found for ${imageName}. Make sure you run \`pnpm run dev\` and make a request to the client to start the container.`,
+  );
 }
 
 if (containerIds.length > 1) {

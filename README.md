@@ -158,9 +158,9 @@ psql postgresql://dressme:dressme@localhost:5432/local
 #### Client
 
 ```bash
-pnpm test
-pnpm typecheck
-pnpm lint
+pnpm run test
+pnpm run typecheck
+pnpm run lint
 ```
 
 #### API
@@ -176,7 +176,7 @@ uv run pyright  # type checking
 A TypeScript client is generated in `src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
 
 ```bash
-pnpm generate-client
+pnpm run generate-client
 ```
 
 Note that the API server must be running for this to work.

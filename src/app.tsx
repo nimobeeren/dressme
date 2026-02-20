@@ -111,7 +111,7 @@ function ForceWelcome({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!me.has_avatar_image && !match) {
+  if (!me.avatar_image_url && !match) {
     return <Navigate to="/welcome" />;
   }
 

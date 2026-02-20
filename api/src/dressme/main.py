@@ -19,7 +19,6 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
@@ -30,7 +29,6 @@ from sqlmodel import Session, select
 
 from . import db
 from .auth import verify_token
-from .combining import combine_wearables
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
 
@@ -113,17 +111,24 @@ def health():
 
 class User(BaseModel):
     id: UUID
-    has_avatar_image: bool
+    avatar_image_url: str | None
+    """Non-null iff user has an avatar image."""
 
 
 @app.get("/users/me")
 def get_me(
     *,
     current_user: db.User = Depends(get_current_user),
+    blob_storage: BlobStorage = Depends(get_blob_storage),
 ) -> User:
+    avatar_image_url: str | None = None
+    if current_user.avatar_image_key is not None:
+        avatar_image_url = blob_storage.get_signed_url(
+            settings.AVATARS_BUCKET, current_user.avatar_image_key
+        )
     return User(
         id=current_user.id,
-        has_avatar_image=current_user.avatar_image_key is not None,
+        avatar_image_url=avatar_image_url,
     )
 
 
@@ -168,6 +173,10 @@ class Wearable(BaseModel):
     wearable_image_url: str
     generation_status: Literal["pending", "completed"]
     """Whether a WOA image has been generated with this wearable for the current user."""
+    woa_image_url: str | None
+    """Non-null iff generation_status == 'completed'."""
+    woa_mask_url: str | None
+    """Non-null iff generation_status == 'completed'."""
 
 
 @app.get("/wearables")
@@ -189,9 +198,14 @@ def get_wearables(
 
     # Get all wearables and the associated WearableOnAvatarImage (or None)
     results = cast(
-        list[tuple[db.Wearable, UUID | None]],
+        list[tuple[db.Wearable, UUID | None, str | None, str | None]],
         session.exec(
-            select(db.Wearable, woa_image_subquery.columns.id)
+            select(
+                db.Wearable,
+                woa_image_subquery.columns.id,
+                woa_image_subquery.columns.image_key,
+                woa_image_subquery.columns.mask_image_key,
+            )
             .where(db.Wearable.user_id == current_user.id)
             .outerjoin(
                 woa_image_subquery,
@@ -200,18 +214,43 @@ def get_wearables(
         ).all(),
     )
 
-    return [
-        Wearable(
-            id=wearable.id,
-            category=wearable.category,
-            description=wearable.description,
-            wearable_image_url=blob_storage.get_signed_url(
-                settings.WEARABLES_BUCKET, wearable.image_key
-            ),
-            generation_status="pending" if woa_image_id is None else "completed",
+    wearables: list[Wearable] = []
+    for wearable, woa_image_id, woa_image_key, woa_mask_key in results:
+        if woa_image_id is not None:
+            if woa_image_key is None or woa_mask_key is None:
+                logging.error(
+                    f"WOA record exists for wearable {wearable.id} but image/mask key is null — data corruption"
+                )
+                generation_status = "pending"
+                woa_image_url = None
+                woa_mask_url = None
+            else:
+                generation_status = "completed"
+                woa_image_url = blob_storage.get_signed_url(
+                    settings.WOA_BUCKET, woa_image_key
+                )
+                woa_mask_url = blob_storage.get_signed_url(
+                    settings.WOA_BUCKET, woa_mask_key
+                )
+        else:
+            generation_status = "pending"
+            woa_image_url = None
+            woa_mask_url = None
+
+        wearables.append(
+            Wearable(
+                id=wearable.id,
+                category=wearable.category,
+                description=wearable.description,
+                wearable_image_url=blob_storage.get_signed_url(
+                    settings.WEARABLES_BUCKET, wearable.image_key
+                ),
+                generation_status=generation_status,
+                woa_image_url=woa_image_url,
+                woa_mask_url=woa_mask_url,
+            )
         )
-        for wearable, woa_image_id in results
-    ]
+    return wearables
 
 
 # TODO: add a test for this
@@ -385,100 +424,6 @@ def create_wearables(
         )
         for wearable in wearables
     ]
-
-
-@app.get("/images/outfit")
-def get_outfit_image(
-    *,
-    top_id: UUID,
-    bottom_id: UUID,
-    session: Session = Depends(get_session),
-    current_user: db.User = Depends(get_current_user),
-    blob_storage: BlobStorage = Depends(get_blob_storage),
-) -> StreamingResponse:
-    if current_user.avatar_image_key is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User has no avatar image."
-        )
-
-    # Get the top and bottom wearables to get their image keys
-    top_wearable = session.exec(
-        select(db.Wearable)
-        .where(db.Wearable.id == top_id)
-        .where(db.Wearable.user_id == current_user.id)
-    ).first()
-    if top_wearable is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wearable with ID '{top_id}' not found.",
-        )
-
-    bottom_wearable = session.exec(
-        select(db.Wearable)
-        .where(db.Wearable.id == bottom_id)
-        .where(db.Wearable.user_id == current_user.id)
-    ).first()
-    if bottom_wearable is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wearable with ID '{bottom_id}' not found.",
-        )
-
-    # Find WOA images by matching user, avatar, and wearable image keys
-    top_on_avatar = session.exec(
-        select(db.WearableOnAvatarImage)
-        .where(db.WearableOnAvatarImage.user_id == current_user.id)
-        .where(
-            db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key
-        )
-        .where(db.WearableOnAvatarImage.wearable_image_key == top_wearable.image_key)
-    ).first()
-
-    bottom_on_avatar = session.exec(
-        select(db.WearableOnAvatarImage)
-        .where(db.WearableOnAvatarImage.user_id == current_user.id)
-        .where(
-            db.WearableOnAvatarImage.avatar_image_key == current_user.avatar_image_key
-        )
-        .where(db.WearableOnAvatarImage.wearable_image_key == bottom_wearable.image_key)
-    ).first()
-
-    if top_on_avatar is None or bottom_on_avatar is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Outfit image not found."
-        )
-
-    # Download images from blob storage
-    avatar_data = blob_storage.download(
-        settings.AVATARS_BUCKET, current_user.avatar_image_key
-    )
-    top_data = blob_storage.download(settings.WOA_BUCKET, top_on_avatar.image_key)
-    bottom_data = blob_storage.download(settings.WOA_BUCKET, bottom_on_avatar.image_key)
-    top_mask_data = blob_storage.download(
-        settings.WOA_BUCKET, top_on_avatar.mask_image_key
-    )
-    bottom_mask_data = blob_storage.download(
-        settings.WOA_BUCKET, bottom_on_avatar.mask_image_key
-    )
-
-    avatar_im = Image.open(io.BytesIO(avatar_data))
-    top_im = Image.open(io.BytesIO(top_data))
-    bottom_im = Image.open(io.BytesIO(bottom_data))
-    top_mask_im = Image.open(io.BytesIO(top_mask_data))
-    bottom_mask_im = Image.open(io.BytesIO(bottom_mask_data))
-
-    outfit_im = combine_wearables(
-        avatar_im, top_im, bottom_im, top_mask_im, bottom_mask_im
-    )
-
-    outfit_buffer = io.BytesIO()
-    outfit_im.save(outfit_buffer, format="JPEG")
-    outfit_buffer.seek(0)
-    return StreamingResponse(
-        outfit_buffer,
-        media_type="image/jpeg",
-        headers={"Cache-Control": "public, max-age=3600"},
-    )
 
 
 class Outfit(BaseModel):

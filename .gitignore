@@ -1,5 +1,6 @@
 # Logs
 pnpm-debug.log*
+*.log
 
 # Dependencies
 node_modules

@@ -75,6 +75,13 @@ export function useWearables() {
       const result = await getWearables();
       return result.data;
     },
+    refetchInterval: (query) => {
+      const wearables = query.state.data;
+      if (wearables?.some((w) => w.generation_status === "pending")) {
+        return 5000;
+      }
+      return false;
+    },
   });
 }
 

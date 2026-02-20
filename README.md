@@ -82,7 +82,7 @@ Production environment variables for the client are sourced from `.env` and set 
 
 #### Development
 
-For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It requires no extra configuration when copying the default values from `.env.example`.
+For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It requires no extra configuration when copying the default values from `.env.example`. You can access the MinIO console at `http://localhost:9001` with the credentials `minioadmin/minioadmin`.
 
 #### Production
 

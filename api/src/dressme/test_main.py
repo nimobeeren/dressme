@@ -382,6 +382,7 @@ class TestGetOutfitImage:
         mock_blob_storage.upload(settings.WOA_BUCKET, "woa_top.jpg", test_webp_image_data, "image/webp")
         mock_blob_storage.upload(settings.WOA_BUCKET, "woa_bottom.jpg", test_webp_image_data, "image/webp")
         mock_blob_storage.upload(settings.WOA_BUCKET, "mask_top.jpg", test_webp_image_data, "image/webp")
+        mock_blob_storage.upload(settings.WOA_BUCKET, "mask_bottom.jpg", test_webp_image_data, "image/webp")
 
         # Create user with avatar
         user = db.User(auth0_user_id=test_user_id, avatar_image_key="avatar.jpg")

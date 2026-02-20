@@ -21,19 +21,19 @@ A virtual wardrobe that shows you how clothes look on you.
 
 ## Repository Structure
 
-- 📁 [`.github`](./.github): GitHub Actions CI configuration
-- 📁 [`api`](./api): the backend API
-- 📁 [`images`](./images): sample images for seeding the development database
-- 📁 [`src`](./src): the frontend client source code
-- 📁 [`worker`](./worker): the Cloudflare Worker entrypoint
+- 📁 `[.github](./.github)`: GitHub Actions CI configuration
+- 📁 `[api](./api)`: the backend API
+- 📁 `[images](./images)`: sample images for seeding the development database
+- 📁 `[src](./src)`: the frontend client source code
+- 📁 `[worker](./worker)`: the Cloudflare Worker entrypoint
 
 ## Installation
 
 1. Install the required tools:
 
-   - [Docker](https://docs.docker.com/get-docker/)
-   - [uv](https://docs.astral.sh/uv/getting-started/installation/)
-   - [pnpm](https://pnpm.io/installation)
+- [Docker](https://docs.docker.com/get-docker/)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [pnpm](https://pnpm.io/installation)
 
 2. Install dependencies:
 
@@ -51,7 +51,7 @@ cp .env.example .env
 
 ### API
 
-See [`settings.py`](./api/src/dressme/settings.py) for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in [`worker/index.ts`](./worker/index.ts) when running through the worker (both for development and production).
+See `[settings.py](./api/src/dressme/settings.py)` for documentation of environment variables used by the API. Note that environment variables need to be explicitly forwarded to the API container in `[worker/index.ts](./worker/index.ts)` when running through the worker (both for development and production).
 
 #### Development
 
@@ -72,7 +72,7 @@ pnpm wrangler secret put <SECRET_NAME>
 
 All environment variables are sourced from `.env` (see `.env.example` for the template).
 
-Some environment variables are not needed to run tests, because they don't rely on external services. To allow settings validation to pass without weakening types by allowing `None`, placeholder values are set in the `[tool.pytest_env]` section in [`pyproject.toml`](./api/pyproject.toml).
+Some environment variables are not needed to run tests, because they don't rely on external services. To allow settings validation to pass without weakening types by allowing `None`, placeholder values are set in the `[tool.pytest_env]` section in `[pyproject.toml](./api/pyproject.toml)`.
 
 #### Production
 
@@ -144,6 +144,14 @@ docker run -p 8000:8000 --env-file .env dressme-api
 ```
 
 The API will be available at `http://localhost:8000`.
+
+### Inspecting the Database
+
+While `docker compose` is running, you can interact with the local PostgreSQL database using:
+
+```sh
+psql postgresql://dressme:dressme@localhost:5432/local
+```
 
 ### Code Checks
 

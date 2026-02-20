@@ -457,13 +457,19 @@ def get_outfit_image(
     top_mask_data = blob_storage.download(
         settings.WOA_BUCKET, top_on_avatar.mask_image_key
     )
+    bottom_mask_data = blob_storage.download(
+        settings.WOA_BUCKET, bottom_on_avatar.mask_image_key
+    )
 
     avatar_im = Image.open(io.BytesIO(avatar_data))
     top_im = Image.open(io.BytesIO(top_data))
     bottom_im = Image.open(io.BytesIO(bottom_data))
     top_mask_im = Image.open(io.BytesIO(top_mask_data))
+    bottom_mask_im = Image.open(io.BytesIO(bottom_mask_data))
 
-    outfit_im = combine_wearables(avatar_im, top_im, bottom_im, top_mask_im)
+    outfit_im = combine_wearables(
+        avatar_im, top_im, bottom_im, top_mask_im, bottom_mask_im
+    )
 
     outfit_buffer = io.BytesIO()
     outfit_im.save(outfit_buffer, format="JPEG")

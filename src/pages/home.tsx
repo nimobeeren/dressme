@@ -87,6 +87,9 @@ function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[]
   );
 }
 
+// LEFT HERE
+// claude --resume d497350d-e533-4ae6-87ff-a083ab69c7af
+
 /** Shows a generated image of the active wearables/outfit on the user's avatar. */
 function Preview({
   activeTop,

@@ -140,7 +140,11 @@ class TestGetCurrentUser:
 class TestGetMe:
     def test_success(self, session: Session, client: TestClient):
         # Create user with avatar image key
-        user = db.User(auth0_user_id=test_user_id, avatar_image_key="avatar.jpg")
+        user = db.User(
+            auth0_user_id=test_user_id,
+            avatar_image_key="avatar.jpg",
+            avatar_generation_status="completed",
+        )
         session.add(user)
         session.commit()
 
@@ -150,6 +154,7 @@ class TestGetMe:
         assert response.json() == {
             "id": str(user.id),
             "has_avatar_image": True,
+            "avatar_generation_status": "completed",
         }
 
     def test_success_no_avatar_image(self, session: Session, client: TestClient):
@@ -164,18 +169,24 @@ class TestGetMe:
         assert response.json() == {
             "id": str(user.id),
             "has_avatar_image": False,
+            "avatar_generation_status": None,
         }
 
 
 class TestUpdateAvatarImage:
+    @patch("dressme.main.generate_avatar_task")
     def test_success(
-        self, session: Session, client: TestClient, mock_blob_storage: MockBlobStorage
+        self,
+        mock_generate_avatar_task: MagicMock,
+        session: Session,
+        client: TestClient,
+        mock_blob_storage: MockBlobStorage,
     ):
         # Create user without an initial avatar image
-        user = db.User(auth0_user_id=test_user_id, avatar_image_key=None)
+        user = db.User(auth0_user_id=test_user_id)
         session.add(user)
         session.commit()
-        assert user.avatar_image_key is None
+        assert user.selfie_image_key is None
 
         # New avatar data to upload
         new_avatar_data = test_webp_image_data
@@ -187,22 +198,30 @@ class TestUpdateAvatarImage:
         )
 
         # Assert response status code
-        assert response.status_code == 200
+        assert response.status_code == 202
 
         # Refresh user object to get updated fields
         session.refresh(user)
 
-        # Assert database state - user now has an avatar key
-        assert user.avatar_image_key is not None
-        assert user.avatar_image_key.endswith(".jpg")
+        # Assert database state - user now has a selfie key and pending status
+        assert user.selfie_image_key is not None
+        assert user.selfie_image_key.endswith(".jpg")
+        assert user.avatar_generation_status == "pending"
 
-        # Verify the uploaded data is a JPEG
-        uploaded_data = mock_blob_storage.download(settings.AVATARS_BUCKET, user.avatar_image_key)
+        # Verify the uploaded data is a JPEG in the selfies bucket
+        uploaded_data = mock_blob_storage.download(settings.SELFIES_BUCKET, user.selfie_image_key)
         assert uploaded_data.startswith(test_jpeg_header_data)
 
+        # Verify background task was triggered
+        mock_generate_avatar_task.assert_called_once()
+
     def test_already_exists(self, session: Session, client: TestClient):
-        # Create user with an existing avatar image key
-        user = db.User(auth0_user_id=test_user_id, avatar_image_key="existing-avatar.jpg")
+        # Create user with an existing selfie image key
+        user = db.User(
+            auth0_user_id=test_user_id,
+            selfie_image_key="existing-selfie.jpg",
+            avatar_generation_status="completed",
+        )
         session.add(user)
         session.commit()
 
@@ -221,8 +240,8 @@ class TestUpdateAvatarImage:
         # Refresh user object to verify state unchanged
         session.refresh(user)
 
-        # Assert database state - user's avatar key is unchanged
-        assert user.avatar_image_key == "existing-avatar.jpg"
+        # Assert database state - user's selfie key is unchanged
+        assert user.selfie_image_key == "existing-selfie.jpg"
 
 
 class TestGetWearables:
@@ -286,8 +305,12 @@ class TestCreateWearables:
         client: TestClient,
         mock_blob_storage: MockBlobStorage,
     ):
-        # Create user with avatar first
-        user = db.User(auth0_user_id=test_user_id, avatar_image_key="avatar.jpg")
+        # Create user with completed avatar
+        user = db.User(
+            auth0_user_id=test_user_id,
+            avatar_image_key="avatar.jpg",
+            avatar_generation_status="completed",
+        )
         session.add(user)
         session.commit()
 
@@ -360,6 +383,15 @@ class TestCreateWearables:
         assert mock_create_woa_image.call_count == 2
 
     def test_wrong_field_count(self, session: Session, client: TestClient):
+        # Create user with completed avatar
+        user = db.User(
+            auth0_user_id=test_user_id,
+            avatar_image_key="avatar.jpg",
+            avatar_generation_status="completed",
+        )
+        session.add(user)
+        session.commit()
+
         # Make request with mismatched number of images and metadata fields
         response = client.post(
             "/wearables",
@@ -373,6 +405,22 @@ class TestCreateWearables:
             },  # missing description for the second wearable
         )
         assert response.status_code == 422
+
+    def test_avatar_not_completed(self, session: Session, client: TestClient):
+        # Create user with pending avatar
+        user = db.User(
+            auth0_user_id=test_user_id,
+            avatar_generation_status="pending",
+        )
+        session.add(user)
+        session.commit()
+
+        response = client.post(
+            "/wearables",
+            files=[("image", ("test.webp", test_webp_image_data, "image/webp"))],
+            data={"category": ["upper_body"], "description": ["test"]},
+        )
+        assert response.status_code == 400
 
 
 class TestGetOutfitImage:

@@ -9,7 +9,6 @@ import {
   getWearables,
   updateAvatarImage,
   type BodyCreateWearables,
-  type BodyUpdateAvatarImage,
   type Outfit,
   type User,
   type Wearable,
@@ -41,6 +40,12 @@ export function useMe() {
       const result = await getMe();
       return result.data;
     },
+    refetchInterval: (query) => {
+      if (query.state.data?.avatar_generation_status === "pending") {
+        return 3000;
+      }
+      return false;
+    },
   });
 }
 
@@ -59,7 +64,7 @@ export function useHealth() {
 export function useUpdateAvatarImage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (image: BodyUpdateAvatarImage["image"]) => {
+    mutationFn: async (image: Blob) => {
       await updateAvatarImage({ body: { image } });
     },
     onSuccess: () => {

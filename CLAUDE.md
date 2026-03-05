@@ -1,3 +1,7 @@
+## Development Tasks
+
+Always read README.md before doing development tasks like running the app, interacting with the database or running code checks. Re-read this file often to refresh your memory.
+
 ## Browser Automation
 
 Use `agent-browser` for web automation. Run `agent-browser --help` for all commands.
@@ -16,3 +20,5 @@ Use `--session-name` to persist sessions and avoid having to log in multiple tim
 ```sh
 agent-browser --session-name dressme open http://localhost:5173
 ```
+
+There may already be a browser session from a previous Claude session.

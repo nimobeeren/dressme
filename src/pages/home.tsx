@@ -4,29 +4,45 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCreateOutfit, useDeleteOutfit, useOutfits, useWearables } from "@/hooks/api";
+import {
+  useCreateOutfit,
+  useDeleteOutfit,
+  useMe,
+  useOutfits,
+  useUpdateAvatarImage,
+  useWearables,
+} from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import { CircleAlertIcon, HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  HourglassIcon,
+  LoaderCircleIcon,
+  PlusIcon,
+  StarIcon,
+  UploadIcon,
+} from "lucide-react";
+import { useRef } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
 import { Link } from "react-router";
 
 export function HomePage() {
+  const { data: me, isPending: meIsPending, error: meError } = useMe();
   const { data: wearables, isPending: wearablesIsPending, error: wearablesError } = useWearables();
   const { data: outfits, isPending: outfitsIsPending, error: outfitsError } = useOutfits();
 
-  if (wearablesIsPending || outfitsIsPending) {
+  if (meIsPending || wearablesIsPending || outfitsIsPending) {
     return <LoaderCircleIcon className="h-16 w-16 animate-spin" />;
   }
 
-  if (wearablesError || outfitsError) {
+  if (meError || wearablesError || outfitsError) {
     return (
       <Alert variant={"destructive"}>
         <CircleAlertIcon className="h-4 w-4" />
         <AlertTitle>Something went wrong</AlertTitle>
         <AlertDescription>
-          {[wearablesError, outfitsError]
+          {[meError, wearablesError, outfitsError]
             .filter(Boolean)
             .map((error) => error!.message)
             .join("\n\n")}
@@ -35,7 +51,9 @@ export function HomePage() {
     );
   }
 
-  return <Main wearables={wearables} outfits={outfits} />;
+  return (
+    <Main avatarStatus={me.avatar_generation_status} wearables={wearables} outfits={outfits} />
+  );
 }
 
 type FormFieldValues = {
@@ -47,7 +65,15 @@ type FormFieldValues = {
  * Lets the user pick wearables and outfits and shows a generated image of the selected items on the
  * user's avatar.
  */
-function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[] }) {
+function Main({
+  avatarStatus,
+  wearables,
+  outfits,
+}: {
+  avatarStatus: string | null;
+  wearables: Wearable[];
+  outfits: Outfit[];
+}) {
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
@@ -73,11 +99,18 @@ function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[]
     <Form {...form}>
       <form className="flex h-screen items-center justify-center gap-16">
         <Preview
+          avatarStatus={avatarStatus}
           activeTopId={activeTopId}
           activeBottomId={activeBottomId}
           activeOutfitId={activeOutfit?.id}
         />
-        <Picker tops={tops} bottoms={bottoms} outfits={outfits} activeOutfitId={activeOutfit?.id} />
+        <Picker
+          avatarStatus={avatarStatus}
+          tops={tops}
+          bottoms={bottoms}
+          outfits={outfits}
+          activeOutfitId={activeOutfit?.id}
+        />
       </form>
     </Form>
   );
@@ -85,44 +118,102 @@ function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[]
 
 /** Shows a generated image of the active wearables/outfit on the user's avatar. */
 function Preview({
+  avatarStatus,
   activeTopId,
   activeBottomId,
   activeOutfitId,
 }: {
+  avatarStatus: string | null;
   activeTopId: string | undefined;
   activeBottomId: string | undefined;
   activeOutfitId: string | undefined;
 }) {
   const { mutate: createOutfit } = useCreateOutfit();
   const { mutate: deleteOutfit } = useDeleteOutfit();
+  const { mutate: uploadSelfie, isPending: isUploading } = useUpdateAvatarImage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadSelfie(file);
+    }
+  }
 
   return (
-    <div className="relative h-full shrink-0">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="absolute right-4 top-4"
-        disabled={!activeTopId || !activeBottomId}
-        onClick={() =>
-          activeOutfitId
-            ? deleteOutfit(activeOutfitId)
-            : createOutfit({ topId: activeTopId!, bottomId: activeBottomId! })
-        }
-      >
-        <StarIcon className={cn("!size-6", activeOutfitId && "fill-current")} />
-      </Button>
-      <div className="aspect-3/4 h-full">
-        {activeTopId && activeBottomId ? (
+    <div className="relative h-[60vh] shrink-0">
+      {avatarStatus === "completed" && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-4 top-4"
+          disabled={!activeTopId || !activeBottomId}
+          onClick={() =>
+            activeOutfitId
+              ? deleteOutfit(activeOutfitId)
+              : createOutfit({ topId: activeTopId!, bottomId: activeBottomId! })
+          }
+        >
+          <StarIcon className={cn("!size-6", activeOutfitId && "fill-current")} />
+        </Button>
+      )}
+      <div className="aspect-3/4 h-full overflow-hidden rounded-2xl">
+        {avatarStatus === null && (
+          <div className="flex h-full items-center justify-center bg-muted px-8">
+            <div className="flex flex-col items-center gap-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {isUploading ? <LoaderCircleIcon className="animate-spin" /> : <UploadIcon />}
+                Upload a selfie
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                A full-body picture works best, but anything goes
+              </p>
+            </div>
+          </div>
+        )}
+        {avatarStatus === "pending" && (
+          <div className="flex h-full items-center justify-center bg-muted">
+            <div className="flex flex-col items-center gap-4">
+              <div className="rounded-full bg-background p-4">
+                <HourglassIcon className="size-12 stroke-foreground" />
+              </div>
+              <p className="text-center text-sm text-muted-foreground">Generating your avatar...</p>
+            </div>
+          </div>
+        )}
+        {avatarStatus === "failed" && (
+          <div className="flex h-full items-center justify-center bg-muted px-8">
+            <Alert variant="destructive">
+              <CircleAlertIcon className="h-4 w-4" />
+              <AlertTitle>Avatar generation failed</AlertTitle>
+              <AlertDescription>
+                Something went wrong while creating your avatar. Please try again later.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+        {avatarStatus === "completed" && activeTopId && activeBottomId ? (
           <AuthenticatedImage
             src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
             className="h-full w-full object-cover"
           />
-        ) : (
+        ) : avatarStatus === "completed" ? (
           <div className="flex h-full items-center justify-center px-8">
             <p className="text-center">Select a top and bottom to see your outfit preview.</p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -130,45 +221,68 @@ function Preview({
 
 /** Lets the user pick wearables or an outfit. */
 function Picker({
+  avatarStatus,
   tops,
   bottoms,
   outfits,
   activeOutfitId,
 }: {
+  avatarStatus: string | null;
   tops: Wearable[];
   bottoms: Wearable[];
   outfits: Outfit[];
   activeOutfitId?: string;
 }) {
+  const isDisabled = avatarStatus !== "completed";
+
   return (
     <div className="h-full max-h-[75%] w-full max-w-96">
       <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">
         <div className="flex justify-between">
           <TabsList className="shrink-0">
-            <TabsTrigger value="favorites">
+            <TabsTrigger value="favorites" disabled={isDisabled}>
               <StarIcon className="h-4 w-4 fill-current" aria-label="favorites" />
             </TabsTrigger>
-            <TabsTrigger value="tops">Tops</TabsTrigger>
-            <TabsTrigger value="bottoms">Bottoms</TabsTrigger>
+            <TabsTrigger value="tops" disabled={isDisabled}>
+              Tops
+            </TabsTrigger>
+            <TabsTrigger value="bottoms" disabled={isDisabled}>
+              Bottoms
+            </TabsTrigger>
           </TabsList>
-          <Button asChild>
-            <Link to="/add">
+          {isDisabled ? (
+            <Button disabled>
               Add
               <PlusIcon />
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/add">
+                Add
+                <PlusIcon />
+              </Link>
+            </Button>
+          )}
         </div>
-        <div className="min-h-full w-full grow overflow-y-auto">
-          <TabsContent value="favorites" className="h-full">
-            <OutfitList outfits={outfits} activeOutfitId={activeOutfitId} />
-          </TabsContent>
-          <TabsContent value="tops" className="z-100 relative">
-            <WearableList name="topId" wearables={tops} />
-          </TabsContent>
-          <TabsContent value="bottoms">
-            <WearableList name="bottomId" wearables={bottoms} />
-          </TabsContent>
-        </div>
+        {isDisabled ? (
+          <div className="flex min-h-[33%] items-center justify-center px-8">
+            <p className="text-center text-muted-foreground">
+              You can add your clothes here after uploading a selfie.
+            </p>
+          </div>
+        ) : (
+          <div className="min-h-full w-full grow overflow-y-auto">
+            <TabsContent value="favorites" className="h-full">
+              <OutfitList outfits={outfits} activeOutfitId={activeOutfitId} />
+            </TabsContent>
+            <TabsContent value="tops" className="z-100 relative">
+              <WearableList name="topId" wearables={tops} />
+            </TabsContent>
+            <TabsContent value="bottoms">
+              <WearableList name="bottomId" wearables={bottoms} />
+            </TabsContent>
+          </div>
+        )}
       </Tabs>
     </div>
   );

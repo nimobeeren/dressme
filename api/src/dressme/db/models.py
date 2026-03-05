@@ -16,7 +16,9 @@ from sqlmodel import (
 class User(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     auth0_user_id: str = Field(index=True, unique=True)
+    selfie_image_key: str | None = Field(default=None)
     avatar_image_key: str | None = Field(default=None)
+    avatar_generation_status: str | None = Field(default=None)
     outfits: list["Outfit"] = Relationship(back_populates="user")
     wearables: list["Wearable"] = Relationship(back_populates="user")
 

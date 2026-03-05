@@ -30,6 +30,7 @@ from sqlmodel import Session, select
 
 from . import db
 from .auth import verify_token
+from .avatar_generation import generate_avatar
 from .combining import combine_wearables
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
@@ -114,6 +115,7 @@ def health():
 class User(BaseModel):
     id: UUID
     has_avatar_image: bool
+    avatar_generation_status: str | None
 
 
 @app.get("/users/me")
@@ -124,6 +126,7 @@ def get_me(
     return User(
         id=current_user.id,
         has_avatar_image=current_user.avatar_image_key is not None,
+        avatar_generation_status=current_user.avatar_generation_status,
     )
 
 
@@ -134,31 +137,67 @@ def update_avatar_image(
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
     blob_storage: BlobStorage = Depends(get_blob_storage),
+    background_tasks: BackgroundTasks,
 ):
-    # Check if the user already has an avatar image
-    if current_user.avatar_image_key is not None:
+    # Check if the user already has a selfie (one-time upload only)
+    if current_user.selfie_image_key is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="It's currently not possible to replace an existing avatar image.",
         )
 
-    # Convert the image to JPG and compress
+    # Convert the image to JPG, compress, and scale to max 2048px longest side
     img = Image.open(image.file)
+    img.thumbnail((2048, 2048))
     compressed_img_buf = io.BytesIO()
     img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
     compressed_img_buf.seek(0)
 
-    # Upload to blob storage
+    # Upload selfie to blob storage
     key = f"{uuid4()}.jpg"
     blob_storage.upload(
-        settings.AVATARS_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg"
+        settings.SELFIES_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg"
     )
 
-    # Update the user's avatar image key
-    current_user.avatar_image_key = key
+    # Update user and trigger avatar generation
+    current_user.selfie_image_key = key
+    current_user.avatar_generation_status = "pending"
     session.commit()
 
-    return Response(status_code=status.HTTP_200_OK)
+    background_tasks.add_task(generate_avatar_task, user_id=current_user.id)
+
+    return Response(status_code=status.HTTP_202_ACCEPTED)
+
+
+def generate_avatar_task(*, user_id: UUID):
+    """Background task: generates a game avatar from the user's selfie."""
+    blob_storage = get_blob_storage()
+
+    with Session(db.engine) as session:
+        user = session.exec(select(db.User).where(db.User.id == user_id)).one()
+
+        if user.selfie_image_key is None:
+            raise ValueError("User does not have a selfie image")
+
+        try:
+            selfie_data = blob_storage.download(
+                settings.SELFIES_BUCKET, user.selfie_image_key
+            )
+            avatar_data = generate_avatar(selfie_data)
+
+            avatar_key = f"{uuid4()}.jpg"
+            blob_storage.upload(
+                settings.AVATARS_BUCKET, avatar_key, avatar_data, "image/jpeg"
+            )
+
+            user.avatar_image_key = avatar_key
+            user.avatar_generation_status = "completed"
+            session.commit()
+            logging.info(f"Avatar generation completed for user {user_id}")
+        except Exception:
+            logging.exception(f"Avatar generation failed for user {user_id}")
+            user.avatar_generation_status = "failed"
+            session.commit()
 
 
 class Wearable(BaseModel):
@@ -332,6 +371,12 @@ def create_wearables(
     name. All fields must appear the same number of times. The description can be set to an empty
     string if you want to omit it.
     """
+    if current_user.avatar_generation_status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Avatar generation must be completed before adding wearables.",
+        )
+
     if not len(category) == len(description) == len(image):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

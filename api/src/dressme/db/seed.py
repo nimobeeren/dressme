@@ -11,6 +11,8 @@ from .models import User, Wearable, WearableOnAvatarImage
 
 settings = get_settings()
 
+# TODO: update seed script after avatar changes
+
 avatar_data = {"name": "model", "image_path": "images/humans/model.jpg"}
 
 wearables_data = {

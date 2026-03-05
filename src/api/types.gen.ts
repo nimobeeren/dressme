@@ -23,6 +23,7 @@ export type Outfit = {
 export type User = {
     id: string;
     has_avatar_image: boolean;
+    avatar_generation_status: string | null;
 };
 
 export type ValidationError = {
@@ -132,31 +133,6 @@ export type CreateWearablesResponses = {
 };
 
 export type CreateWearablesResponse = CreateWearablesResponses[keyof CreateWearablesResponses];
-
-export type GetWearableImageData = {
-    body?: never;
-    path: {
-        wearable_image_id: string;
-    };
-    query?: never;
-    url: '/images/wearables/{wearable_image_id}';
-};
-
-export type GetWearableImageErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetWearableImageError = GetWearableImageErrors[keyof GetWearableImageErrors];
-
-export type GetWearableImageResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
 
 export type GetOutfitImageData = {
     body?: never;

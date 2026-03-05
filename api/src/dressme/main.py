@@ -169,6 +169,7 @@ def update_avatar_image(
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
+# TODO: add a test for this
 def generate_avatar_task(*, user_id: UUID):
     """Background task: generates a game avatar from the user's selfie."""
     blob_storage = get_blob_storage()
@@ -254,9 +255,9 @@ def get_wearables(
 
 
 # TODO: add a test for this
-def create_woa_image(*, wearable_id: UUID, user_id: UUID):
+def generate_woa_image_task(*, wearable_id: UUID, user_id: UUID):
     """
-    Creates an image of the given user's avatar wearing a given wearable.
+    Generates an image of the given user's avatar wearing a given wearable.
 
     This image is called a WearableOnAvatar (WOA) image. It is generated using AI models.
     This method is intended to be used as a FastAPI background task.
@@ -415,7 +416,7 @@ def create_wearables(
         # TODO: background tasks currently run sequentially, so this will be slow for many wearables
         # FastAPI does not support concurrent background tasks yet: https://github.com/fastapi/fastapi/discussions/10682
         background_tasks.add_task(
-            create_woa_image, wearable_id=wearable.id, user_id=current_user.id
+            generate_woa_image_task, wearable_id=wearable.id, user_id=current_user.id
         )
 
     return [

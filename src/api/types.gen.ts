@@ -22,8 +22,8 @@ export type Outfit = {
 
 export type User = {
     id: string;
+    has_selfie_image: boolean;
     has_avatar_image: boolean;
-    avatar_generation_status: string | null;
 };
 
 export type ValidationError = {
@@ -37,7 +37,7 @@ export type Wearable = {
     category: string;
     description: string | null;
     wearable_image_url: string;
-    generation_status: 'pending' | 'completed';
+    generation_status: 'pending' | 'success';
 };
 
 export type HealthData = {

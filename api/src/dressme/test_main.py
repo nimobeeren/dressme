@@ -1,5 +1,4 @@
 from typing import override
-from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -9,9 +8,13 @@ from sqlmodel.pool import StaticPool
 
 from . import db
 from .auth import verify_token
+from .avatar_generation import AvatarGenerator, get_avatar_generator
 from .main import app, get_current_user, get_session
 from .blob_storage import BlobStorage, get_blob_storage
 from .settings import get_settings
+from .woa_generation import WoaGenerator, get_woa_generator
+
+import dressme.db as db_module
 
 test_user_id = "auth0|1"
 settings = get_settings()
@@ -20,6 +23,23 @@ settings = get_settings()
 test_webp_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
 # JPEG header data
 test_jpeg_header_data = b"\xff\xd8\xff"
+
+
+class MockAvatarGenerator(AvatarGenerator):
+    def __init__(self): pass  # skip settings/client init
+
+    def generate(self, selfie_image_data: bytes) -> bytes:
+        return b"\xff\xd8\xff"  # fake JPEG
+
+
+class MockWoaGenerator(WoaGenerator):
+    def __init__(self): pass  # skip settings/client init
+
+    async def generate_image(self, **kwargs: object) -> bytes:
+        return b"fake_woa"
+
+    async def generate_mask(self, **kwargs: object) -> bytes:
+        return b"fake_mask"
 
 
 class MockBlobStorage(BlobStorage):
@@ -49,8 +69,15 @@ def session_fixture():
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     SQLModel.metadata.create_all(engine)
+
+    # Point db.engine to the test engine so background tasks use the same DB
+    original_engine = db_module.engine
+    db_module.engine = engine
+
     with Session(engine) as session:
         yield session
+        
+    db_module.engine = original_engine
 
 
 @pytest.fixture(name="mock_blob_storage")
@@ -72,6 +99,8 @@ def client_fixture(session: Session, mock_blob_storage: MockBlobStorage):
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[verify_token] = verify_token_override
     app.dependency_overrides[get_blob_storage] = get_blob_storage_override
+    app.dependency_overrides[get_avatar_generator] = lambda: MockAvatarGenerator()
+    app.dependency_overrides[get_woa_generator] = lambda: MockWoaGenerator()
 
     client = TestClient(app)
     yield client
@@ -138,11 +167,11 @@ class TestGetCurrentUser:
 
 class TestGetMe:
     def test_success(self, session: Session, client: TestClient):
-        # Create user with avatar image key
+        # Create user with selfie and avatar image keys
         user = db.User(
             auth0_user_id=test_user_id,
+            selfie_image_key="selfie.jpg",
             avatar_image_key="avatar.jpg",
-            avatar_generation_status="completed",
         )
         session.add(user)
         session.commit()
@@ -152,8 +181,8 @@ class TestGetMe:
         assert response.status_code == 200
         assert response.json() == {
             "id": str(user.id),
+            "has_selfie_image": True,
             "has_avatar_image": True,
-            "avatar_generation_status": "completed",
         }
 
     def test_success_no_avatar_image(self, session: Session, client: TestClient):
@@ -167,16 +196,14 @@ class TestGetMe:
         assert response.status_code == 200
         assert response.json() == {
             "id": str(user.id),
+            "has_selfie_image": False,
             "has_avatar_image": False,
-            "avatar_generation_status": None,
         }
 
 
 class TestUpdateAvatarImage:
-    @patch("dressme.main.generate_avatar_task")
     def test_success(
         self,
-        mock_generate_avatar_task: MagicMock,
         session: Session,
         client: TestClient,
         mock_blob_storage: MockBlobStorage,
@@ -202,26 +229,22 @@ class TestUpdateAvatarImage:
         # Refresh user object to get updated fields
         session.refresh(user)
 
-        # Assert database state - user now has a selfie key and pending status
+        # Assert database state - user now has selfie and avatar keys
         assert user.selfie_image_key is not None
         assert user.selfie_image_key.endswith(".jpg")
-        assert user.avatar_generation_status == "pending"
+        assert user.avatar_image_key is not None
 
-        # Verify the uploaded data is a JPEG in the selfies bucket
+        # Verify the uploaded selfie is a JPEG in the selfies bucket
         uploaded_data = mock_blob_storage.download(
             settings.SELFIES_BUCKET, user.selfie_image_key
         )
         assert uploaded_data.startswith(test_jpeg_header_data)
-
-        # Verify background task was triggered
-        mock_generate_avatar_task.assert_called_once()
 
     def test_already_exists(self, session: Session, client: TestClient):
         # Create user with an existing selfie image key
         user = db.User(
             auth0_user_id=test_user_id,
             selfie_image_key="existing-selfie.jpg",
-            avatar_generation_status="completed",
         )
         session.add(user)
         session.commit()
@@ -243,7 +266,6 @@ class TestUpdateAvatarImage:
 
         # Assert database state - user unchanged
         assert user.selfie_image_key == "existing-selfie.jpg"
-        assert user.avatar_generation_status == "completed"
 
 
 class TestGetWearables:
@@ -299,10 +321,8 @@ class TestGetWearables:
 
 
 class TestCreateWearables:
-    @patch("dressme.main.generate_woa_image_task")
     def test_success(
         self,
-        mock_generate_woa_image_task: MagicMock,
         session: Session,
         client: TestClient,
         mock_blob_storage: MockBlobStorage,
@@ -311,10 +331,11 @@ class TestCreateWearables:
         user = db.User(
             auth0_user_id=test_user_id,
             avatar_image_key="avatar.jpg",
-            avatar_generation_status="completed",
         )
         session.add(user)
         session.commit()
+        # Pre-populate blob storage with the avatar image (the task will download it)
+        mock_blob_storage.upload(settings.AVATARS_BUCKET, "avatar.jpg", test_webp_image_data, "image/webp")
 
         # Create test image data
         test_image_data_1 = test_webp_image_data
@@ -385,15 +406,18 @@ class TestCreateWearables:
         )
         assert uploaded_data_2.startswith(test_jpeg_header_data)
 
-        # WOA image creation should have been triggered twice
-        assert mock_generate_woa_image_task.call_count == 2
+        # WOA image generation should have run for both wearables
+        session.expire_all()
+        woa_images = session.exec(
+            select(db.WearableOnAvatarImage).where(db.WearableOnAvatarImage.user_id == user.id)
+        ).all()
+        assert len(woa_images) == 2
 
     def test_wrong_field_count(self, session: Session, client: TestClient):
         # Create user with completed avatar
         user = db.User(
             auth0_user_id=test_user_id,
             avatar_image_key="avatar.jpg",
-            avatar_generation_status="completed",
         )
         session.add(user)
         session.commit()
@@ -413,11 +437,8 @@ class TestCreateWearables:
         assert response.status_code == 422
 
     def test_avatar_not_completed(self, session: Session, client: TestClient):
-        # Create user with pending avatar
-        user = db.User(
-            auth0_user_id=test_user_id,
-            avatar_generation_status="pending",
-        )
+        # Create user without avatar image (avatar generation not completed)
+        user = db.User(auth0_user_id=test_user_id)
         session.add(user)
         session.commit()
 
@@ -661,7 +682,7 @@ class TestGetOutfits:
         assert data[0]["top"]["category"] == "upper_body"
         assert data[0]["top"]["description"] == "test top"
         assert "signed-url" in data[0]["top"]["wearable_image_url"]
-        assert data[0]["top"]["generation_status"] == "completed"  # WOA exists
+        assert data[0]["top"]["generation_status"] == "success"  # WOA exists
         assert data[0]["bottom"]["id"] == str(bottom_wearable.id)
         assert data[0]["bottom"]["category"] == "lower_body"
         assert data[0]["bottom"]["description"] == "test bottom"

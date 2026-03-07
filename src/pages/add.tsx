@@ -44,7 +44,7 @@ export function AddPage() {
 
   const wearables = useWatch({ control: form.control, name: "wearables" });
 
-  if (me && me.avatar_generation_status !== "completed") {
+  if (me && !me.has_avatar_image) {
     return <Navigate to="/" />;
   }
 

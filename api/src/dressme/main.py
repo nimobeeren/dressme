@@ -21,21 +21,19 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
 from pydantic import BaseModel, Field
-from replicate.client import Client  # type: ignore
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
 from . import db
 from .auth import verify_token
-from .avatar_generation import generate_avatar
+from .avatar_generation import AvatarGenerator, get_avatar_generator
 from .combining import combine_wearables
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
-from .woa_generation import generate_woa_image, generate_woa_mask
+from .woa_generation import WoaGenerator, get_woa_generator
 
 settings = get_settings()
-replicate = Client(api_token=settings.REPLICATE_API_TOKEN.get_secret_value())
 
 logging.basicConfig(
     level=logging.INFO,
@@ -113,8 +111,8 @@ def health():
 
 class User(BaseModel):
     id: UUID
+    has_selfie_image: bool
     has_avatar_image: bool
-    avatar_generation_status: str | None
 
 
 @app.get("/users/me")
@@ -124,8 +122,8 @@ def get_me(
 ) -> User:
     return User(
         id=current_user.id,
+        has_selfie_image=current_user.selfie_image_key is not None,
         has_avatar_image=current_user.avatar_image_key is not None,
-        avatar_generation_status=current_user.avatar_generation_status,
     )
 
 
@@ -137,6 +135,7 @@ def update_avatar_image(
     current_user: db.User = Depends(get_current_user),
     blob_storage: BlobStorage = Depends(get_blob_storage),
     background_tasks: BackgroundTasks,
+    avatar_generator: AvatarGenerator = Depends(get_avatar_generator),
 ):
     # Check if the user already has a selfie (one-time upload only)
     if current_user.selfie_image_key is not None:
@@ -160,19 +159,23 @@ def update_avatar_image(
 
     # Update user and trigger avatar generation
     current_user.selfie_image_key = key
-    current_user.avatar_generation_status = "pending"
     session.commit()
 
-    background_tasks.add_task(generate_avatar_task, user_id=current_user.id)
+    background_tasks.add_task(
+        generate_avatar_task,
+        user_id=current_user.id,
+        avatar_generator=avatar_generator,
+        blob_storage=blob_storage,
+    )
 
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
 # TODO: add a test for this
-def generate_avatar_task(*, user_id: UUID):
+def generate_avatar_task(
+    *, user_id: UUID, avatar_generator: AvatarGenerator, blob_storage: BlobStorage
+):
     """Background task: generates a game avatar from the user's selfie."""
-    blob_storage = get_blob_storage()
-
     with Session(db.engine) as session:
         user = session.exec(select(db.User).where(db.User.id == user_id)).one()
 
@@ -183,7 +186,7 @@ def generate_avatar_task(*, user_id: UUID):
             selfie_data = blob_storage.download(
                 settings.SELFIES_BUCKET, user.selfie_image_key
             )
-            avatar_data = generate_avatar(selfie_data)
+            avatar_data = avatar_generator.generate(selfie_data)
 
             avatar_key = f"{uuid4()}.jpg"
             blob_storage.upload(
@@ -191,13 +194,10 @@ def generate_avatar_task(*, user_id: UUID):
             )
 
             user.avatar_image_key = avatar_key
-            user.avatar_generation_status = "completed"
             session.commit()
             logging.info(f"Avatar generation completed for user {user_id}")
         except Exception:
             logging.exception(f"Avatar generation failed for user {user_id}")
-            user.avatar_generation_status = "failed"
-            session.commit()
 
 
 class Wearable(BaseModel):
@@ -205,7 +205,7 @@ class Wearable(BaseModel):
     category: str
     description: str | None
     wearable_image_url: str
-    generation_status: Literal["pending", "completed"]
+    generation_status: Literal["pending", "success"]
     """Whether a WOA image has been generated with this wearable for the current user."""
 
 
@@ -247,22 +247,26 @@ def get_wearables(
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
             ),
-            generation_status="pending" if woa_image_id is None else "completed",
+            generation_status="pending" if woa_image_id is None else "success",
         )
         for wearable, woa_image_id in results
     ]
 
 
 # TODO: add a test for this
-async def generate_woa_image_task(*, wearable_id: UUID, user_id: UUID):
+async def generate_woa_image_task(
+    *,
+    wearable_id: UUID,
+    user_id: UUID,
+    woa_generator: WoaGenerator,
+    blob_storage: BlobStorage,
+):
     """
     Generates an image of the given user's avatar wearing a given wearable.
 
     This image is called a WearableOnAvatar (WOA) image. It is generated using AI models.
     This method is intended to be used as a FastAPI background task.
     """
-    blob_storage = get_blob_storage()
-
     with Session(db.engine) as session:
         logging.info("Starting WOA generation")
         user = session.exec(select(db.User).where(db.User.id == user_id)).one()
@@ -284,20 +288,18 @@ async def generate_woa_image_task(*, wearable_id: UUID, user_id: UUID):
             settings.AVATARS_BUCKET, user.avatar_image_key
         )
 
-        woa_image_data = await generate_woa_image(
+        woa_image_data = await woa_generator.generate_image(
             avatar_image=avatar_image_data,
             wearable_image=wearable_image_data,
             wearable_description=wearable.description or "",
             category=wearable.category,
-            replicate_client=replicate,
         )
 
         # Get a mask of the wearable on the avatar using an image segmentation model
         logging.info("Generating mask")
-        mask_image_data = await generate_woa_mask(
+        mask_image_data = await woa_generator.generate_mask(
             woa_image=woa_image_data,
             wearable_description=wearable.description or "",
-            replicate_client=replicate,
         )
 
         # Upload results to blob storage
@@ -306,7 +308,9 @@ async def generate_woa_image_task(*, wearable_id: UUID, user_id: UUID):
         mask_key = f"{uuid4()}.jpg"
 
         blob_storage.upload(settings.WOA_BUCKET, woa_key, woa_image_data, "image/jpeg")
-        blob_storage.upload(settings.WOA_BUCKET, mask_key, mask_image_data, "image/jpeg")
+        blob_storage.upload(
+            settings.WOA_BUCKET, mask_key, mask_image_data, "image/jpeg"
+        )
 
         logging.info("Saving results to DB")
         woa_image = db.WearableOnAvatarImage(
@@ -334,6 +338,7 @@ def create_wearables(
     background_tasks: BackgroundTasks,
     current_user: db.User = Depends(get_current_user),
     blob_storage: BlobStorage = Depends(get_blob_storage),
+    woa_generator: WoaGenerator = Depends(get_woa_generator),
 ) -> list[Wearable]:
     """
     Create one or more wearables.
@@ -342,7 +347,7 @@ def create_wearables(
     name. All fields must appear the same number of times. The description can be set to an empty
     string if you want to omit it.
     """
-    if current_user.avatar_generation_status != "completed":
+    if current_user.avatar_image_key is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Avatar generation must be completed before adding wearables.",
@@ -386,7 +391,11 @@ def create_wearables(
         # TODO: background tasks currently run sequentially, so this will be slow for many wearables
         # FastAPI does not support concurrent background tasks yet: https://github.com/fastapi/fastapi/discussions/10682
         background_tasks.add_task(
-            generate_woa_image_task, wearable_id=wearable.id, user_id=current_user.id
+            generate_woa_image_task,
+            wearable_id=wearable.id,
+            user_id=current_user.id,
+            woa_generator=woa_generator,
+            blob_storage=blob_storage,
         )
 
     return [
@@ -536,13 +545,13 @@ def get_outfits(
         assert outfit.top is not None
         assert outfit.bottom is not None
 
-        top_status: Literal["pending", "completed"] = (
-            "completed"
+        top_status: Literal["pending", "success"] = (
+            "success"
             if outfit.top.image_key in completed_wearable_image_keys
             else "pending"
         )
-        bottom_status: Literal["pending", "completed"] = (
-            "completed"
+        bottom_status: Literal["pending", "success"] = (
+            "success"
             if outfit.bottom.image_key in completed_wearable_image_keys
             else "pending"
         )

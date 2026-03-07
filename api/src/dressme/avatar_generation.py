@@ -26,33 +26,39 @@ relaxed gaze
 """
 
 
-def generate_avatar(selfie_image_data: bytes) -> bytes:
-    """Generate a game-like avatar image from a selfie image."""
-    settings = get_settings()
+class AvatarGenerator:
+    def __init__(self):
+        settings = get_settings()
+        self._client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
 
-    # Downscale selfie to max 1024px longest side before sending to Gemini
-    selfie_image = Image.open(io.BytesIO(selfie_image_data))
-    selfie_image.thumbnail((1024, 1024))
+    def generate(self, selfie_image_data: bytes) -> bytes:
+        """Generate a game-like avatar image from a selfie image."""
+        # Downscale selfie to max 1024px longest side before sending to Gemini
+        selfie_image = Image.open(io.BytesIO(selfie_image_data))
+        selfie_image.thumbnail((1024, 1024))
 
-    client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
-    response = client.models.generate_content(
-        model="gemini-3.1-flash-image-preview",
-        contents=[selfie_image, PROMPT],
-        config=types.GenerateContentConfig(
-            image_config=types.ImageConfig(
-                aspect_ratio="3:4",
-                image_size="1024px",
+        response = self._client.models.generate_content(
+            model="gemini-3.1-flash-image-preview",
+            contents=[selfie_image, PROMPT],
+            config=types.GenerateContentConfig(
+                image_config=types.ImageConfig(
+                    aspect_ratio="3:4",
+                    image_size="1024px",
+                ),
             ),
-        ),
-    )
+        )
 
-    if response.parts is None:
-        raise RuntimeError("Gemini returned no parts in response")
+        if response.parts is None:
+            raise RuntimeError("Gemini returned no parts in response")
 
-    for part in response.parts:
-        if part.inline_data is not None:
-            genai_image = part.as_image()
-            if genai_image is not None and genai_image.image_bytes is not None:
-                return genai_image.image_bytes
+        for part in response.parts:
+            if part.inline_data is not None:
+                genai_image = part.as_image()
+                if genai_image is not None and genai_image.image_bytes is not None:
+                    return genai_image.image_bytes
 
-    raise RuntimeError("Gemini response did not contain an image")
+        raise RuntimeError("Gemini response did not contain an image")
+
+
+def get_avatar_generator() -> AvatarGenerator:
+    return AvatarGenerator()

@@ -51,9 +51,14 @@ export function HomePage() {
     );
   }
 
-  return (
-    <Main avatarStatus={me.avatar_generation_status} wearables={wearables} outfits={outfits} />
-  );
+  const avatarStatus =
+    !me.has_selfie_image && !me.has_avatar_image
+      ? null
+      : me.has_selfie_image && !me.has_avatar_image
+        ? "pending"
+        : "completed";
+
+  return <Main avatarStatus={avatarStatus} wearables={wearables} outfits={outfits} />;
 }
 
 type FormFieldValues = {
@@ -80,8 +85,8 @@ function Main({
   const form = useForm<FormFieldValues>({
     defaultValues: {
       // Default top/bottom to the first completed one, if it exists
-      topId: tops.find((top) => top.generation_status === "completed")?.id,
-      bottomId: bottoms.find((bottom) => bottom.generation_status === "completed")?.id,
+      topId: tops.find((top) => top.generation_status === "success")?.id,
+      bottomId: bottoms.find((bottom) => bottom.generation_status === "success")?.id,
     },
   });
 
@@ -191,17 +196,6 @@ function Preview({
               </div>
               <p className="text-center text-sm text-muted-foreground">Generating your avatar...</p>
             </div>
-          </div>
-        )}
-        {avatarStatus === "failed" && (
-          <div className="flex h-full items-center justify-center bg-muted px-8">
-            <Alert variant="destructive">
-              <CircleAlertIcon className="h-4 w-4" />
-              <AlertTitle>Avatar generation failed</AlertTitle>
-              <AlertDescription>
-                Something went wrong while creating your avatar. Please try again later.
-              </AlertDescription>
-            </Alert>
           </div>
         )}
         {avatarStatus === "completed" && activeTopId && activeBottomId ? (
@@ -333,8 +327,8 @@ function OutfitList({ outfits, activeOutfitId }: { outfits: Outfit[]; activeOutf
     >
       {outfits.map((outfit) => {
         const isCompleted =
-          outfit.top.generation_status === "completed" &&
-          outfit.bottom.generation_status === "completed";
+          outfit.top.generation_status === "success" &&
+          outfit.bottom.generation_status === "success";
         return (
           <RadioGroup.Item
             key={outfit.id}
@@ -413,7 +407,7 @@ function WearableList({
               className="grid grid-cols-2 content-start gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             >
               {wearables.map((wearable) => {
-                const isCompleted = wearable.generation_status === "completed";
+                const isCompleted = wearable.generation_status === "success";
                 return (
                   <RadioGroup.Item
                     key={wearable.id}

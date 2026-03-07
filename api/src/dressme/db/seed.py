@@ -97,7 +97,6 @@ def seed():
             auth0_user_id=settings.AUTH0_SEED_USER_ID,
             selfie_image_key=selfie_image_key,
             avatar_image_key=avatar_image_key,
-            avatar_generation_status="completed"
         )
         session.add(user)
 

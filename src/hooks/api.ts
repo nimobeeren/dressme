@@ -40,12 +40,9 @@ export function useMe() {
       const result = await getMe();
       return result.data;
     },
-    refetchInterval: (query) => {
-      if (query.state.data?.avatar_generation_status === "pending") {
-        return 3000;
-      }
-      return false;
-    },
+    // Poll while selfie is uploaded but avatar not yet generated
+    refetchInterval: (query) =>
+      query.state.data?.has_selfie_image && !query.state.data?.has_avatar_image ? 3000 : false,
   });
 }
 

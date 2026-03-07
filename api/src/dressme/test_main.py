@@ -8,11 +8,17 @@ from sqlmodel.pool import StaticPool
 
 from . import db
 from .auth import verify_token
-from .avatar_generation import AvatarGenerator, get_avatar_generator
-from .main import app, get_current_user, get_session
+from .avatar_generation import AvatarGenerator
+from .main import (
+    app,
+    get_avatar_generator,
+    get_current_user,
+    get_session,
+    get_woa_generator,
+)
 from .blob_storage import BlobStorage, get_blob_storage
 from .settings import get_settings
-from .woa_generation import WoaGenerator, get_woa_generator
+from .woa_generation import WoaGenerator
 
 import dressme.db as db_module
 
@@ -26,14 +32,16 @@ test_jpeg_header_data = b"\xff\xd8\xff"
 
 
 class MockAvatarGenerator(AvatarGenerator):
-    def __init__(self): pass  # skip settings/client init
+    def __init__(self):
+        pass  # skip settings/client init
 
     def generate(self, selfie_image_data: bytes) -> bytes:
         return b"\xff\xd8\xff"  # fake JPEG
 
 
 class MockWoaGenerator(WoaGenerator):
-    def __init__(self): pass  # skip settings/client init
+    def __init__(self):
+        pass  # skip settings/client init
 
     async def generate_image(self, **kwargs: object) -> bytes:
         return b"fake_woa"
@@ -76,7 +84,7 @@ def session_fixture():
 
     with Session(engine) as session:
         yield session
-        
+
     db_module.engine = original_engine
 
 
@@ -96,11 +104,17 @@ def client_fixture(session: Session, mock_blob_storage: MockBlobStorage):
     def get_blob_storage_override():
         return mock_blob_storage
 
+    def get_avatar_generator_override():
+        return MockAvatarGenerator()
+
+    def get_woa_generator_override():
+        return MockWoaGenerator()
+
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[verify_token] = verify_token_override
     app.dependency_overrides[get_blob_storage] = get_blob_storage_override
-    app.dependency_overrides[get_avatar_generator] = lambda: MockAvatarGenerator()
-    app.dependency_overrides[get_woa_generator] = lambda: MockWoaGenerator()
+    app.dependency_overrides[get_avatar_generator] = get_avatar_generator_override
+    app.dependency_overrides[get_woa_generator] = get_woa_generator_override
 
     client = TestClient(app)
     yield client
@@ -335,7 +349,9 @@ class TestCreateWearables:
         session.add(user)
         session.commit()
         # Pre-populate blob storage with the avatar image (the task will download it)
-        mock_blob_storage.upload(settings.AVATARS_BUCKET, "avatar.jpg", test_webp_image_data, "image/webp")
+        mock_blob_storage.upload(
+            settings.AVATARS_BUCKET, "avatar.jpg", test_webp_image_data, "image/webp"
+        )
 
         # Create test image data
         test_image_data_1 = test_webp_image_data
@@ -409,7 +425,9 @@ class TestCreateWearables:
         # WOA image generation should have run for both wearables
         session.expire_all()
         woa_images = session.exec(
-            select(db.WearableOnAvatarImage).where(db.WearableOnAvatarImage.user_id == user.id)
+            select(db.WearableOnAvatarImage).where(
+                db.WearableOnAvatarImage.user_id == user.id
+            )
         ).all()
         assert len(woa_images) == 2
 
@@ -436,9 +454,22 @@ class TestCreateWearables:
         )
         assert response.status_code == 422
 
-    def test_avatar_not_completed(self, session: Session, client: TestClient):
-        # Create user without avatar image (avatar generation not completed)
+    def test_no_selfie(self, session: Session, client: TestClient):
+        # Create user without selfie or avatar (never started)
         user = db.User(auth0_user_id=test_user_id)
+        session.add(user)
+        session.commit()
+
+        response = client.post(
+            "/wearables",
+            files=[("image", ("test.webp", test_webp_image_data, "image/webp"))],
+            data={"category": ["upper_body"], "description": ["test"]},
+        )
+        assert response.status_code == 400
+
+    def test_no_avatar(self, session: Session, client: TestClient):
+        # Create user with selfie but no avatar (generation pending)
+        user = db.User(auth0_user_id=test_user_id, selfie_image_key="selfie.jpg")
         session.add(user)
         session.commit()
 

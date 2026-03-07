@@ -82,5 +82,3 @@ class WoaGenerator:
             return response.content
 
 
-def get_woa_generator() -> WoaGenerator:
-    return WoaGenerator()

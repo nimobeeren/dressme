@@ -60,5 +60,3 @@ class AvatarGenerator:
         raise RuntimeError("Gemini response did not contain an image")
 
 
-def get_avatar_generator() -> AvatarGenerator:
-    return AvatarGenerator()

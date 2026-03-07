@@ -28,7 +28,7 @@ import { useForm, useFormContext, useWatch } from "react-hook-form";
 import { Link } from "react-router";
 
 export function HomePage() {
-  const { data: me, isPending: meIsPending, error: meError } = useMe();
+  const { isPending: meIsPending, error: meError } = useMe();
   const { data: wearables, isPending: wearablesIsPending, error: wearablesError } = useWearables();
   const { data: outfits, isPending: outfitsIsPending, error: outfitsError } = useOutfits();
 
@@ -51,14 +51,7 @@ export function HomePage() {
     );
   }
 
-  const avatarStatus =
-    !me.has_selfie_image && !me.has_avatar_image
-      ? null
-      : me.has_selfie_image && !me.has_avatar_image
-        ? "pending"
-        : "completed";
-
-  return <Main avatarStatus={avatarStatus} wearables={wearables} outfits={outfits} />;
+  return <Main wearables={wearables} outfits={outfits} />;
 }
 
 type FormFieldValues = {
@@ -70,15 +63,8 @@ type FormFieldValues = {
  * Lets the user pick wearables and outfits and shows a generated image of the selected items on the
  * user's avatar.
  */
-function Main({
-  avatarStatus,
-  wearables,
-  outfits,
-}: {
-  avatarStatus: string | null;
-  wearables: Wearable[];
-  outfits: Outfit[];
-}) {
+function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[] }) {
+  const { data: me } = useMe();
   const tops = wearables.filter((wearable) => wearable.category === "upper_body");
   const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
 
@@ -104,13 +90,12 @@ function Main({
     <Form {...form}>
       <form className="flex h-screen items-center justify-center gap-16">
         <Preview
-          avatarStatus={avatarStatus}
           activeTopId={activeTopId}
           activeBottomId={activeBottomId}
           activeOutfitId={activeOutfit?.id}
         />
         <Picker
-          avatarStatus={avatarStatus}
+          isDisabled={!me?.has_avatar_image}
           tops={tops}
           bottoms={bottoms}
           outfits={outfits}
@@ -123,16 +108,15 @@ function Main({
 
 /** Shows a generated image of the active wearables/outfit on the user's avatar. */
 function Preview({
-  avatarStatus,
   activeTopId,
   activeBottomId,
   activeOutfitId,
 }: {
-  avatarStatus: string | null;
   activeTopId: string | undefined;
   activeBottomId: string | undefined;
   activeOutfitId: string | undefined;
 }) {
+  const { data: me } = useMe();
   const { mutate: createOutfit } = useCreateOutfit();
   const { mutate: deleteOutfit } = useDeleteOutfit();
   const { mutate: uploadSelfie, isPending: isUploading } = useUpdateAvatarImage();
@@ -147,7 +131,7 @@ function Preview({
 
   return (
     <div className="relative h-[60vh] shrink-0">
-      {avatarStatus === "completed" && (
+      {me?.has_avatar_image && (
         <Button
           type="button"
           variant="ghost"
@@ -164,7 +148,8 @@ function Preview({
         </Button>
       )}
       <div className="aspect-3/4 h-full overflow-hidden rounded-2xl">
-        {avatarStatus === null && (
+        {!me?.has_selfie_image && (
+          // Selfie upload
           <div className="flex h-full items-center justify-center bg-muted px-8">
             <div className="flex flex-col items-center gap-4">
               <input
@@ -188,7 +173,8 @@ function Preview({
             </div>
           </div>
         )}
-        {avatarStatus === "pending" && (
+        {me?.has_selfie_image && !me?.has_avatar_image && (
+          // Pending avatar generation
           <div className="flex h-full items-center justify-center bg-muted">
             <div className="flex flex-col items-center gap-4">
               <div className="rounded-full bg-background p-4">
@@ -198,12 +184,14 @@ function Preview({
             </div>
           </div>
         )}
-        {avatarStatus === "completed" && activeTopId && activeBottomId ? (
+        {me?.has_avatar_image && activeTopId && activeBottomId ? (
+          // Normal avatar/outfit preview
           <AuthenticatedImage
             src={`${import.meta.env.VITE_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
             className="h-full w-full object-cover"
           />
-        ) : avatarStatus === "completed" ? (
+        ) : me?.has_avatar_image ? (
+          // Incomplete outfit
           <div className="flex h-full items-center justify-center px-8">
             <p className="text-center">Select a top and bottom to see your outfit preview.</p>
           </div>
@@ -215,20 +203,18 @@ function Preview({
 
 /** Lets the user pick wearables or an outfit. */
 function Picker({
-  avatarStatus,
+  isDisabled,
   tops,
   bottoms,
   outfits,
   activeOutfitId,
 }: {
-  avatarStatus: string | null;
+  isDisabled: boolean;
   tops: Wearable[];
   bottoms: Wearable[];
   outfits: Outfit[];
   activeOutfitId?: string;
 }) {
-  const isDisabled = avatarStatus !== "completed";
-
   return (
     <div className="h-full max-h-[75%] w-full max-w-96">
       <Tabs defaultValue="tops" className="flex h-full w-full flex-col gap-2">

@@ -16,6 +16,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10,<3",
     "boto3>=1.42.39",
     "google-genai>=1.66.0",
+    "httpx>=0.28.1",
 ]
 
 [dependency-groups]

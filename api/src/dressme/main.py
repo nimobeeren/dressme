@@ -2,10 +2,8 @@ import io
 from contextlib import asynccontextmanager
 import logging
 from typing import Annotated, Any, Literal, Sequence, cast
-from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
-import requests
 from fastapi import (
     BackgroundTasks,
     Depends,
@@ -34,6 +32,7 @@ from .avatar_generation import generate_avatar
 from .combining import combine_wearables
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
+from .woa_generation import generate_woa_image, generate_woa_mask
 
 settings = get_settings()
 replicate = Client(api_token=settings.REPLICATE_API_TOKEN.get_secret_value())
@@ -255,7 +254,7 @@ def get_wearables(
 
 
 # TODO: add a test for this
-def generate_woa_image_task(*, wearable_id: UUID, user_id: UUID):
+async def generate_woa_image_task(*, wearable_id: UUID, user_id: UUID):
     """
     Generates an image of the given user's avatar wearing a given wearable.
 
@@ -285,58 +284,29 @@ def generate_woa_image_task(*, wearable_id: UUID, user_id: UUID):
             settings.AVATARS_BUCKET, user.avatar_image_key
         )
 
-        woa_image_url_raw = replicate.run(
-            "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
-            input={
-                "garm_img": io.BytesIO(wearable_image_data),
-                "human_img": io.BytesIO(avatar_image_data),
-                "garment_des": wearable.description or "",
-                "category": wearable.category,
-            },
+        woa_image_data = await generate_woa_image(
+            avatar_image=avatar_image_data,
+            wearable_image=wearable_image_data,
+            wearable_description=wearable.description or "",
+            category=wearable.category,
+            replicate_client=replicate,
         )
-        woa_image_url = urlparse(str(woa_image_url_raw)).geturl()
 
         # Get a mask of the wearable on the avatar using an image segmentation model
         logging.info("Generating mask")
-        mask_results = replicate.run(
-            "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
-            input={
-                "image": woa_image_url,
-                # TODO: this prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
-                # Should probably do some classification of wearable into known working wearable types to use as prompt
-                "mask_prompt": wearable.description or "",
-                "negative_mask_prompt": "",
-                "adjustment_factor": 0,
-            },
+        mask_image_data = await generate_woa_mask(
+            woa_image=woa_image_data,
+            wearable_description=wearable.description or "",
+            replicate_client=replicate,
         )
-        mask_image_url = None
-        for result_url_raw in mask_results:
-            # Results contains some other stuff, we only want the regular mask
-            result_url_parsed = urlparse(str(result_url_raw))
-            if result_url_parsed.path.endswith("/mask.jpg"):
-                mask_image_url = result_url_parsed.geturl()
-                break
-        if mask_image_url is None:
-            raise ValueError("Could not get mask URL")
-
-        logging.info("Fetching results")
-        woa_image_response = requests.get(woa_image_url, stream=True)
-        woa_image_response.raise_for_status()
-
-        mask_image_response = requests.get(mask_image_url, stream=True)
-        mask_image_response.raise_for_status()
 
         # Upload results to blob storage
         logging.info("Uploading results to blob storage")
         woa_key = f"{uuid4()}.jpg"
         mask_key = f"{uuid4()}.jpg"
 
-        blob_storage.upload(
-            settings.WOA_BUCKET, woa_key, woa_image_response.content, "image/jpeg"
-        )
-        blob_storage.upload(
-            settings.WOA_BUCKET, mask_key, mask_image_response.content, "image/jpeg"
-        )
+        blob_storage.upload(settings.WOA_BUCKET, woa_key, woa_image_data, "image/jpeg")
+        blob_storage.upload(settings.WOA_BUCKET, mask_key, mask_image_data, "image/jpeg")
 
         logging.info("Saving results to DB")
         woa_image = db.WearableOnAvatarImage(

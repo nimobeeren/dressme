@@ -11,7 +11,7 @@ style the person as a sims 3 character
 no text/UI/diamond above the head
 video game style (PS3)
 not photorealistic
-not cell-shaded
+not cel-shaded
 preserve face details
 plain light-gray background
 no objects other than the person
@@ -27,7 +27,7 @@ relaxed gaze
 
 
 def generate_avatar(selfie_image_data: bytes) -> bytes:
-    """Generate a Sims 3-style game avatar from a selfie image using Gemini."""
+    """Generate a game-like avatar image from a selfie image."""
     settings = get_settings()
 
     # Downscale selfie to max 1024px longest side before sending to Gemini

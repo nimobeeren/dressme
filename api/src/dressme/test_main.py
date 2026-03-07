@@ -241,8 +241,9 @@ class TestUpdateAvatarImage:
         # Refresh user object to verify state unchanged
         session.refresh(user)
 
-        # Assert database state - user's selfie key is unchanged
+        # Assert database state - user unchanged
         assert user.selfie_image_key == "existing-selfie.jpg"
+        assert user.avatar_generation_status == "completed"
 
 
 class TestGetWearables:

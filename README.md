@@ -35,13 +35,13 @@ A virtual wardrobe that shows you how clothes look on you.
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [pnpm](https://pnpm.io/installation)
 
-1. Install dependencies:
+2. Install dependencies:
 
 ```bash
 pnpm install
 ```
 
-1. Copy the example environment file and fill in the missing values:
+3. Copy the example environment file and fill in the missing values:
 
 ```bash
 cp .env.example .env
@@ -82,7 +82,7 @@ Production environment variables for the client are sourced from `.env` and set 
 
 #### Development
 
-For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It requires no extra configuration when copying the default values from `.env.example`. You can access the MinIO console at `http://localhost:9001` with the credentials `minioadmin/minioadmin`.
+For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It requires no extra configuration when copying the default values from `.env.example`. You can access the MinIO console at `http://localhost:9101` with the credentials `minioadmin/minioadmin`.
 
 #### Production
 

@@ -1,4 +1,5 @@
 import io
+import warnings
 from contextlib import asynccontextmanager
 import logging
 from typing import Annotated, Any, Literal, Sequence, cast
@@ -154,9 +155,30 @@ def update_avatar_image(
             detail="It's currently not possible to replace an existing avatar image.",
         )
 
+    # Validate file size (10 MB limit)
+    max_size = 10 * 1024 * 1024
+    contents = image.file.read(max_size + 1)
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Image must be smaller than 10 MB.",
+        )
+
     # Convert the image to JPG, compress, and scale to max 2048px longest side
-    img = Image.open(image.file)
-    img.thumbnail((2048, 2048))
+    # Limit decoded image size to prevent decompression bombs
+    Image.MAX_IMAGE_PIXELS = 50_000_000  # ~8000x6000, covers DSLR/phone photos
+    try:
+        with warnings.catch_warnings():
+            # Pillow warns on images between 1-2x MAX_IMAGE_PIXELS, we turn it into an
+            # exception to have a hard limit
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            img = Image.open(io.BytesIO(contents))
+            img.thumbnail((2048, 2048))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not read the uploaded file as an image.",
+        )
     compressed_img_buf = io.BytesIO()
     img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
     compressed_img_buf.seek(0)

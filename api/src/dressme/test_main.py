@@ -306,14 +306,14 @@ class TestUpdateAvatarImage:
         session.add(user)
         session.commit()
 
-        # Create a real image that exceeds MAX_IMAGE_PIXELS (16M).
-        # A 5000x5000 = 25M pixel image is over the limit.
+        # Create a real image that exceeds MAX_IMAGE_PIXELS (50M).
+        # A 8000x8000 = 64M pixel image is over the limit.
         # Using PIL to create a valid but oversized image keeps the file small (compressed PNG).
         from PIL import Image as PILImage
 
         buf = io.BytesIO()
         # mode="1" (1-bit) keeps the in-memory and encoded size tiny
-        PILImage.new("1", (5000, 5000)).save(buf, format="PNG")
+        PILImage.new("1", (8000, 8000)).save(buf, format="PNG")
         buf.seek(0)
 
         response = client.put(

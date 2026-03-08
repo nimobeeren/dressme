@@ -94,7 +94,7 @@ function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[]
           activeBottomId={activeBottomId}
           activeOutfitId={activeOutfit?.id}
         />
-        <Picker
+        <Wardrobe
           isDisabled={!me?.has_avatar_image}
           tops={tops}
           bottoms={bottoms}
@@ -202,7 +202,7 @@ function Preview({
 }
 
 /** Lets the user pick wearables or an outfit. */
-function Picker({
+function Wardrobe({
   isDisabled,
   tops,
   bottoms,

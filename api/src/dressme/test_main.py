@@ -1,3 +1,4 @@
+import io
 from typing import override
 from uuid import UUID, uuid4
 
@@ -35,8 +36,8 @@ class MockAvatarGenerator(AvatarGenerator):
     def __init__(self):
         pass  # skip settings/client init
 
-    def generate(self, selfie_image_data: bytes) -> bytes:
-        return b"\xff\xd8\xff"  # fake JPEG
+    async def generate(self, selfie_image_data: bytes) -> bytes:
+        return test_jpeg_header_data
 
 
 class MockWoaGenerator(WoaGenerator):
@@ -243,16 +244,24 @@ class TestUpdateAvatarImage:
         # Refresh user object to get updated fields
         session.refresh(user)
 
+        # NOTE: test relies on the background task for avatar generation being done at
+        # this point, which should be the case since starlette's TestClient runs
+        # backgrond tasks synchronously.
+
         # Assert database state - user now has selfie and avatar keys
         assert user.selfie_image_key is not None
         assert user.selfie_image_key.endswith(".jpg")
         assert user.avatar_image_key is not None
 
-        # Verify the uploaded selfie is a JPEG in the selfies bucket
-        uploaded_data = mock_blob_storage.download(
+        # Verify the uploaded selfie and avatar are in blob storage
+        stored_selfie_data = mock_blob_storage.download(
             settings.SELFIES_BUCKET, user.selfie_image_key
         )
-        assert uploaded_data.startswith(test_jpeg_header_data)
+        stored_avatar_data = mock_blob_storage.download(
+            settings.AVATARS_BUCKET, user.avatar_image_key
+        )
+        assert stored_selfie_data.startswith(test_jpeg_header_data)
+        assert stored_avatar_data.startswith(test_jpeg_header_data)
 
     def test_already_exists(self, session: Session, client: TestClient):
         # Create user with an existing selfie image key
@@ -280,6 +289,50 @@ class TestUpdateAvatarImage:
 
         # Assert database state - user unchanged
         assert user.selfie_image_key == "existing-selfie.jpg"
+
+    def test_invalid_image(self, session: Session, client: TestClient):
+        user = db.User(auth0_user_id=test_user_id)
+        session.add(user)
+        session.commit()
+
+        response = client.put(
+            "/images/avatars/me",
+            files={"image": ("not_an_image.txt", b"this is not an image", "text/plain")},
+        )
+        assert response.status_code == 422
+
+    def test_decompression_bomb(self, session: Session, client: TestClient):
+        user = db.User(auth0_user_id=test_user_id)
+        session.add(user)
+        session.commit()
+
+        # Create a real image that exceeds MAX_IMAGE_PIXELS (16M).
+        # A 5000x5000 = 25M pixel image is over the limit.
+        # Using PIL to create a valid but oversized image keeps the file small (compressed PNG).
+        from PIL import Image as PILImage
+
+        buf = io.BytesIO()
+        # mode="1" (1-bit) keeps the in-memory and encoded size tiny
+        PILImage.new("1", (5000, 5000)).save(buf, format="PNG")
+        buf.seek(0)
+
+        response = client.put(
+            "/images/avatars/me",
+            files={"image": ("bomb.png", buf.getvalue(), "image/png")},
+        )
+        assert response.status_code == 422
+
+    def test_file_too_large(self, session: Session, client: TestClient):
+        user = db.User(auth0_user_id=test_user_id)
+        session.add(user)
+        session.commit()
+
+        large_data = b"\x00" * (10 * 1024 * 1024 + 1)
+        response = client.put(
+            "/images/avatars/me",
+            files={"image": ("huge.jpg", large_data, "image/jpeg")},
+        )
+        assert response.status_code == 413
 
 
 class TestGetWearables:

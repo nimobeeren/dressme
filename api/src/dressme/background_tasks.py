@@ -13,21 +13,21 @@ settings = get_settings()
 
 
 # TODO: add a test for this
-def generate_avatar_task(
+async def generate_avatar_task(
     *, user_id: UUID, avatar_generator: AvatarGenerator, blob_storage: BlobStorage
 ):
     """Background task: generates a game avatar from the user's selfie."""
     with Session(db.engine) as session:
         user = session.exec(select(db.User).where(db.User.id == user_id)).one()
-
-        if user.selfie_image_key is None:
-            raise ValueError("User does not have a selfie image")
-
         try:
+            if user.selfie_image_key is None:
+                raise ValueError("User does not have a selfie image")
+
             selfie_data = blob_storage.download(
                 settings.SELFIES_BUCKET, user.selfie_image_key
             )
-            avatar_data = avatar_generator.generate(selfie_data)
+
+            avatar_data = await avatar_generator.generate(selfie_data)
 
             avatar_key = f"{uuid4()}.jpg"
             blob_storage.upload(
@@ -35,10 +35,11 @@ def generate_avatar_task(
             )
 
             user.avatar_image_key = avatar_key
+
             session.commit()
-            logging.info(f"Avatar generation completed for user {user_id}")
+            logging.info(f"Avatar generation succeeded for user '{user_id}'")
         except Exception:
-            logging.exception(f"Avatar generation failed for user {user_id}")
+            logging.exception(f"Avatar generation failed for user '{user_id}'")
 
 
 # TODO: add a test for this
@@ -96,7 +97,9 @@ async def generate_woa_image_task(
         mask_key = f"{uuid4()}.jpg"
 
         blob_storage.upload(settings.WOA_BUCKET, woa_key, woa_image_data, "image/jpeg")
-        blob_storage.upload(settings.WOA_BUCKET, mask_key, mask_image_data, "image/jpeg")
+        blob_storage.upload(
+            settings.WOA_BUCKET, mask_key, mask_image_data, "image/jpeg"
+        )
 
         logging.info("Saving results to DB")
         woa_image = db.WearableOnAvatarImage(

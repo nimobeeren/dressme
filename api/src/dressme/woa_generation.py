@@ -22,6 +22,8 @@ class WoaGenerator:
         """
         Generate a WearableOnAvatar (WOA) image — a rendering of the given
         avatar wearing the given wearable item.
+
+        Approximate cost: $0.04 per invocation
         """
         avatar_input = io.BytesIO(avatar_image) if isinstance(avatar_image, bytes) else avatar_image
         wearable_input = io.BytesIO(wearable_image) if isinstance(wearable_image, bytes) else wearable_image
@@ -52,6 +54,8 @@ class WoaGenerator:
         """
         Generate a mask for a WOA image, isolating the wearable item
         for compositing purposes.
+
+        Approximate cost: $0.004 per invocation
         """
         woa_input = io.BytesIO(woa_image) if isinstance(woa_image, bytes) else woa_image
 

@@ -31,13 +31,16 @@ class AvatarGenerator:
         settings = get_settings()
         self._client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
 
-    def generate(self, selfie_image_data: bytes) -> bytes:
-        """Generate a game-like avatar image from a selfie image."""
+    async def generate(self, selfie_image_data: bytes) -> bytes:
+        """Generate a game-like avatar image from a selfie image.
+
+        Approximate cost: $0.08 per invocation
+        """
         # Downscale selfie to max 1024px longest side before sending to Gemini
         selfie_image = Image.open(io.BytesIO(selfie_image_data))
         selfie_image.thumbnail((1024, 1024))
 
-        response = self._client.models.generate_content(
+        response = await self._client.aio.models.generate_content(
             model="gemini-3.1-flash-image-preview",
             contents=[selfie_image, PROMPT],
             config=types.GenerateContentConfig(

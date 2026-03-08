@@ -1,5 +1,6 @@
 import { type Outfit, type Wearable } from "@/api";
 import { AuthenticatedImage } from "@/components/authenticated-image";
+import { FullPageSpinner } from "@/components/full-page-spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
@@ -33,7 +34,7 @@ export function HomePage() {
   const { data: outfits, isPending: outfitsIsPending, error: outfitsError } = useOutfits();
 
   if (meIsPending || wearablesIsPending || outfitsIsPending) {
-    return <LoaderCircleIcon className="h-16 w-16 animate-spin" />;
+    return <FullPageSpinner />;
   }
 
   if (meError || wearablesError || outfitsError) {

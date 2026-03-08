@@ -1,7 +1,12 @@
 {
   "permissions": {
-    "allow": ["Bash(uv run pytest:*)"],
+    "allow": [
+      "Bash(pnpm run:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run pyright:*)",
+      "Bash(uv run seed:*)"
+    ],
     "deny": [],
-    "ask": []
+    "ask": ["Bash(pnpm run deploy:*)"]
   }
 }

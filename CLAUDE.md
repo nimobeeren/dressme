@@ -1,3 +1,7 @@
+## General
+
+- Always prefer the commands from @README.md for basic tasks
+
 ## Interacting with the app
 
 Use the `playwright-cli` skill to interact with the web app on `http://localhost:5173`.

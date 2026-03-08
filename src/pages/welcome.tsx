@@ -68,7 +68,7 @@ export function WelcomePage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  if (me?.has_avatar_image) {
+  if (me?.avatar_image_url) {
     return <Navigate to="/" />;
   }
 

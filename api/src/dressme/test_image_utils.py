@@ -4,7 +4,7 @@ import io
 from pathlib import Path
 
 import pytest
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from PIL import Image
 
 from .image_utils import (
@@ -38,7 +38,7 @@ class TestReadUpload:
 
     def test_raises_413_when_over_limit(self):
         data = b"\x00" * 101
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             read_upload(_make_upload(data), max_size=100)
         assert exc_info.value.status_code == 413
 
@@ -60,14 +60,14 @@ class TestSafeOpenImage:
         assert max(img.size) <= 50
 
     def test_raises_422_on_invalid_data(self):
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             safe_open_image(b"not an image")
         assert exc_info.value.status_code == 422
 
     def test_raises_422_on_decompression_bomb(self):
         # 8000x8000 = 64M pixels, over the 50M default
         data = _make_image(width=8000, height=8000, mode="1")
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             safe_open_image(data)
         assert exc_info.value.status_code == 422
 

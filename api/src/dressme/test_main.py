@@ -2,6 +2,7 @@ import io
 from typing import override
 from uuid import UUID, uuid4
 
+from PIL import Image
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -309,11 +310,9 @@ class TestUpdateAvatarImage:
         # Create a real image that exceeds MAX_IMAGE_PIXELS (50M).
         # A 8000x8000 = 64M pixel image is over the limit.
         # Using PIL to create a valid but oversized image keeps the file small (compressed PNG).
-        from PIL import Image as PILImage
-
         buf = io.BytesIO()
         # mode="1" (1-bit) keeps the in-memory and encoded size tiny
-        PILImage.new("1", (8000, 8000)).save(buf, format="PNG")
+        Image.new("1", (8000, 8000)).save(buf, format="PNG")
         buf.seek(0)
 
         response = client.put(
@@ -504,6 +503,49 @@ class TestCreateWearables:
                 "category": ["upper_body", "lower_body"],
                 "description": ["test description"],
             },  # missing description for the second wearable
+        )
+        assert response.status_code == 422
+
+    def test_file_too_large(self, session: Session, client: TestClient):
+        user = db.User(auth0_user_id=test_user_id, avatar_image_key="avatar.jpg")
+        session.add(user)
+        session.commit()
+
+        large_data = b"\x00" * (10 * 1024 * 1024 + 1)
+        response = client.post(
+            "/wearables",
+            files=[("image", ("huge.jpg", large_data, "image/jpeg"))],
+            data={"category": ["upper_body"], "description": ["test"]},
+        )
+        assert response.status_code == 413
+
+    def test_decompression_bomb(self, session: Session, client: TestClient):
+        user = db.User(auth0_user_id=test_user_id, avatar_image_key="avatar.jpg")
+        session.add(user)
+        session.commit()
+
+        buf = io.BytesIO()
+        Image.new("1", (8000, 8000)).save(buf, format="PNG")
+        buf.seek(0)
+
+        response = client.post(
+            "/wearables",
+            files=[("image", ("bomb.png", buf.getvalue(), "image/png"))],
+            data={"category": ["upper_body"], "description": ["test"]},
+        )
+        assert response.status_code == 422
+
+    def test_invalid_image(self, session: Session, client: TestClient):
+        user = db.User(auth0_user_id=test_user_id, avatar_image_key="avatar.jpg")
+        session.add(user)
+        session.commit()
+
+        response = client.post(
+            "/wearables",
+            files=[
+                ("image", ("not_an_image.txt", b"this is not an image", "text/plain")),
+            ],
+            data={"category": ["upper_body"], "description": ["test"]},
         )
         assert response.status_code == 422
 

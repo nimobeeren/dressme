@@ -291,11 +291,30 @@ def create_wearables(
         )
 
     wearables: list[db.Wearable] = []
+    max_size = 10 * 1024 * 1024
     for item_category, item_description, item_image in zip(
         category, description, image, strict=True
     ):
-        # Convert the image to JPG and compress
-        img = Image.open(item_image.file)
+        # Validate file size (10 MB limit)
+        contents = item_image.file.read(max_size + 1)
+        if len(contents) > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="Image must be smaller than 10 MB.",
+            )
+
+        # Convert the image to JPG, compress, and scale to max 2048px longest side
+        Image.MAX_IMAGE_PIXELS = 50_000_000
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                img = Image.open(io.BytesIO(contents))
+                img.thumbnail((2048, 2048))
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Could not read the uploaded file as an image.",
+            )
         compressed_img_buf = io.BytesIO()
         img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
         compressed_img_buf.seek(0)

@@ -2,12 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Form, FormDescription, FormItem } from "@/components/ui/form";
 import { WearableAddCard } from "@/components/wearable-add-card";
 import { WearableFileInputButton } from "@/components/wearable-file-input-button";
-import { useCreateWearables } from "@/hooks/api";
+import { useCreateWearables, useMe } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { FullPageSpinner } from "@/components/full-page-spinner";
 import { CheckIcon, CircleSlashIcon, LoaderCircleIcon } from "lucide-react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 
 const formSchema = z.object({
@@ -24,6 +25,7 @@ const formSchema = z.object({
 });
 
 export function AddPage() {
+  const { data: me, isPending: meIsPending } = useMe();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -42,6 +44,14 @@ export function AddPage() {
   });
 
   const wearables = useWatch({ control: form.control, name: "wearables" });
+
+  if (meIsPending) {
+    return <FullPageSpinner />;
+  }
+
+  if (me && !me.has_avatar_image) {
+    return <Navigate to="/" />;
+  }
 
   function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();

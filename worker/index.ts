@@ -19,6 +19,7 @@ export class DressmeAPI extends Container<Env> {
     S3_ACCESS_KEY_ID: this.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: this.env.S3_SECRET_ACCESS_KEY,
     S3_ENDPOINT_URL: this.env.S3_ENDPOINT_URL,
+    GEMINI_API_KEY: this.env.GEMINI_API_KEY,
   };
 }
 
@@ -34,6 +35,7 @@ export interface Env {
   S3_ACCESS_KEY_ID: string;
   S3_SECRET_ACCESS_KEY: string;
   S3_ENDPOINT_URL: string;
+  GEMINI_API_KEY: string;
 }
 
 export default {

@@ -41,8 +41,9 @@ class R2Storage(BlobStorage):
             aws_access_key_id=settings.S3_ACCESS_KEY_ID.get_secret_value(),
             aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY.get_secret_value(),
             # R2 requires region_name "auto" and signature_version "s3v4"
+            # MinIO requires path-style addressing to avoid redirect issues
             region_name="auto",
-            config=Config(signature_version="s3v4"),
+            config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
         )
 
     @override

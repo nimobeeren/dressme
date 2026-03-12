@@ -82,7 +82,7 @@ Production environment variables for the client are sourced from `.env` and set 
 
 #### Development
 
-For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It requires no extra configuration when copying the default values from `.env.example`. You can access the MinIO console at `http://localhost:9001` with the credentials `minioadmin/minioadmin`.
+For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage. It requires no extra configuration when copying the default values from `.env.example`. You can access the MinIO console at `http://localhost:9101` with the credentials `minioadmin/minioadmin`.
 
 #### Production
 
@@ -153,33 +153,13 @@ While `docker compose` is running, you can interact with the local PostgreSQL da
 psql postgresql://dressme:dressme@localhost:5432/local
 ```
 
-### Code Checks
+### Dropping the Database
 
-#### Client
-
-```bash
-pnpm test
-pnpm typecheck
-pnpm lint
-```
-
-#### API
+To reset your local database, stop the containers and remove the volume:
 
 ```bash
-cd api
-uv run pytest
-uv run pyright  # type checking
+docker compose down -v
 ```
-
-### Generating API Client
-
-A TypeScript client is generated in `src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
-
-```bash
-pnpm generate-client
-```
-
-Note that the API server must be running for this to work.
 
 ### Adding Test Data
 
@@ -192,13 +172,15 @@ uv run seed
 
 This will add some wearables to the database.
 
-### Dropping the Database
+### Generating API Client
 
-To reset your local database, stop the containers and remove the volume:
+A TypeScript client is generated in `src/api` to easily interact with the API. When the API is changed, you should re-generate this client to stay up-to-date:
 
 ```bash
-docker compose down -v
+pnpm generate-client
 ```
+
+Note that the API server must be running for this to work.
 
 ### Getting an Access Token
 
@@ -222,6 +204,24 @@ You can then use this access token when making API requests, for example:
 ```bash
 curl -X GET 'http://localhost:8000/wearables' \
     --header 'Authorization: Bearer $YOUR_ACCESS_TOKEN'
+```
+
+### Code Checks
+
+#### Client
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm lint
+```
+
+#### API
+
+```bash
+cd api
+uv run pytest
+uv run pyright  # type checking
 ```
 
 ## Deployment

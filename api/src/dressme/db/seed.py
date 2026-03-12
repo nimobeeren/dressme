@@ -11,7 +11,8 @@ from .models import User, Wearable, WearableOnAvatarImage
 
 settings = get_settings()
 
-avatar_data = {"name": "model", "image_path": "images/humans/model.jpg"}
+selfie_data = {"name": "human_3", "image_path": "images/humans/selfie_3.jpg"}
+avatar_data = {"name": "human_3", "image_path": "images/avatars/avatar_3.jpg"}
 
 wearables_data = {
     "tshirt": {
@@ -31,18 +32,6 @@ wearables_data = {
         "description": "black and white striped sweater",
         "category": "upper_body",
         "image_path": "images/garments/tops/striped_sweater.webp",
-    },
-    "winter_coat": {
-        "name": "winter_coat",
-        "description": "winter coat with fur lined hood",
-        "category": "upper_body",
-        "image_path": "images/garments/tops/winter_coat.webp",
-    },
-    "raincoat": {
-        "name": "raincoat",
-        "description": "light blue hip-length raincoat",
-        "category": "upper_body",
-        "image_path": "images/garments/tops/raincoat.webp",
     },
     "jeans": {
         "name": "jeans",
@@ -73,6 +62,19 @@ def seed():
     blob_storage = get_blob_storage()
 
     with Session(engine) as session:
+        # Upload selfie image
+        selfie_image_path = ROOT_PATH / Path(selfie_data["image_path"])
+        with open(selfie_image_path, "rb") as image_file:
+            selfie_image_data = image_file.read()
+
+        selfie_image_key = f"{uuid4()}.jpg"
+        blob_storage.upload(
+            settings.SELFIES_BUCKET,
+            selfie_image_key,
+            selfie_image_data,
+            get_content_type_from_path(selfie_image_path),
+        )
+
         # Upload avatar image
         avatar_image_path = ROOT_PATH / Path(avatar_data["image_path"])
         with open(avatar_image_path, "rb") as image_file:
@@ -93,6 +95,7 @@ def seed():
             )
         user = User(
             auth0_user_id=settings.AUTH0_SEED_USER_ID,
+            selfie_image_key=selfie_image_key,
             avatar_image_key=avatar_image_key,
         )
         session.add(user)

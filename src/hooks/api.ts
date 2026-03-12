@@ -9,7 +9,6 @@ import {
   getWearables,
   updateAvatarImage,
   type BodyCreateWearables,
-  type BodyUpdateAvatarImage,
   type Outfit,
   type User,
   type Wearable,
@@ -41,6 +40,9 @@ export function useMe() {
       const result = await getMe();
       return result.data;
     },
+    // Poll while selfie is uploaded but avatar not yet generated
+    refetchInterval: (query) =>
+      query.state.data?.has_selfie_image && !query.state.data?.has_avatar_image ? 3000 : false,
   });
 }
 
@@ -59,7 +61,7 @@ export function useHealth() {
 export function useUpdateAvatarImage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (image: BodyUpdateAvatarImage["image"]) => {
+    mutationFn: async (image: Blob) => {
       await updateAvatarImage({ body: { image } });
     },
     onSuccess: () => {

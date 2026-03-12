@@ -43,12 +43,16 @@ class Settings(BaseSettings):
     """Auth0 User ID of the user who should own the data added during database seeding.
     You can find this ID in the database."""
 
+    # Database
     DATABASE_URL: SecretStr
     """PostgreSQL connection string."""
 
+    # AI Services
     REPLICATE_API_TOKEN: SecretStr
     """Replicate API token.
-    Found in the Replicate → Account settings → API tokens."""
+    Found in Replicate → Account settings → API tokens."""
+    GEMINI_API_KEY: SecretStr
+    """Gemini API key for avatar generation."""
 
     # Blob Storage
     S3_ACCESS_KEY_ID: SecretStr
@@ -58,7 +62,15 @@ class Settings(BaseSettings):
     S3_ENDPOINT_URL: SecretStr
     """Endpoint URL for S3-compatible blob storage API (e.g. R2, MinIO)."""
 
+    # Image upload limits
+    MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
+    """Maximum upload file size in bytes (default 10 MB)."""
+    MAX_IMAGE_PIXELS: int = 50_000_000
+    """Maximum decoded image size in pixels to prevent decompression bombs (~8000x6000)."""
+
     # Bucket names
+    SELFIES_BUCKET: str = "dressme-selfies"
+    """Bucket name for selfie images."""
     AVATARS_BUCKET: str = "dressme-avatars"
     """Bucket name for avatar images."""
     WEARABLES_BUCKET: str = "dressme-wearables"

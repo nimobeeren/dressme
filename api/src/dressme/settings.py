@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     S3_ENDPOINT_URL: SecretStr
     """Endpoint URL for S3-compatible blob storage API (e.g. R2, MinIO)."""
 
+    # Image upload limits
+    MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
+    """Maximum upload file size in bytes (default 10 MB)."""
+    MAX_IMAGE_PIXELS: int = 50_000_000
+    """Maximum decoded image size in pixels to prevent decompression bombs (~8000x6000)."""
+
     # Bucket names
     SELFIES_BUCKET: str = "dressme-selfies"
     """Bucket name for selfie images."""

@@ -1,5 +1,4 @@
 import io
-import warnings
 from contextlib import asynccontextmanager
 import logging
 from typing import Annotated, Any, Literal, Sequence, cast
@@ -31,6 +30,7 @@ from .auth import verify_token
 from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
 from .combining import combine_wearables
+from .image_utils import compress_to_jpeg, read_upload, safe_open_image
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
 from .woa_generation import WoaGenerator
@@ -155,39 +155,13 @@ def update_avatar_image(
             detail="It's currently not possible to replace an existing avatar image.",
         )
 
-    # Validate file size (10 MB limit)
-    max_size = 10 * 1024 * 1024
-    contents = image.file.read(max_size + 1)
-    if len(contents) > max_size:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Image must be smaller than 10 MB.",
-        )
-
-    # Convert the image to JPG, compress, and scale to max 2048px longest side
-    # Limit decoded image size to prevent decompression bombs
-    Image.MAX_IMAGE_PIXELS = 50_000_000  # ~8000x6000, covers DSLR/phone photos
-    try:
-        with warnings.catch_warnings():
-            # Pillow warns on images between 1-2x MAX_IMAGE_PIXELS, we turn it into an
-            # exception to have a hard limit
-            warnings.simplefilter("error", Image.DecompressionBombWarning)
-            img = Image.open(io.BytesIO(contents))
-            img.thumbnail((2048, 2048))
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Could not read the uploaded file as an image.",
-        )
-    compressed_img_buf = io.BytesIO()
-    img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
-    compressed_img_buf.seek(0)
+    contents = read_upload(image)
+    img = safe_open_image(contents)
+    jpeg_data = compress_to_jpeg(img)
 
     # Upload selfie to blob storage
     key = f"{uuid4()}.jpg"
-    blob_storage.upload(
-        settings.SELFIES_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg"
-    )
+    blob_storage.upload(settings.SELFIES_BUCKET, key, jpeg_data, "image/jpeg")
 
     # Update user and trigger avatar generation
     current_user.selfie_image_key = key
@@ -291,38 +265,15 @@ def create_wearables(
         )
 
     wearables: list[db.Wearable] = []
-    max_size = 10 * 1024 * 1024
     for item_category, item_description, item_image in zip(
         category, description, image, strict=True
     ):
-        # Validate file size (10 MB limit)
-        contents = item_image.file.read(max_size + 1)
-        if len(contents) > max_size:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail="Image must be smaller than 10 MB.",
-            )
-
-        # Convert the image to JPG, compress, and scale to max 2048px longest side
-        Image.MAX_IMAGE_PIXELS = 50_000_000
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", Image.DecompressionBombWarning)
-                img = Image.open(io.BytesIO(contents))
-                img.thumbnail((2048, 2048))
-        except Exception:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Could not read the uploaded file as an image.",
-            )
-        compressed_img_buf = io.BytesIO()
-        img.convert("RGB").save(compressed_img_buf, format="JPEG", quality=75)
-        compressed_img_buf.seek(0)
+        contents = read_upload(item_image)
+        img = safe_open_image(contents)
+        jpeg_data = compress_to_jpeg(img)
 
         key = f"{uuid4()}.jpg"
-        blob_storage.upload(
-            settings.WEARABLES_BUCKET, key, compressed_img_buf.getvalue(), "image/jpeg"
-        )
+        blob_storage.upload(settings.WEARABLES_BUCKET, key, jpeg_data, "image/jpeg")
 
         wearable = db.Wearable(
             category=item_category,

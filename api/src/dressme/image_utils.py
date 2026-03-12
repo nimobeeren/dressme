@@ -1,6 +1,13 @@
-"""Utilities for image format handling."""
-
+import io
+import warnings
 from pathlib import Path
+
+from fastapi import HTTPException, UploadFile, status
+from PIL import Image
+
+from .settings import get_settings
+
+settings = get_settings()
 
 # Mapping from file extension to MIME content type
 _EXT_TO_CONTENT_TYPE: dict[str, str] = {
@@ -26,6 +33,47 @@ _PIL_FORMAT_TO_EXT: dict[str, str] = {
     "WEBP": ".webp",
     "GIF": ".gif",
 }
+
+
+def read_upload(upload: UploadFile, max_size: int = settings.MAX_UPLOAD_SIZE) -> bytes:
+    """Read upload contents, raising HTTP 413 if over the size limit."""
+    contents = upload.file.read(max_size + 1)
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Image must be smaller than {max_size // (1024 * 1024)} MB.",
+        )
+    return contents
+
+
+def safe_open_image(
+    data: bytes,
+    *,
+    max_pixels: int = settings.MAX_IMAGE_PIXELS,
+    max_dimension: int = 2048,
+) -> Image.Image:
+    """Decode image data with decompression bomb protection and thumbnail to max dimension."""
+    Image.MAX_IMAGE_PIXELS = max_pixels
+    try:
+        with warnings.catch_warnings():
+            # Pillow warns on images between 1-2x MAX_IMAGE_PIXELS, we turn it into an
+            # exception to have a hard limit
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            img = Image.open(io.BytesIO(data))
+            img.thumbnail((max_dimension, max_dimension))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not read the uploaded file as an image.",
+        )
+    return img
+
+
+def compress_to_jpeg(img: Image.Image, quality: int = 75) -> bytes:
+    """Convert image to RGB JPEG and return the bytes."""
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=quality)
+    return buf.getvalue()
 
 
 def get_content_type_from_extension(ext: str) -> str:

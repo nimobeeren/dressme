@@ -11,45 +11,57 @@ from .models import User, Wearable, WearableOnAvatarImage
 
 settings = get_settings()
 
-selfie_data = {"name": "human_3", "image_path": "images/humans/selfie_3.jpg"}
-avatar_data = {"name": "human_3", "image_path": "images/avatars/avatar_3.jpg"}
+selfie_data = {"name": "human_4", "image_path": "images/humans/selfie_4.jpg"}
+avatar_data = {"name": "human_4", "image_path": "images/avatars/avatar_4.jpg"}
 
 wearables_data = {
     "tshirt": {
         "name": "tshirt",
         "description": "purple t-shirt",
         "category": "upper_body",
-        "image_path": "images/garments/tops/tshirt.webp",
+        "image_path": "images/garments/tops/t-shirt/purple-tshirt-product.webp",
+    },
+    "shirt": {
+        "name": "shirt",
+        "description": "button-down shirt",
+        "category": "upper_body",
+        "image_path": "images/garments/tops/shirt/button-down-casual.jpeg",
     },
     "sweater": {
         "name": "sweater",
-        "description": "oversized pink sweater",
+        "description": "pullover sweater",
         "category": "upper_body",
-        "image_path": "images/garments/tops/sweater.jpg",
+        "image_path": "images/garments/tops/sweater/pullover-casual.webp",
     },
-    "striped_sweater": {
-        "name": "striped_sweater",
-        "description": "black and white striped sweater",
+    "jacket": {
+        "name": "jacket",
+        "description": "blazer",
         "category": "upper_body",
-        "image_path": "images/garments/tops/striped_sweater.webp",
+        "image_path": "images/garments/tops/jacket/blazer-casual.webp",
     },
-    "jeans": {
-        "name": "jeans",
-        "description": "slim fit washed jeans",
-        "category": "lower_body",
-        "image_path": "images/garments/bottoms/jeans.webp",
+    "top": {
+        "name": "top",
+        "description": "basic top",
+        "category": "upper_body",
+        "image_path": "images/garments/tops/top/basic-top-product.webp",
     },
-    "joggers": {
-        "name": "joggers",
-        "description": "pink joggers",
+    "pants": {
+        "name": "pants",
+        "description": "jeans",
         "category": "lower_body",
-        "image_path": "images/garments/bottoms/joggers.jpg",
+        "image_path": "images/garments/bottoms/pants/jeans-product.webp",
     },
-    "gym_shorts": {
-        "name": "gym_shorts",
-        "description": "short white gym shorts",
+    "shorts": {
+        "name": "shorts",
+        "description": "gym shorts",
         "category": "lower_body",
-        "image_path": "images/garments/bottoms/gym_shorts.webp",
+        "image_path": "images/garments/bottoms/shorts/gym-shorts-product.webp",
+    },
+    "skirt": {
+        "name": "skirt",
+        "description": "mini skirt",
+        "category": "lower_body",
+        "image_path": "images/garments/bottoms/skirt/mini-skirt-product.webp",
     },
 }
 

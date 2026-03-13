@@ -201,6 +201,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "google-genai" },
+    { name = "httpx" },
     { name = "ipykernel" },
     { name = "nbstripout" },
     { name = "numpy" },
@@ -214,6 +215,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "google-genai", specifier = ">=1.65.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "nbstripout", specifier = ">=0.9.1" },
     { name = "numpy", specifier = ">=2.4.2" },

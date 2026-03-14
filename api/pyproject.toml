@@ -32,10 +32,12 @@ dev = [
     "pytest-env>=1.1.5",
     "boto3-stubs[essential]>=1.42.39",
     "pytest-asyncio>=1.3.0",
+    "typer>=0.15.0",
 ]
 
 [project.scripts]
 seed = "dressme.db.seed:seed"
+evals = "dressme.eval_cli:app"
 
 [tool.uv]
 package = true

@@ -228,8 +228,13 @@ uv run pyright  # type checking
 
 ```bash
 cd api
-uv run pytest evals/ -s                # run garment classification evals
-uv run pytest evals/ -s --runs 3       # run multiple times for consistency
+uv run evals                                     # run all evals
+uv run evals --runs 3                             # run multiple times for consistency
+uv run evals evals/garment_classification.py      # run specific eval file
+uv run evals -k "t-shirt"                         # filter cases by name
+uv run evals --list                               # list available evals
+uv run evals --json                               # output results as JSON
+uv run evals -v                                   # verbose (timing, error details)
 ```
 
 ## Deployment

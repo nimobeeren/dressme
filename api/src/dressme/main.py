@@ -30,6 +30,11 @@ from .auth import verify_token
 from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
 from .combining import combine_wearables
+from .garment_classification import (
+    TOP_CATEGORIES,
+    BOTTOM_CATEGORIES,
+    GarmentClassifier,
+)
 from .image_utils import compress_to_jpeg, read_upload, safe_open_image
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
@@ -44,6 +49,12 @@ def get_avatar_generator() -> AvatarGenerator:
 
 def get_woa_generator() -> WoaGenerator:
     return WoaGenerator()
+
+
+def get_garment_classifier() -> GarmentClassifier:
+    return GarmentClassifier(
+        api_key=settings.GEMINI_API_KEY.get_secret_value()
+    )
 
 
 logging.basicConfig(
@@ -180,7 +191,6 @@ def update_avatar_image(
 class Wearable(BaseModel):
     id: UUID
     category: str
-    description: str | None
     wearable_image_url: str
     generation_status: Literal["pending", "success"]
     """Whether a WOA image has been generated with this wearable for the current user."""
@@ -220,7 +230,6 @@ def get_wearables(
         Wearable(
             id=wearable.id,
             category=wearable.category,
-            description=wearable.description,
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
             ),
@@ -230,14 +239,28 @@ def get_wearables(
     ]
 
 
+class ClassifyResponse(BaseModel):
+    category: str | None
+
+
+@app.post("/wearables/classify")
+async def classify_wearable(
+    *,
+    image: UploadFile,
+    current_user: db.User = Depends(get_current_user),
+    classifier: GarmentClassifier = Depends(get_garment_classifier),
+) -> ClassifyResponse:
+    contents = read_upload(image)
+    img = safe_open_image(contents)
+    jpeg_data = compress_to_jpeg(img)
+    category = await classifier.classify(jpeg_data)
+    return ClassifyResponse(category=category)
+
+
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
 def create_wearables(
     *,
     category: Annotated[list[Annotated[str, Field(min_length=1)]], Form()],
-    # Description should be optional, but we can't accept it due to the way sending values in form
-    # data works. If a client were to omit the description field on one item but not the others,
-    # there would be no way to know which item the null description belongs to.
-    description: Annotated[list[str], Form()],
     image: Annotated[list[UploadFile], File()],
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks,
@@ -249,8 +272,7 @@ def create_wearables(
     Create one or more wearables.
 
     Multiple wearables can be created in one request by passing fields multiple times with the same
-    name. All fields must appear the same number of times. The description can be set to an empty
-    string if you want to omit it.
+    name. All fields must appear the same number of times.
     """
     if current_user.avatar_image_key is None:
         raise HTTPException(
@@ -258,16 +280,14 @@ def create_wearables(
             detail="Avatar generation must be completed before adding wearables.",
         )
 
-    if not len(category) == len(description) == len(image):
+    if len(category) != len(image):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="The category, description and image fields should all occur the same number of times.",
+            detail="The category and image fields should occur the same number of times.",
         )
 
     wearables: list[db.Wearable] = []
-    for item_category, item_description, item_image in zip(
-        category, description, image, strict=True
-    ):
+    for item_category, item_image in zip(category, image, strict=True):
         contents = read_upload(item_image)
         img = safe_open_image(contents)
         jpeg_data = compress_to_jpeg(img)
@@ -277,7 +297,6 @@ def create_wearables(
 
         wearable = db.Wearable(
             category=item_category,
-            description=item_description if item_description != "" else None,
             image_key=key,
             user_id=current_user.id,
         )
@@ -303,7 +322,6 @@ def create_wearables(
         Wearable(
             id=wearable.id,
             category=wearable.category,
-            description=wearable.description,
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
             ),
@@ -460,7 +478,6 @@ def get_outfits(
         top = Wearable(
             id=outfit.top.id,
             category=outfit.top.category,
-            description=outfit.top.description,
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.top.image_key
             ),
@@ -469,7 +486,6 @@ def get_outfits(
         bottom = Wearable(
             id=outfit.bottom.id,
             category=outfit.bottom.category,
-            description=outfit.bottom.description,
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.bottom.image_key
             ),
@@ -498,10 +514,10 @@ def create_outfit(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Top wearable with ID '{top_id}' not found or not owned by user.",
         )
-    if top.category != "upper_body":
+    if top.category not in TOP_CATEGORIES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Top wearable must have category 'upper_body'.",
+            detail="Top wearable must be a top category.",
         )
 
     bottom = session.exec(
@@ -514,10 +530,10 @@ def create_outfit(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Bottom wearable with ID '{bottom_id}' not found or not owned by user.",
         )
-    if bottom.category != "lower_body":
+    if bottom.category not in BOTTOM_CATEGORIES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bottom wearable must have category 'lower_body'.",
+            detail="Bottom wearable must be a bottom category.",
         )
 
     # Check if the outfit already exists

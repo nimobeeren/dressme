@@ -17,50 +17,42 @@ avatar_data = {"name": "human_4", "image_path": "images/avatars/avatar_4.jpg"}
 wearables_data = {
     "tshirt": {
         "name": "tshirt",
-        "description": "purple t-shirt",
-        "category": "upper_body",
+        "category": "t-shirt",
         "image_path": "images/garments/tops/t-shirt/purple-tshirt-product.webp",
     },
     "shirt": {
         "name": "shirt",
-        "description": "button-down shirt",
-        "category": "upper_body",
+        "category": "shirt",
         "image_path": "images/garments/tops/shirt/button-down-casual.jpeg",
     },
     "sweater": {
         "name": "sweater",
-        "description": "pullover sweater",
-        "category": "upper_body",
+        "category": "sweater",
         "image_path": "images/garments/tops/sweater/pullover-casual.webp",
     },
     "jacket": {
         "name": "jacket",
-        "description": "blazer",
-        "category": "upper_body",
+        "category": "jacket",
         "image_path": "images/garments/tops/jacket/blazer-casual.webp",
     },
     "top": {
         "name": "top",
-        "description": "basic top",
-        "category": "upper_body",
+        "category": "top",
         "image_path": "images/garments/tops/top/basic-top-product.webp",
     },
     "pants": {
         "name": "pants",
-        "description": "jeans",
-        "category": "lower_body",
+        "category": "pants",
         "image_path": "images/garments/bottoms/pants/jeans-product.webp",
     },
     "shorts": {
         "name": "shorts",
-        "description": "gym shorts",
-        "category": "lower_body",
+        "category": "shorts",
         "image_path": "images/garments/bottoms/shorts/gym-shorts-product.webp",
     },
     "skirt": {
         "name": "skirt",
-        "description": "mini skirt",
-        "category": "lower_body",
+        "category": "skirt",
         "image_path": "images/garments/bottoms/skirt/mini-skirt-product.webp",
     },
 }
@@ -130,7 +122,6 @@ def seed():
             # Add wearable
             wearable = Wearable(
                 category=wearable_data["category"],
-                description=wearable_data["description"],
                 image_key=wearable_image_key,
                 user_id=user.id,
             )

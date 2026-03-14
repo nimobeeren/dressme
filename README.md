@@ -224,6 +224,14 @@ uv run pytest
 uv run pyright  # type checking
 ```
 
+##### Evals
+
+```bash
+cd api
+uv run pytest evals/ -s                # run garment classification evals
+uv run pytest evals/ -s --runs 3       # run multiple times for consistency
+```
+
 ## Deployment
 
 The app is deployed to Cloudflare using:

@@ -27,7 +27,6 @@ class Wearable(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="user.id", index=True)
     user: Optional["User"] = Relationship(back_populates="wearables")
     category: str
-    description: str | None
     image_key: str
 
 

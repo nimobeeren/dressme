@@ -11,10 +11,12 @@ from sqlmodel.pool import StaticPool
 from . import db
 from .auth import verify_token
 from .avatar_generation import AvatarGenerator
+from .garment_classification import GarmentClassifier
 from .main import (
     app,
     get_avatar_generator,
     get_current_user,
+    get_garment_classifier,
     get_session,
     get_woa_generator,
 )
@@ -31,16 +33,12 @@ settings = get_settings()
 test_webp_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
 # JPEG header data
 test_jpeg_header_data = b"\xff\xd8\xff"
-
-
 class MockAvatarGenerator(AvatarGenerator):
     def __init__(self):
         pass  # skip settings/client init
 
     async def generate(self, selfie_image_data: bytes) -> bytes:
         return test_jpeg_header_data
-
-
 class MockWoaGenerator(WoaGenerator):
     def __init__(self):
         pass  # skip settings/client init
@@ -50,6 +48,12 @@ class MockWoaGenerator(WoaGenerator):
 
     async def generate_mask(self, **kwargs: object) -> bytes:
         return b"fake_mask"
+class MockGarmentClassifier(GarmentClassifier):
+    def __init__(self):
+        pass  # skip client init
+
+    async def classify(self, image_data: bytes) -> str | None:
+        return "t-shirt"
 
 
 class MockBlobStorage(BlobStorage):
@@ -71,8 +75,6 @@ class MockBlobStorage(BlobStorage):
     @override
     def get_signed_url(self, bucket: str, key: str, expires_in: int = 3600) -> str:
         return f"https://signed-url/{bucket}/{key}"
-
-
 @pytest.fixture(name="session")
 def session_fixture():
     engine = create_engine(
@@ -88,13 +90,9 @@ def session_fixture():
         yield session
 
     db_module.engine = original_engine
-
-
 @pytest.fixture(name="mock_blob_storage")
 def mock_blob_storage_fixture():
     return MockBlobStorage()
-
-
 @pytest.fixture(name="client")
 def client_fixture(session: Session, mock_blob_storage: MockBlobStorage):
     def get_session_override():
@@ -112,23 +110,23 @@ def client_fixture(session: Session, mock_blob_storage: MockBlobStorage):
     def get_woa_generator_override():
         return MockWoaGenerator()
 
+    def get_garment_classifier_override():
+        return MockGarmentClassifier()
+
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[verify_token] = verify_token_override
     app.dependency_overrides[get_blob_storage] = get_blob_storage_override
     app.dependency_overrides[get_avatar_generator] = get_avatar_generator_override
     app.dependency_overrides[get_woa_generator] = get_woa_generator_override
+    app.dependency_overrides[get_garment_classifier] = get_garment_classifier_override
 
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
-
-
 class TestHealth:
     def test_health(self, client: TestClient):
         response = client.get("/healthz")
         assert response.status_code == 200
-
-
 class TestGetCurrentUser:
     def test_get_current_user_existing_user(self, session: Session):
         # Arrange: Create an existing user in the database using the fixture session
@@ -179,8 +177,6 @@ class TestGetCurrentUser:
         # Check properties of the *fetched* user
         assert newly_fetched_user.auth0_user_id == test_user_id
         assert newly_fetched_user.id is not None  # ID should be populated after commit
-
-
 class TestGetMe:
     def test_success(self, session: Session, client: TestClient):
         # Create user with selfie and avatar image keys
@@ -215,8 +211,6 @@ class TestGetMe:
             "has_selfie_image": False,
             "has_avatar_image": False,
         }
-
-
 class TestUpdateAvatarImage:
     def test_success(
         self,
@@ -332,8 +326,6 @@ class TestUpdateAvatarImage:
             files={"image": ("huge.jpg", large_data, "image/jpeg")},
         )
         assert response.status_code == 413
-
-
 class TestGetWearables:
     def test_success(self, session: Session, client: TestClient):
         # Create user with avatar
@@ -343,16 +335,14 @@ class TestGetWearables:
         # Create test wearables, associated with the current user
         wearable_1 = db.Wearable(
             image_key="wearable1.jpg",
-            category="upper_body",
-            description="test top",
+            category="t-shirt",
             user_id=user.id,
         )
         session.add(wearable_1)
 
         wearable_2 = db.Wearable(
             image_key="wearable2.jpg",
-            category="lower_body",
-            description=None,
+            category="pants",
             user_id=user.id,
         )
         session.add(wearable_2)
@@ -363,8 +353,7 @@ class TestGetWearables:
 
         wearable_3 = db.Wearable(
             image_key="wearable3.jpg",
-            category="upper_body",
-            description=None,
+            category="t-shirt",
             user_id=other_user.id,
         )
         session.add(wearable_3)
@@ -380,12 +369,8 @@ class TestGetWearables:
         assert len(data) == 2
         assert data[0]["id"] == str(wearable_1.id)
         assert data[0]["category"] == wearable_1.category
-        assert data[0]["description"] == wearable_1.description
         assert data[1]["id"] == str(wearable_2.id)
         assert data[1]["category"] == wearable_2.category
-        assert data[1]["description"] == wearable_2.description
-
-
 class TestCreateWearables:
     def test_success(
         self,
@@ -417,11 +402,7 @@ class TestCreateWearables:
                 ("image", ("test2.webp", test_image_data_2, "image/webp")),
             ],
             data={
-                "category": ["upper_body", "lower_body"],
-                "description": [
-                    "test description 1",
-                    "",  # empty string means no description
-                ],
+                "category": ["t-shirt", "pants"],
             },
         )
 
@@ -433,15 +414,13 @@ class TestCreateWearables:
 
         # Verify first wearable
         wearable_data_1 = data[0]
-        assert wearable_data_1["category"] == "upper_body"
-        assert wearable_data_1["description"] == "test description 1"
+        assert wearable_data_1["category"] == "t-shirt"
         assert "id" in wearable_data_1
         assert "wearable_image_url" in wearable_data_1
 
         # Verify second wearable
         wearable_data_2 = data[1]
-        assert wearable_data_2["category"] == "lower_body"
-        assert wearable_data_2["description"] is None
+        assert wearable_data_2["category"] == "pants"
         assert "id" in wearable_data_2
         assert "wearable_image_url" in wearable_data_2
 
@@ -449,8 +428,7 @@ class TestCreateWearables:
         wearable_1 = session.exec(
             select(db.Wearable).where(db.Wearable.id == UUID(wearable_data_1["id"]))
         ).one()
-        assert wearable_1.category == "upper_body"
-        assert wearable_1.description == "test description 1"
+        assert wearable_1.category == "t-shirt"
         assert wearable_1.user_id == user.id
         assert wearable_1.image_key.endswith(".jpg")
 
@@ -458,8 +436,7 @@ class TestCreateWearables:
         wearable_2 = session.exec(
             select(db.Wearable).where(db.Wearable.id == UUID(wearable_data_2["id"]))
         ).one()
-        assert wearable_2.category == "lower_body"
-        assert wearable_2.description is None
+        assert wearable_2.category == "pants"
         assert wearable_2.user_id == user.id
         assert wearable_2.image_key.endswith(".jpg")
 
@@ -492,7 +469,7 @@ class TestCreateWearables:
         session.add(user)
         session.commit()
 
-        # Make request with mismatched number of images and metadata fields
+        # Make request with mismatched number of images and category fields
         response = client.post(
             "/wearables",
             files=[
@@ -500,9 +477,8 @@ class TestCreateWearables:
                 ("image", ("test.webp", b"", "image/webp")),
             ],
             data={
-                "category": ["upper_body", "lower_body"],
-                "description": ["test description"],
-            },  # missing description for the second wearable
+                "category": ["t-shirt"],
+            },
         )
         assert response.status_code == 422
 
@@ -515,7 +491,7 @@ class TestCreateWearables:
         response = client.post(
             "/wearables",
             files=[("image", ("huge.jpg", large_data, "image/jpeg"))],
-            data={"category": ["upper_body"], "description": ["test"]},
+            data={"category": ["t-shirt"]},
         )
         assert response.status_code == 413
 
@@ -531,7 +507,7 @@ class TestCreateWearables:
         response = client.post(
             "/wearables",
             files=[("image", ("bomb.png", buf.getvalue(), "image/png"))],
-            data={"category": ["upper_body"], "description": ["test"]},
+            data={"category": ["t-shirt"]},
         )
         assert response.status_code == 422
 
@@ -545,7 +521,7 @@ class TestCreateWearables:
             files=[
                 ("image", ("not_an_image.txt", b"this is not an image", "text/plain")),
             ],
-            data={"category": ["upper_body"], "description": ["test"]},
+            data={"category": ["t-shirt"]},
         )
         assert response.status_code == 422
 
@@ -558,7 +534,7 @@ class TestCreateWearables:
         response = client.post(
             "/wearables",
             files=[("image", ("test.webp", test_webp_image_data, "image/webp"))],
-            data={"category": ["upper_body"], "description": ["test"]},
+            data={"category": ["t-shirt"]},
         )
         assert response.status_code == 400
 
@@ -571,11 +547,9 @@ class TestCreateWearables:
         response = client.post(
             "/wearables",
             files=[("image", ("test.webp", test_webp_image_data, "image/webp"))],
-            data={"category": ["upper_body"], "description": ["test"]},
+            data={"category": ["t-shirt"]},
         )
         assert response.status_code == 400
-
-
 class TestGetOutfitImage:
     def test_success(
         self, session: Session, client: TestClient, mock_blob_storage: MockBlobStorage
@@ -604,8 +578,7 @@ class TestGetOutfitImage:
         # Create top wearable and its WOA image
         top_wearable = db.Wearable(
             image_key="top.jpg",
-            category="upper_body",
-            description="test top",
+            category="t-shirt",
             user_id=user.id,
         )
         session.add(top_wearable)
@@ -621,8 +594,7 @@ class TestGetOutfitImage:
         # Create bottom wearable and its WOA image
         bottom_wearable = db.Wearable(
             image_key="bottom.jpg",
-            category="lower_body",
-            description="test bottom",
+            category="pants",
             user_id=user.id,
         )
         session.add(bottom_wearable)
@@ -656,8 +628,7 @@ class TestGetOutfitImage:
         # Create only the bottom wearable
         bottom_wearable = db.Wearable(
             image_key="bottom.jpg",
-            category="lower_body",
-            description="test bottom",
+            category="pants",
             user_id=user.id,
         )
         session.add(bottom_wearable)
@@ -685,8 +656,7 @@ class TestGetOutfitImage:
         # Create only the top wearable
         top_wearable = db.Wearable(
             image_key="top.jpg",
-            category="upper_body",
-            description="test top",
+            category="t-shirt",
             user_id=user.id,
         )
         session.add(top_wearable)
@@ -721,8 +691,7 @@ class TestGetOutfitImage:
         # Create top wearable without WOA image
         top_wearable = db.Wearable(
             image_key="top.jpg",
-            category="upper_body",
-            description="test top",
+            category="t-shirt",
             user_id=user.id,
         )
         session.add(top_wearable)
@@ -730,8 +699,7 @@ class TestGetOutfitImage:
         # Create bottom wearable with WOA image
         bottom_wearable = db.Wearable(
             image_key="bottom.jpg",
-            category="lower_body",
-            description="test bottom",
+            category="pants",
             user_id=user.id,
         )
         session.add(bottom_wearable)
@@ -755,8 +723,6 @@ class TestGetOutfitImage:
             },
         )
         assert response.status_code == 404
-
-
 class TestGetOutfits:
     def test_success_with_outfits(self, session: Session, client: TestClient):
         # Create user with avatar
@@ -766,8 +732,7 @@ class TestGetOutfits:
         # Create top wearable (completed WOA)
         top_wearable = db.Wearable(
             image_key="top.jpg",
-            category="upper_body",
-            description="test top",
+            category="t-shirt",
             user_id=user.id,
         )
         session.add(top_wearable)
@@ -783,8 +748,7 @@ class TestGetOutfits:
         # Create bottom wearable (pending WOA - no WOA image)
         bottom_wearable = db.Wearable(
             image_key="bottom.jpg",
-            category="lower_body",
-            description="test bottom",
+            category="pants",
             user_id=user.id,
         )
         session.add(bottom_wearable)
@@ -805,13 +769,11 @@ class TestGetOutfits:
         assert len(data) == 1
         assert data[0]["id"] == str(outfit.id)
         assert data[0]["top"]["id"] == str(top_wearable.id)
-        assert data[0]["top"]["category"] == "upper_body"
-        assert data[0]["top"]["description"] == "test top"
+        assert data[0]["top"]["category"] == "t-shirt"
         assert "signed-url" in data[0]["top"]["wearable_image_url"]
         assert data[0]["top"]["generation_status"] == "success"  # WOA exists
         assert data[0]["bottom"]["id"] == str(bottom_wearable.id)
-        assert data[0]["bottom"]["category"] == "lower_body"
-        assert data[0]["bottom"]["description"] == "test bottom"
+        assert data[0]["bottom"]["category"] == "pants"
         assert "signed-url" in data[0]["bottom"]["wearable_image_url"]
         assert data[0]["bottom"]["generation_status"] == "pending"  # WOA does not exist
 
@@ -825,8 +787,6 @@ class TestGetOutfits:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 0
-
-
 class TestCreateOutfit:
     def _create_user_and_wearables(self, session: Session):
         # Create user with avatar
@@ -836,8 +796,7 @@ class TestCreateOutfit:
         # Create top wearable
         top_wearable = db.Wearable(
             image_key="top.jpg",
-            category="upper_body",
-            description="test top",
+            category="t-shirt",
             user_id=user.id,
         )
         session.add(top_wearable)
@@ -845,8 +804,7 @@ class TestCreateOutfit:
         # Create bottom wearable
         bottom_wearable = db.Wearable(
             image_key="bottom.jpg",
-            category="lower_body",
-            description="test bottom",
+            category="pants",
             user_id=user.id,
         )
         session.add(bottom_wearable)
@@ -932,7 +890,7 @@ class TestCreateOutfit:
         )
         assert response.status_code == 400
         assert (
-            response.json()["detail"] == "Top wearable must have category 'upper_body'."
+            response.json()["detail"] == "Top wearable must be a top category."
         )
 
     def test_bottom_wrong_category(self, session: Session, client: TestClient):
@@ -949,7 +907,7 @@ class TestCreateOutfit:
         assert response.status_code == 400
         assert (
             response.json()["detail"]
-            == "Bottom wearable must have category 'lower_body'."
+            == "Bottom wearable must be a bottom category."
         )
 
     def test_wearable_not_owned(self, session: Session, client: TestClient):
@@ -963,8 +921,7 @@ class TestCreateOutfit:
         # Create bottom wearable for user 2
         bottom_wearable_2 = db.Wearable(
             image_key="bottom2.jpg",
-            category="lower_body",
-            description=None,
+            category="pants",
             user_id=user_2.id,  # Belongs to user 2
         )
         session.add(bottom_wearable_2)
@@ -988,8 +945,6 @@ class TestCreateOutfit:
             select(db.Outfit).where(db.Outfit.user_id == user_1.id)
         ).one_or_none()
         assert outfit is None
-
-
 class TestDeleteOutfit:
     def _create_user_wearables_outfit(
         self, session: Session, auth0_user_id: str = test_user_id
@@ -1001,8 +956,7 @@ class TestDeleteOutfit:
         # Create top wearable
         top_wearable = db.Wearable(
             image_key="top.jpg",
-            category="upper_body",
-            description="test top",
+            category="t-shirt",
             user_id=user.id,
         )
         session.add(top_wearable)
@@ -1010,8 +964,7 @@ class TestDeleteOutfit:
         # Create bottom wearable
         bottom_wearable = db.Wearable(
             image_key="bottom.jpg",
-            category="lower_body",
-            description="test bottom",
+            category="pants",
             user_id=user.id,
         )
         session.add(bottom_wearable)

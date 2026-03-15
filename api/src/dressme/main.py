@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
@@ -30,7 +30,7 @@ from .auth import verify_token
 from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
 from .combining import combine_wearables
-from .wearable_classification import WearableClassifier
+from .wearable_classification import WearableCategory, WearableClassifier
 from .woa_generation import (
     BOTTOM_CATEGORIES,
     TOP_CATEGORIES,
@@ -192,7 +192,7 @@ def update_avatar_image(
 
 class Wearable(BaseModel):
     id: UUID
-    category: str
+    category: WearableCategory
     body_part: BodyPart
     wearable_image_url: str
     generation_status: Literal["pending", "success"]
@@ -232,7 +232,7 @@ def get_wearables(
     return [
         Wearable(
             id=wearable.id,
-            category=wearable.category,
+            category=cast(WearableCategory, wearable.category),
             body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
@@ -244,7 +244,7 @@ def get_wearables(
 
 
 class ClassifyResponse(BaseModel):
-    category: str | None
+    category: WearableCategory | None
 
 
 @app.post("/wearables/classify")
@@ -264,7 +264,7 @@ async def classify_wearable(
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
 def create_wearables(
     *,
-    category: Annotated[list[Annotated[str, Field(min_length=1)]], Form()],
+    category: Annotated[list[WearableCategory], Form()],
     image: Annotated[list[UploadFile], File()],
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks,
@@ -325,7 +325,7 @@ def create_wearables(
     return [
         Wearable(
             id=wearable.id,
-            category=wearable.category,
+            category=cast(WearableCategory, wearable.category),
             body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
@@ -482,7 +482,7 @@ def get_outfits(
 
         top = Wearable(
             id=outfit.top.id,
-            category=outfit.top.category,
+            category=cast(WearableCategory, outfit.top.category),
             body_part=get_body_part(outfit.top.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.top.image_key
@@ -491,7 +491,7 @@ def get_outfits(
         )
         bottom = Wearable(
             id=outfit.bottom.id,
-            category=outfit.bottom.category,
+            category=cast(WearableCategory, outfit.bottom.category),
             body_part=get_body_part(outfit.bottom.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.bottom.image_key
@@ -524,7 +524,7 @@ def create_outfit(
     if top.category not in TOP_CATEGORIES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Top wearable must be a top category.",
+            detail='Top wearable must have "body_part": "top".',
         )
 
     bottom = session.exec(
@@ -540,7 +540,7 @@ def create_outfit(
     if bottom.category not in BOTTOM_CATEGORIES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bottom wearable must be a bottom category.",
+            detail='Bottom wearable must have "body_part": "bottom".',
         )
 
     # Check if the outfit already exists

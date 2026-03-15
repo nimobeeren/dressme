@@ -12,7 +12,7 @@ import dressme.db as db_module
 from dressme import db
 from dressme.auth import verify_token
 from dressme.avatar_generation import AvatarGenerator
-from dressme.wearable_classification import WearableClassifier
+from dressme.wearable_classification import WearableCategory, WearableClassifier
 from dressme.main import (
     app,
     get_avatar_generator,
@@ -32,12 +32,16 @@ settings = get_settings()
 test_webp_image_data = b'RIFF.\x00\x00\x00WEBPVP8 "\x00\x00\x000\x01\x00\x9d\x01*\n\x00\n\x00\x01@&%\xa4\x00\x03p\x00\xfe\xfa0L f}\x19l\xc5\xd6+\x80\x00\x00'
 # JPEG header data
 test_jpeg_header_data = b"\xff\xd8\xff"
+
+
 class MockAvatarGenerator(AvatarGenerator):
     def __init__(self):
         pass  # skip settings/client init
 
     async def generate(self, selfie_image_data: bytes) -> bytes:
         return test_jpeg_header_data
+
+
 class MockWoaGenerator(WoaGenerator):
     def __init__(self):
         pass  # skip settings/client init
@@ -47,11 +51,13 @@ class MockWoaGenerator(WoaGenerator):
 
     async def generate_mask(self, **kwargs: object) -> bytes:
         return b"fake_mask"
+
+
 class MockWearableClassifier(WearableClassifier):
     def __init__(self):
         pass  # skip client init
 
-    async def classify(self, image_data: bytes) -> str | None:
+    async def classify(self, image_data: bytes) -> WearableCategory | None:
         return "t-shirt"
 
 
@@ -74,6 +80,8 @@ class MockBlobStorage(BlobStorage):
     @override
     def get_signed_url(self, bucket: str, key: str, expires_in: int = 3600) -> str:
         return f"https://signed-url/{bucket}/{key}"
+
+
 @pytest.fixture(name="session")
 def session_fixture():
     engine = create_engine(
@@ -89,9 +97,13 @@ def session_fixture():
         yield session
 
     db_module.engine = original_engine
+
+
 @pytest.fixture(name="mock_blob_storage")
 def mock_blob_storage_fixture():
     return MockBlobStorage()
+
+
 @pytest.fixture(name="client")
 def client_fixture(session: Session, mock_blob_storage: MockBlobStorage):
     def get_session_override():
@@ -122,10 +134,14 @@ def client_fixture(session: Session, mock_blob_storage: MockBlobStorage):
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
+
+
 class TestHealth:
     def test_health(self, client: TestClient):
         response = client.get("/healthz")
         assert response.status_code == 200
+
+
 class TestGetCurrentUser:
     def test_get_current_user_existing_user(self, session: Session):
         # Arrange: Create an existing user in the database using the fixture session
@@ -176,6 +192,8 @@ class TestGetCurrentUser:
         # Check properties of the *fetched* user
         assert newly_fetched_user.auth0_user_id == test_user_id
         assert newly_fetched_user.id is not None  # ID should be populated after commit
+
+
 class TestGetMe:
     def test_success(self, session: Session, client: TestClient):
         # Create user with selfie and avatar image keys
@@ -210,6 +228,8 @@ class TestGetMe:
             "has_selfie_image": False,
             "has_avatar_image": False,
         }
+
+
 class TestUpdateAvatarImage:
     def test_success(
         self,
@@ -291,7 +311,9 @@ class TestUpdateAvatarImage:
 
         response = client.put(
             "/images/avatars/me",
-            files={"image": ("not_an_image.txt", b"this is not an image", "text/plain")},
+            files={
+                "image": ("not_an_image.txt", b"this is not an image", "text/plain")
+            },
         )
         assert response.status_code == 422
 
@@ -325,6 +347,8 @@ class TestUpdateAvatarImage:
             files={"image": ("huge.jpg", large_data, "image/jpeg")},
         )
         assert response.status_code == 413
+
+
 class TestGetWearables:
     def test_success(self, session: Session, client: TestClient):
         # Create user with avatar
@@ -370,6 +394,8 @@ class TestGetWearables:
         assert data[0]["category"] == wearable_1.category
         assert data[1]["id"] == str(wearable_2.id)
         assert data[1]["category"] == wearable_2.category
+
+
 class TestCreateWearables:
     def test_success(
         self,
@@ -549,6 +575,8 @@ class TestCreateWearables:
             data={"category": ["t-shirt"]},
         )
         assert response.status_code == 400
+
+
 class TestGetOutfitImage:
     def test_success(
         self, session: Session, client: TestClient, mock_blob_storage: MockBlobStorage
@@ -722,6 +750,8 @@ class TestGetOutfitImage:
             },
         )
         assert response.status_code == 404
+
+
 class TestGetOutfits:
     def test_success_with_outfits(self, session: Session, client: TestClient):
         # Create user with avatar
@@ -786,6 +816,8 @@ class TestGetOutfits:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 0
+
+
 class TestCreateOutfit:
     def _create_user_and_wearables(self, session: Session):
         # Create user with avatar
@@ -888,9 +920,7 @@ class TestCreateOutfit:
             },
         )
         assert response.status_code == 400
-        assert (
-            response.json()["detail"] == "Top wearable must be a top category."
-        )
+        assert response.json()["detail"] == 'Top wearable must have "body_part": "top".'
 
     def test_bottom_wrong_category(self, session: Session, client: TestClient):
         _, top_wearable, _ = self._create_user_and_wearables(session)
@@ -906,7 +936,7 @@ class TestCreateOutfit:
         assert response.status_code == 400
         assert (
             response.json()["detail"]
-            == "Bottom wearable must be a bottom category."
+            == 'Bottom wearable must have "body_part": "bottom".'
         )
 
     def test_wearable_not_owned(self, session: Session, client: TestClient):
@@ -944,6 +974,8 @@ class TestCreateOutfit:
             select(db.Outfit).where(db.Outfit.user_id == user_1.id)
         ).one_or_none()
         assert outfit is None
+
+
 class TestDeleteOutfit:
     def _create_user_wearables_outfit(
         self, session: Session, auth0_user_id: str = test_user_id

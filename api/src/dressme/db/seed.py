@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import TypedDict
 from uuid import uuid4
 
 from sqlmodel import Session
@@ -6,15 +7,22 @@ from sqlmodel import Session
 from ..settings import get_settings
 from ..blob_storage import get_blob_storage
 from ..image_utils import get_content_type_from_path
+from ..wearable_classification import WearableCategory
 from . import create_db_and_tables, engine
 from .models import User, Wearable, WearableOnAvatarImage
+
+
+class WearableSeedData(TypedDict):
+    name: str
+    category: WearableCategory
+    image_path: str
 
 settings = get_settings()
 
 selfie_data = {"name": "human_4", "image_path": "images/humans/selfie_4.jpg"}
 avatar_data = {"name": "human_4", "image_path": "images/avatars/avatar_4.jpg"}
 
-wearables_data = {
+wearables_data: dict[str, WearableSeedData] = {
     "tshirt": {
         "name": "tshirt",
         "category": "t-shirt",

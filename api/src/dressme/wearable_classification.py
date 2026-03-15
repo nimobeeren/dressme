@@ -19,7 +19,7 @@ class WearableClassifier:
     def __init__(self, api_key: str):
         self._client = genai.Client(api_key=api_key)
 
-    async def classify(self, image_data: bytes) -> str | None:
+    async def classify(self, image_data: bytes) -> WearableCategory | None:
         """Classify a wearable image into one of the known categories.
 
         Returns the category string, or None if classification fails.

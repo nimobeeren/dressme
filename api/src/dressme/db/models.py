@@ -1,3 +1,5 @@
+"""Database models."""
+
 from typing import Optional
 from uuid import UUID, uuid4
 

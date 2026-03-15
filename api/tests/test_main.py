@@ -12,7 +12,8 @@ import dressme.db as db_module
 from dressme import db
 from dressme.auth import verify_token
 from dressme.avatar_generation import AvatarGenerator
-from dressme.wearable_classification import WearableCategory, WearableClassifier
+from dressme import schemas
+from dressme.wearable_classification import WearableClassifier
 from dressme.main import (
     app,
     get_avatar_generator,
@@ -57,7 +58,7 @@ class MockWearableClassifier(WearableClassifier):
     def __init__(self):
         pass  # skip client init
 
-    async def classify(self, image_data: bytes) -> WearableCategory | None:
+    async def classify(self, image_data: bytes) -> schemas.WearableCategory | None:
         return "t-shirt"
 
 

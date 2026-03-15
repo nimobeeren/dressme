@@ -20,24 +20,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from PIL import Image
-from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlmodel import Session, select
 
-from . import db
+from . import db, schemas
 from .auth import verify_token
 from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
 from .combining import combine_wearables
-from .wearable_classification import WearableCategory, WearableClassifier
-from .woa_generation import (
-    BOTTOM_CATEGORIES,
-    TOP_CATEGORIES,
-    BodyPart,
-    WoaGenerator,
-    get_body_part,
-)
+from .wearable_classification import WearableClassifier
+from .woa_generation import BOTTOM_CATEGORIES, TOP_CATEGORIES, WoaGenerator, get_body_part
 from .image_utils import compress_to_jpeg, read_upload, safe_open_image
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
@@ -133,18 +126,12 @@ def health():
     return {"status": "ok"}
 
 
-class User(BaseModel):
-    id: UUID
-    has_selfie_image: bool
-    has_avatar_image: bool
-
-
 @app.get("/users/me")
 def get_me(
     *,
     current_user: db.User = Depends(get_current_user),
-) -> User:
-    return User(
+) -> schemas.User:
+    return schemas.User(
         id=current_user.id,
         has_selfie_image=current_user.selfie_image_key is not None,
         has_avatar_image=current_user.avatar_image_key is not None,
@@ -190,22 +177,13 @@ def update_avatar_image(
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
-class Wearable(BaseModel):
-    id: UUID
-    category: WearableCategory
-    body_part: BodyPart
-    wearable_image_url: str
-    generation_status: Literal["pending", "success"]
-    """Whether a WOA image has been generated with this wearable for the current user."""
-
-
 @app.get("/wearables")
 def get_wearables(
     *,
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
     blob_storage: BlobStorage = Depends(get_blob_storage),
-) -> Sequence[Wearable]:
+) -> Sequence[schemas.Wearable]:
     # Subquery to get WearableOnAvatar (WOA) images for the current user
     woa_image_subquery = (
         select(db.WearableOnAvatarImage)
@@ -230,9 +208,9 @@ def get_wearables(
     )
 
     return [
-        Wearable(
+        schemas.Wearable(
             id=wearable.id,
-            category=cast(WearableCategory, wearable.category),
+            category=cast(schemas.WearableCategory, wearable.category),
             body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
@@ -243,35 +221,31 @@ def get_wearables(
     ]
 
 
-class ClassifyResponse(BaseModel):
-    category: WearableCategory | None
-
-
 @app.post("/wearables/classify")
 async def classify_wearable(
     *,
     image: UploadFile,
     current_user: db.User = Depends(get_current_user),
     classifier: WearableClassifier = Depends(get_wearable_classifier),
-) -> ClassifyResponse:
+) -> schemas.ClassifyResponse:
     contents = read_upload(image)
     img = safe_open_image(contents)
     jpeg_data = compress_to_jpeg(img)
     category = await classifier.classify(jpeg_data)
-    return ClassifyResponse(category=category)
+    return schemas.ClassifyResponse(category=category)
 
 
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
 def create_wearables(
     *,
-    category: Annotated[list[WearableCategory], Form()],
+    category: Annotated[list[schemas.WearableCategory], Form()],
     image: Annotated[list[UploadFile], File()],
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks,
     current_user: db.User = Depends(get_current_user),
     blob_storage: BlobStorage = Depends(get_blob_storage),
     woa_generator: WoaGenerator = Depends(get_woa_generator),
-) -> list[Wearable]:
+) -> list[schemas.Wearable]:
     """
     Create one or more wearables.
 
@@ -323,9 +297,9 @@ def create_wearables(
         )
 
     return [
-        Wearable(
+        schemas.Wearable(
             id=wearable.id,
-            category=cast(WearableCategory, wearable.category),
+            category=cast(schemas.WearableCategory, wearable.category),
             body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
@@ -430,19 +404,13 @@ def get_outfit_image(
     )
 
 
-class Outfit(BaseModel):
-    id: UUID
-    top: Wearable
-    bottom: Wearable
-
-
 @app.get("/outfits")
 def get_outfits(
     *,
     session: Session = Depends(get_session),
     current_user: db.User = Depends(get_current_user),
     blob_storage: BlobStorage = Depends(get_blob_storage),
-) -> Sequence[Outfit]:
+) -> Sequence[schemas.Outfit]:
     # Get wearable image keys for which a WOA image exists for the current user's avatar
     woa_images = session.exec(
         select(db.WearableOnAvatarImage)
@@ -464,7 +432,7 @@ def get_outfits(
         ).all(),
     )
 
-    api_outfits: list[Outfit] = []
+    api_outfits: list[schemas.Outfit] = []
     for outfit in outfits:
         assert outfit.top is not None
         assert outfit.bottom is not None
@@ -480,25 +448,25 @@ def get_outfits(
             else "pending"
         )
 
-        top = Wearable(
+        top = schemas.Wearable(
             id=outfit.top.id,
-            category=cast(WearableCategory, outfit.top.category),
+            category=cast(schemas.WearableCategory, outfit.top.category),
             body_part=get_body_part(outfit.top.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.top.image_key
             ),
             generation_status=top_status,
         )
-        bottom = Wearable(
+        bottom = schemas.Wearable(
             id=outfit.bottom.id,
-            category=cast(WearableCategory, outfit.bottom.category),
+            category=cast(schemas.WearableCategory, outfit.bottom.category),
             body_part=get_body_part(outfit.bottom.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.bottom.image_key
             ),
             generation_status=bottom_status,
         )
-        api_outfits.append(Outfit(id=outfit.id, top=top, bottom=bottom))
+        api_outfits.append(schemas.Outfit(id=outfit.id, top=top, bottom=bottom))
     return api_outfits
 
 

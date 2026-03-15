@@ -1,25 +1,22 @@
 import io
-from typing import Literal
 
 from google import genai
 from google.genai import types
 from PIL import Image
 from pydantic import BaseModel
 
-WearableCategory = Literal[
-    "t-shirt", "shirt", "sweater", "jacket", "top", "pants", "shorts", "skirt"
-]
+from . import schemas
 
 
 class ClassificationResult(BaseModel):
-    category: WearableCategory
+    category: schemas.WearableCategory
 
 
 class WearableClassifier:
     def __init__(self, api_key: str):
         self._client = genai.Client(api_key=api_key)
 
-    async def classify(self, image_data: bytes) -> WearableCategory | None:
+    async def classify(self, image_data: bytes) -> schemas.WearableCategory | None:
         """Classify a wearable image into one of the known categories.
 
         Returns the category string, or None if classification fails.

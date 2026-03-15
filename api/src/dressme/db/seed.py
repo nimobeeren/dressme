@@ -7,14 +7,14 @@ from sqlmodel import Session
 from ..settings import get_settings
 from ..blob_storage import get_blob_storage
 from ..image_utils import get_content_type_from_path
-from ..wearable_classification import WearableCategory
+from .. import schemas
 from . import create_db_and_tables, engine
 from .models import User, Wearable, WearableOnAvatarImage
 
 
 class WearableSeedData(TypedDict):
     name: str
-    category: WearableCategory
+    category: schemas.WearableCategory
     image_path: str
 
 settings = get_settings()

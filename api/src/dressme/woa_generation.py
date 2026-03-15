@@ -1,9 +1,9 @@
 import io
-from typing import Literal
 
 import httpx
 from replicate.client import Client  # type: ignore
 
+from . import schemas
 from .settings import get_settings
 
 TOP_CATEGORIES = {"t-shirt", "shirt", "sweater", "jacket", "top"}
@@ -20,10 +20,8 @@ MASK_PROMPTS = {
     "skirt": "skirt",
 }
 
-BodyPart = Literal["top", "bottom"]
 
-
-def get_body_part(category: str) -> BodyPart:
+def get_body_part(category: str) -> schemas.BodyPart:
     if category in TOP_CATEGORIES:
         return "top"
     if category in BOTTOM_CATEGORIES:

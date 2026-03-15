@@ -80,7 +80,6 @@ async def generate_woa_image_task(
         woa_image_data = await woa_generator.generate_image(
             avatar_image=avatar_image_data,
             wearable_image=wearable_image_data,
-            wearable_description=wearable.description or "",
             category=wearable.category,
         )
 
@@ -88,7 +87,7 @@ async def generate_woa_image_task(
         logging.info("Generating mask")
         mask_image_data = await woa_generator.generate_mask(
             woa_image=woa_image_data,
-            wearable_description=wearable.description or "",
+            category=wearable.category,
         )
 
         # Upload results to blob storage

@@ -1,0 +1,10 @@
+{
+  "t-shirt": { "mask_prompt": "t-shirt" },
+  "shirt": { "mask_prompt": "shirt" },
+  "sweater": { "mask_prompt": "sweater" },
+  "jacket": { "mask_prompt": "jacket" },
+  "top": { "mask_prompt": "tank top" },
+  "pants": { "mask_prompt": "pants" },
+  "shorts": { "mask_prompt": "shorts" },
+  "skirt": { "mask_prompt": "skirt" }
+}

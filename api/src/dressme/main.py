@@ -30,15 +30,17 @@ from .auth import verify_token
 from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
 from .combining import combine_wearables
-from .wearable_classification import (
-    TOP_CATEGORIES,
+from .wearable_classification import WearableClassifier
+from .woa_generation import (
     BOTTOM_CATEGORIES,
-    WearableClassifier,
+    TOP_CATEGORIES,
+    BodyPart,
+    WoaGenerator,
+    get_body_part,
 )
 from .image_utils import compress_to_jpeg, read_upload, safe_open_image
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
-from .woa_generation import WoaGenerator
 
 settings = get_settings()
 
@@ -191,6 +193,7 @@ def update_avatar_image(
 class Wearable(BaseModel):
     id: UUID
     category: str
+    body_part: BodyPart
     wearable_image_url: str
     generation_status: Literal["pending", "success"]
     """Whether a WOA image has been generated with this wearable for the current user."""
@@ -230,6 +233,7 @@ def get_wearables(
         Wearable(
             id=wearable.id,
             category=wearable.category,
+            body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
             ),
@@ -322,6 +326,7 @@ def create_wearables(
         Wearable(
             id=wearable.id,
             category=wearable.category,
+            body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
             ),
@@ -478,6 +483,7 @@ def get_outfits(
         top = Wearable(
             id=outfit.top.id,
             category=outfit.top.category,
+            body_part=get_body_part(outfit.top.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.top.image_key
             ),
@@ -486,6 +492,7 @@ def get_outfits(
         bottom = Wearable(
             id=outfit.bottom.id,
             category=outfit.bottom.category,
+            body_part=get_body_part(outfit.bottom.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.bottom.image_key
             ),

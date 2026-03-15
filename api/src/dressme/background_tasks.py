@@ -6,7 +6,6 @@ from sqlmodel import Session, select
 from . import db
 from .avatar_generation import AvatarGenerator
 from .blob_storage import BlobStorage
-from .wearable_classification import MASK_PROMPTS, get_high_level_category
 from .settings import get_settings
 from .woa_generation import WoaGenerator
 
@@ -78,21 +77,17 @@ async def generate_woa_image_task(
             settings.AVATARS_BUCKET, user.avatar_image_key
         )
 
-        mask_prompt = MASK_PROMPTS[wearable.category]
-        high_level_category = get_high_level_category(wearable.category)
-
         woa_image_data = await woa_generator.generate_image(
             avatar_image=avatar_image_data,
             wearable_image=wearable_image_data,
-            wearable_description=mask_prompt,
-            category=high_level_category,
+            category=wearable.category,
         )
 
         # Get a mask of the wearable on the avatar using an image segmentation model
         logging.info("Generating mask")
         mask_image_data = await woa_generator.generate_mask(
             woa_image=woa_image_data,
-            wearable_description=mask_prompt,
+            category=wearable.category,
         )
 
         # Upload results to blob storage

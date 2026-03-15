@@ -6,32 +6,6 @@ from google.genai import types
 from PIL import Image
 from pydantic import BaseModel
 
-WEARABLE_CATEGORIES = [
-    "t-shirt",
-    "shirt",
-    "sweater",
-    "jacket",
-    "top",
-    "pants",
-    "shorts",
-    "skirt",
-]
-
-TOP_CATEGORIES = {"t-shirt", "shirt", "sweater", "jacket", "top"}
-BOTTOM_CATEGORIES = {"pants", "shorts", "skirt"}
-
-MASK_PROMPTS = {
-    "t-shirt": "t-shirt",
-    "shirt": "shirt",
-    "sweater": "sweater",
-    "jacket": "jacket",
-    "top": "tank top",
-    "pants": "pants",
-    "shorts": "shorts",
-    "skirt": "skirt",
-}
-
-
 WearableCategory = Literal[
     "t-shirt", "shirt", "sweater", "jacket", "top", "pants", "shorts", "skirt"
 ]
@@ -39,14 +13,6 @@ WearableCategory = Literal[
 
 class ClassificationResult(BaseModel):
     category: WearableCategory
-
-
-def get_high_level_category(category: str) -> Literal["upper_body", "lower_body"]:
-    if category in TOP_CATEGORIES:
-        return "upper_body"
-    if category in BOTTOM_CATEGORIES:
-        return "lower_body"
-    raise ValueError(f"Unknown wearable category: {category}")
 
 
 class WearableClassifier:

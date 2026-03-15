@@ -1,21 +1,17 @@
+import { useClassifyWearable } from "@/hooks/api";
 import { Trash2Icon } from "lucide-react";
 import type { Control } from "react-hook-form";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "./ui/form";
-import { Input } from "./ui/input";
 import { WearableCategoryFormField } from "./wearable-category-form-field";
 
 export interface WearableAddCardProps {
-  /** Name of the form field (e.g. `wearables.0` or `wearables.1). */
+  /** Name of the form field (e.g. `wearables.0` or `wearables.1`). */
   name: string;
+  /** Stable field ID used as query key. */
+  fieldId: string;
+  /** The image file to classify. */
+  file: File;
   /** Preview image source. */
   previewSrc: string;
   /** Form control. */
@@ -24,29 +20,29 @@ export interface WearableAddCardProps {
   onRemove: () => void;
 }
 
-export function WearableAddCard({ name, previewSrc, control, onRemove }: WearableAddCardProps) {
+export function WearableAddCard({
+  name,
+  fieldId,
+  file,
+  previewSrc,
+  control,
+  onRemove,
+}: WearableAddCardProps) {
+  const classifyQuery = useClassifyWearable(file, fieldId);
+
   return (
-    <Card className="group relative flex h-64 flex-row">
-      <img src={previewSrc} className="aspect-3/4 object-cover" />
-      <div className="space-y-4 overflow-y-auto px-6 py-4">
-        <WearableCategoryFormField control={control} name={`${name}.category`} />
-        <FormField
-          control={control}
-          name={`${name}.description`}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormDescription>
-                One or two words describing the item (like shirt or pants).
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+    <div className="group relative">
+      <Card className="flex h-64 flex-row overflow-hidden">
+        <img src={previewSrc} className="aspect-3/4 object-cover" />
+        <div className="w-full space-y-4 overflow-y-auto px-6 py-4">
+          <WearableCategoryFormField
+            control={control}
+            name={`${name}.category`}
+            suggestion={classifyQuery.data?.category ?? undefined}
+            pending={classifyQuery.isPending}
+          />
+        </div>
+      </Card>
       <Button
         type="button"
         variant="outline"
@@ -55,6 +51,6 @@ export function WearableAddCard({ name, previewSrc, control, onRemove }: Wearabl
       >
         <Trash2Icon className="!size-6" />
       </Button>
-    </Card>
+    </div>
   );
 }

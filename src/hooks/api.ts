@@ -1,4 +1,5 @@
 import {
+  classifyWearable,
   client,
   createOutfit,
   createWearables,
@@ -89,7 +90,6 @@ export function useWearables() {
 
 type WearablesInput = Array<{
   category: BodyCreateWearables["category"][0];
-  description?: BodyCreateWearables["description"][0];
   image: BodyCreateWearables["image"][0];
 }>;
 
@@ -99,9 +99,6 @@ export function useCreateWearables() {
     mutationFn: async (wearables: WearablesInput) => {
       const formData = {
         category: wearables.map((wearable) => wearable.category),
-        // Description can't be undefined because of HTTP form data limitations when sending
-        // multiple items
-        description: wearables.map((wearable) => wearable.description || ""),
         image: wearables.map((wearable) => wearable.image),
       };
       await createWearables({ body: formData });
@@ -109,6 +106,19 @@ export function useCreateWearables() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wearables"] });
     },
+  });
+}
+
+export function useClassifyWearable(file: File, fieldId: string) {
+  return useQuery({
+    queryKey: ["classify", fieldId],
+    queryFn: async ({ signal }) => {
+      const result = await classifyWearable({ body: { image: file }, signal });
+      return result.data;
+    },
+    retry: false,
+    staleTime: Infinity,
+    gcTime: 0,
   });
 }
 

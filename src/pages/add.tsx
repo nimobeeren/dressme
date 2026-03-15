@@ -17,8 +17,16 @@ const formSchema = z.object({
       z.object({
         file: z.instanceof(File),
         preview: z.string(),
-        category: z.enum(["upper_body", "lower_body"]),
-        description: z.string().min(1, { message: "Required" }),
+        category: z.enum([
+          "t-shirt",
+          "shirt",
+          "sweater",
+          "jacket",
+          "top",
+          "pants",
+          "shorts",
+          "skirt",
+        ]),
       }),
     )
     .min(1),
@@ -62,7 +70,6 @@ export function AddPage() {
           preview: URL.createObjectURL(file),
           // Undefined is invalid when submitting the form but fine as an initial value
           category: undefined as any,
-          description: "",
         })),
       );
     }
@@ -70,10 +77,8 @@ export function AddPage() {
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     createWearables(
-      // Rename file field and keep only necessary fields
-      data.wearables.map(({ category, description, file }) => ({
-        category: category,
-        description: description,
+      data.wearables.map(({ category, file }) => ({
+        category,
         image: file,
       })),
       {
@@ -98,11 +103,13 @@ export function AddPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormItem>
             <div className="grid grid-cols-2 gap-4">
-              {wearablesFieldArray.fields.map((wearable, index) => (
+              {wearablesFieldArray.fields.map((field, index) => (
                 <WearableAddCard
-                  key={wearable.id}
+                  key={field.id}
                   name={`wearables.${index}`}
-                  previewSrc={wearable.preview}
+                  fieldId={field.id}
+                  file={field.file}
+                  previewSrc={field.preview}
                   control={form.control}
                   onRemove={() => wearablesFieldArray.remove(index)}
                 />

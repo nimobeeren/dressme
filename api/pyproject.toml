@@ -47,6 +47,12 @@ build-backend = "hatchling.build"
 [tool.pyright]
 typeCheckingMode = "strict"
 
+[tool.pytest.ini_options]
+addopts = "-m 'not eval'"
+markers = ["eval: marks tests as evals (deselected by default)"]
+python_files = ["test_*.py", "eval_*.py"]
+python_functions = ["test_*", "eval_*"]
+
 [tool.pytest_env]
 # Set some placeholder values for env vars that are not used in tests
 AUTH0_ALGORITHMS = "placeholder"

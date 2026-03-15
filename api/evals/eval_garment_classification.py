@@ -11,14 +11,12 @@ GARMENTS_DIR = Path(__file__).parent.parent.parent / "images" / "garments"
 
 
 @pytest.mark.asyncio
-async def test_garment_classification(request: pytest.FixtureRequest):
+async def eval_garment_classification(request: pytest.FixtureRequest):
     runs = cast(int, request.config.getoption("--runs"))
     concurrency = cast(int, request.config.getoption("--concurrency"))
 
     settings = get_settings()
-    classifier = GarmentClassifier(
-        api_key=settings.GEMINI_API_KEY.get_secret_value()
-    )
+    classifier = GarmentClassifier(api_key=settings.GEMINI_API_KEY.get_secret_value())
 
     # Discover test cases from images/garments/{tops,bottoms}/*/*
     cases: list[tuple[str, Path]] = []

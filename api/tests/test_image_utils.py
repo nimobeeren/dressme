@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException, UploadFile
 from PIL import Image
 
-from .image_utils import (
+from dressme.image_utils import (
     compress_to_jpeg,
     get_content_type_from_extension,
     get_content_type_from_path,

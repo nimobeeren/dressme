@@ -8,11 +8,12 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
 
-from . import db
-from .auth import verify_token
-from .avatar_generation import AvatarGenerator
-from .wearable_classification import WearableClassifier
-from .main import (
+import dressme.db as db_module
+from dressme import db
+from dressme.auth import verify_token
+from dressme.avatar_generation import AvatarGenerator
+from dressme.wearable_classification import WearableClassifier
+from dressme.main import (
     app,
     get_avatar_generator,
     get_current_user,
@@ -20,11 +21,9 @@ from .main import (
     get_session,
     get_woa_generator,
 )
-from .blob_storage import BlobStorage, get_blob_storage
-from .settings import get_settings
-from .woa_generation import WoaGenerator
-
-import dressme.db as db_module
+from dressme.blob_storage import BlobStorage, get_blob_storage
+from dressme.settings import get_settings
+from dressme.woa_generation import WoaGenerator
 
 test_user_id = "auth0|1"
 settings = get_settings()

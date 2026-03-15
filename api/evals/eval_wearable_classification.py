@@ -4,23 +4,23 @@ from typing import cast
 
 import pytest
 
-from dressme.garment_classification import GarmentClassifier
+from dressme.wearable_classification import WearableClassifier
 from dressme.settings import get_settings
 
-GARMENTS_DIR = Path(__file__).parent.parent.parent / "images" / "garments"
+WEARABLES_DIR = Path(__file__).parent.parent.parent / "images" / "wearables"
 
 
 @pytest.mark.asyncio
-async def eval_garment_classification(request: pytest.FixtureRequest):
+async def eval_wearable_classification(request: pytest.FixtureRequest):
     runs = cast(int, request.config.getoption("--runs"))
     concurrency = cast(int, request.config.getoption("--concurrency"))
 
     settings = get_settings()
-    classifier = GarmentClassifier(api_key=settings.GEMINI_API_KEY.get_secret_value())
+    classifier = WearableClassifier(api_key=settings.GEMINI_API_KEY.get_secret_value())
 
-    # Discover test cases from images/garments/{tops,bottoms}/*/*
+    # Discover test cases from images/wearables/{tops,bottoms}/*/*
     cases: list[tuple[str, Path]] = []
-    for group_dir in sorted(GARMENTS_DIR.iterdir()):
+    for group_dir in sorted(WEARABLES_DIR.iterdir()):
         if not group_dir.is_dir() or group_dir.name.startswith("."):
             continue
         for category_dir in sorted(group_dir.iterdir()):
@@ -31,7 +31,7 @@ async def eval_garment_classification(request: pytest.FixtureRequest):
                 if image_path.is_file() and not image_path.name.startswith("."):
                     cases.append((expected_category, image_path))
 
-    assert len(cases) > 0, f"No test cases found in {GARMENTS_DIR}"
+    assert len(cases) > 0, f"No test cases found in {WEARABLES_DIR}"
 
     # Multiply by runs
     all_cases = cases * runs

@@ -1,18 +1,18 @@
 """
 Generate WOA images and masks for masking evaluation.
 
-For each garment image in images/garments/{tops,bottoms}/{category}/,
-generates a WOA image (avatar wearing the garment) and a mask
-(isolating the garment for compositing).
+For each wearable image in images/wearables/{tops,bottoms}/{category}/,
+generates a WOA (Wearable On Avatar) image and a mask
+(isolating the wearable for compositing).
 
 Uses the category folder name as the mask prompt for Grounded SAM.
 
 Usage:
     uv run masking-categories/generate_masks.py --avatar ../images/avatars/avatar_4.jpg
 
-Outputs are saved to experiments/masking-categories/output/{avatar_name}/{category}/{garment_name}_{woa,mask}.jpg
+Outputs are saved to experiments/masking-categories/output/{avatar_name}/{category}/{wearable_name}_{woa,mask}.jpg
 
-Approximate cost: $0.044 per (garment, avatar) pair.
+Approximate cost: $0.044 per (wearable, avatar) pair.
 """
 
 import argparse
@@ -31,7 +31,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
-GARMENTS_DIR = REPO_ROOT / "images" / "garments"
+WEARABLES_DIR = REPO_ROOT / "images" / "wearables"
 OUTPUT_DIR = SCRIPT_DIR / "output"
 
 # Load category config: maps category name -> mask_prompt
@@ -86,11 +86,11 @@ async def generate_mask(client: Client, woa_image: bytes, mask_prompt: str) -> b
         return response.content
 
 
-def discover_garments() -> list[tuple[str, str, Path]]:
+def discover_wearables() -> list[tuple[str, str, Path]]:
     """Returns list of (body_part, category, image_path) tuples."""
-    garments = []
+    wearables = []
     for body_part in ["tops", "bottoms"]:
-        body_dir = GARMENTS_DIR / body_part
+        body_dir = WEARABLES_DIR / body_part
         if not body_dir.exists():
             continue
         for category_dir in sorted(body_dir.iterdir()):
@@ -102,11 +102,11 @@ def discover_garments() -> list[tuple[str, str, Path]]:
                 continue
             for image_path in sorted(category_dir.iterdir()):
                 if image_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}:
-                    garments.append((body_part, category, image_path))
-    return garments
+                    wearables.append((body_part, category, image_path))
+    return wearables
 
 
-async def process_garment(
+async def process_wearable(
     client: Client,
     avatar_image: bytes,
     avatar_name: str,
@@ -117,10 +117,10 @@ async def process_garment(
     *,
     masks_only: bool = False,
 ) -> None:
-    garment_name = image_path.stem
+    wearable_name = image_path.stem
     out_dir = OUTPUT_DIR / avatar_name / category
-    woa_path = out_dir / f"{garment_name}_woa.jpg"
-    mask_path = out_dir / f"{garment_name}_mask.jpg"
+    woa_path = out_dir / f"{wearable_name}_woa.jpg"
+    mask_path = out_dir / f"{wearable_name}_mask.jpg"
     vton_category = "upper_body" if body_part == "tops" else "lower_body"
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -130,19 +130,19 @@ async def process_garment(
             raise FileNotFoundError(f"WOA image not found: {woa_path} (needed for --masks-only)")
         woa_image = woa_path.read_bytes()
     elif woa_path.exists() and mask_path.exists():
-        print(f"  Skipping {category}/{garment_name} (already generated)")
+        print(f"  Skipping {category}/{wearable_name} (already generated)")
         return
     else:
         wearable_image = image_path.read_bytes()
-        print(f"  Generating WOA for {category}/{garment_name}...")
+        print(f"  Generating WOA for {category}/{wearable_name}...")
         woa_image = await generate_woa(client, avatar_image, wearable_image, category, vton_category)
         woa_path.write_bytes(woa_image)
 
-    print(f"  Generating mask for {category}/{garment_name} (prompt: {mask_prompt!r})...")
+    print(f"  Generating mask for {category}/{wearable_name} (prompt: {mask_prompt!r})...")
     mask_image = await generate_mask(client, woa_image, mask_prompt)
     mask_path.write_bytes(mask_image)
 
-    print(f"  Done: {category}/{garment_name}")
+    print(f"  Done: {category}/{wearable_name}")
 
 
 async def main():
@@ -166,24 +166,24 @@ async def main():
     avatar_name = avatar_path.stem
     avatar_image = avatar_path.read_bytes()
 
-    all_garments = discover_garments()
+    all_wearables = discover_wearables()
     if args.category:
-        garments = [(bp, cat, p) for bp, cat, p in all_garments if cat == args.category]
-        if not garments:
-            print(f"No garment images found for category '{args.category}'", file=sys.stderr)
+        wearables = [(bp, cat, p) for bp, cat, p in all_wearables if cat == args.category]
+        if not wearables:
+            print(f"No wearable images found for category '{args.category}'", file=sys.stderr)
             sys.exit(1)
     else:
-        garments = all_garments
+        wearables = all_wearables
 
-    if not garments:
-        print("No garment images found. Add images to images/garments/{tops,bottoms}/{category}/")
+    if not wearables:
+        print("No wearable images found. Add images to images/wearables/{tops,bottoms}/{category}/")
         sys.exit(1)
 
-    print(f"Found {len(garments)} garment images across {len(set(c for _, c, _ in garments))} categories")
+    print(f"Found {len(wearables)} wearable images across {len(set(c for _, c, _ in wearables))} categories")
     if args.masks_only:
-        estimated_cost = len(garments) * 0.004
+        estimated_cost = len(wearables) * 0.004
     else:
-        estimated_cost = len(garments) * 0.044
+        estimated_cost = len(wearables) * 0.044
     print(f"Estimated cost: ${estimated_cost:.2f}")
     print()
 
@@ -193,13 +193,13 @@ async def main():
     async def bounded_process(body_part: str, category: str, image_path: Path) -> None:
         mask_prompt = args.mask_prompt or CATEGORIES[category]["mask_prompt"]
         async with semaphore:
-            await process_garment(
+            await process_wearable(
                 client, avatar_image, avatar_name, body_part, category, mask_prompt, image_path,
                 masks_only=args.masks_only,
             )
 
     await asyncio.gather(
-        *(bounded_process(bp, cat, p) for bp, cat, p in garments)
+        *(bounded_process(bp, cat, p) for bp, cat, p in wearables)
     )
 
     print()

@@ -18,42 +18,42 @@ wearables_data = {
     "tshirt": {
         "name": "tshirt",
         "category": "t-shirt",
-        "image_path": "images/garments/tops/t-shirt/purple-tshirt-product.webp",
+        "image_path": "images/wearables/tops/t-shirt/purple-tshirt-product.webp",
     },
     "shirt": {
         "name": "shirt",
         "category": "shirt",
-        "image_path": "images/garments/tops/shirt/button-down-casual.jpeg",
+        "image_path": "images/wearables/tops/shirt/button-down-casual.jpeg",
     },
     "sweater": {
         "name": "sweater",
         "category": "sweater",
-        "image_path": "images/garments/tops/sweater/pullover-casual.webp",
+        "image_path": "images/wearables/tops/sweater/pullover-casual.webp",
     },
     "jacket": {
         "name": "jacket",
         "category": "jacket",
-        "image_path": "images/garments/tops/jacket/blazer-casual.webp",
+        "image_path": "images/wearables/tops/jacket/blazer-casual.webp",
     },
     "top": {
         "name": "top",
         "category": "top",
-        "image_path": "images/garments/tops/top/basic-top-product.webp",
+        "image_path": "images/wearables/tops/top/basic-top-product.webp",
     },
     "pants": {
         "name": "pants",
         "category": "pants",
-        "image_path": "images/garments/bottoms/pants/jeans-product.webp",
+        "image_path": "images/wearables/bottoms/pants/jeans-product.webp",
     },
     "shorts": {
         "name": "shorts",
         "category": "shorts",
-        "image_path": "images/garments/bottoms/shorts/gym-shorts-product.webp",
+        "image_path": "images/wearables/bottoms/shorts/gym-shorts-product.webp",
     },
     "skirt": {
         "name": "skirt",
         "category": "skirt",
-        "image_path": "images/garments/bottoms/skirt/mini-skirt-product.webp",
+        "image_path": "images/wearables/bottoms/skirt/mini-skirt-product.webp",
     },
 }
 

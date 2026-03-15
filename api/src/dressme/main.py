@@ -30,10 +30,10 @@ from .auth import verify_token
 from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
 from .combining import combine_wearables
-from .garment_classification import (
+from .wearable_classification import (
     TOP_CATEGORIES,
     BOTTOM_CATEGORIES,
-    GarmentClassifier,
+    WearableClassifier,
 )
 from .image_utils import compress_to_jpeg, read_upload, safe_open_image
 from .settings import get_settings
@@ -51,8 +51,8 @@ def get_woa_generator() -> WoaGenerator:
     return WoaGenerator()
 
 
-def get_garment_classifier() -> GarmentClassifier:
-    return GarmentClassifier(
+def get_wearable_classifier() -> WearableClassifier:
+    return WearableClassifier(
         api_key=settings.GEMINI_API_KEY.get_secret_value()
     )
 
@@ -248,7 +248,7 @@ async def classify_wearable(
     *,
     image: UploadFile,
     current_user: db.User = Depends(get_current_user),
-    classifier: GarmentClassifier = Depends(get_garment_classifier),
+    classifier: WearableClassifier = Depends(get_wearable_classifier),
 ) -> ClassifyResponse:
     contents = read_upload(image)
     img = safe_open_image(contents)

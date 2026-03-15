@@ -11,12 +11,12 @@ from sqlmodel.pool import StaticPool
 from . import db
 from .auth import verify_token
 from .avatar_generation import AvatarGenerator
-from .garment_classification import GarmentClassifier
+from .wearable_classification import WearableClassifier
 from .main import (
     app,
     get_avatar_generator,
     get_current_user,
-    get_garment_classifier,
+    get_wearable_classifier,
     get_session,
     get_woa_generator,
 )
@@ -48,7 +48,7 @@ class MockWoaGenerator(WoaGenerator):
 
     async def generate_mask(self, **kwargs: object) -> bytes:
         return b"fake_mask"
-class MockGarmentClassifier(GarmentClassifier):
+class MockWearableClassifier(WearableClassifier):
     def __init__(self):
         pass  # skip client init
 
@@ -110,15 +110,15 @@ def client_fixture(session: Session, mock_blob_storage: MockBlobStorage):
     def get_woa_generator_override():
         return MockWoaGenerator()
 
-    def get_garment_classifier_override():
-        return MockGarmentClassifier()
+    def get_wearable_classifier_override():
+        return MockWearableClassifier()
 
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[verify_token] = verify_token_override
     app.dependency_overrides[get_blob_storage] = get_blob_storage_override
     app.dependency_overrides[get_avatar_generator] = get_avatar_generator_override
     app.dependency_overrides[get_woa_generator] = get_woa_generator_override
-    app.dependency_overrides[get_garment_classifier] = get_garment_classifier_override
+    app.dependency_overrides[get_wearable_classifier] = get_wearable_classifier_override
 
     client = TestClient(app)
     yield client

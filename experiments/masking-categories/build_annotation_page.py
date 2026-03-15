@@ -37,14 +37,14 @@ def discover_results(avatar_name: str) -> list[dict]:
 
         woa_files = sorted(category_dir.glob("*_woa.jpg"))
         for woa_path in woa_files:
-            garment_name = woa_path.name.removesuffix("_woa.jpg")
-            mask_path = category_dir / f"{garment_name}_mask.jpg"
+            wearable_name = woa_path.name.removesuffix("_woa.jpg")
+            mask_path = category_dir / f"{wearable_name}_mask.jpg"
             if not mask_path.exists():
                 continue
             results.append({
-                "id": f"{category}/{garment_name}",
+                "id": f"{category}/{wearable_name}",
                 "category": category,
-                "garment_name": garment_name,
+                "wearable_name": wearable_name,
                 "woa_data_uri": image_to_data_uri(woa_path),
                 "mask_data_uri": image_to_data_uri(mask_path),
             })
@@ -56,7 +56,7 @@ def build_html(results: list[dict], avatar_name: str) -> str:
     for r in results:
         cards_html += f"""
         <div class="card" data-id="{r['id']}">
-            <h3>{r['category']} / {r['garment_name']}</h3>
+            <h3>{r['category']} / {r['wearable_name']}</h3>
             <div class="images">
                 <div class="image-container">
                     <img src="{r['woa_data_uri']}" alt="WOA">

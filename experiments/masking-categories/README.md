@@ -14,10 +14,10 @@ cp .env.example .env  # then fill in REPLICATE_API_TOKEN
 
 ## Test images
 
-Place garment images in `images/garments/{tops,bottoms}/{category}/` (from repo root):
+Place wearable images in `images/wearables/{tops,bottoms}/{category}/` (from repo root):
 
 ```
-images/garments/
+images/wearables/
 ├── tops/
 │   ├── t-shirt/     (3 images: 2 casual, 1 product)
 │   ├── shirt/
@@ -40,14 +40,14 @@ All commands are run from `experiments/`.
 ### 1. Generate WOA images and masks
 
 Generates a virtual try-on image (WOA) and a segmentation mask for each
-(garment, avatar) pair. Uses the category folder name as the Grounded SAM mask
+(wearable, avatar) pair. Uses the category folder name as the Grounded SAM mask
 prompt.
 
 ```sh
 uv run masking-categories/generate_masks.py --avatar ../images/avatars/avatar_4.jpg
 ```
 
-Cost: ~$0.044 per (garment, avatar) pair ($0.04 WOA + $0.004 mask).
+Cost: ~$0.044 per (wearable, avatar) pair ($0.04 WOA + $0.004 mask).
 
 Already-generated outputs are skipped, so it's safe to re-run.
 
@@ -84,8 +84,8 @@ Prints accuracy per category, per avatar, and overall.
 ```
 masking-categories/output/{avatar_name}/
 ├── {category}/
-│   ├── {garment}_woa.jpg    # virtual try-on image
-│   └── {garment}_mask.jpg   # segmentation mask
+│   ├── {wearable}_woa.jpg    # virtual try-on image
+│   └── {wearable}_mask.jpg   # segmentation mask
 ├── annotate.html            # annotation page
 └── annotations.json         # your ratings (exported from HTML)
 ```

@@ -6,7 +6,7 @@ from google.genai import types
 from PIL import Image
 from pydantic import BaseModel
 
-GARMENT_CATEGORIES = [
+WEARABLE_CATEGORIES = [
     "t-shirt",
     "shirt",
     "sweater",
@@ -32,13 +32,13 @@ MASK_PROMPTS = {
 }
 
 
-GarmentCategory = Literal[
+WearableCategory = Literal[
     "t-shirt", "shirt", "sweater", "jacket", "top", "pants", "shorts", "skirt"
 ]
 
 
 class ClassificationResult(BaseModel):
-    category: GarmentCategory
+    category: WearableCategory
 
 
 def get_high_level_category(category: str) -> Literal["upper_body", "lower_body"]:
@@ -46,15 +46,15 @@ def get_high_level_category(category: str) -> Literal["upper_body", "lower_body"
         return "upper_body"
     if category in BOTTOM_CATEGORIES:
         return "lower_body"
-    raise ValueError(f"Unknown garment category: {category}")
+    raise ValueError(f"Unknown wearable category: {category}")
 
 
-class GarmentClassifier:
+class WearableClassifier:
     def __init__(self, api_key: str):
         self._client = genai.Client(api_key=api_key)
 
     async def classify(self, image_data: bytes) -> str | None:
-        """Classify a garment image into one of the known categories.
+        """Classify a wearable image into one of the known categories.
 
         Returns the category string, or None if classification fails.
 
@@ -66,7 +66,7 @@ class GarmentClassifier:
         try:
             response = await self._client.aio.models.generate_content(
                 model="gemini-3.1-flash-lite-preview",
-                contents=[image, "classify this garment"],
+                contents=[image, "classify this wearable"],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=ClassificationResult.model_json_schema(),

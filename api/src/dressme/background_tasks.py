@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from . import db
 from .avatar_generation import AvatarGenerator
 from .blob_storage import BlobStorage
-from .garment_classification import MASK_PROMPTS, get_high_level_category
+from .wearable_classification import MASK_PROMPTS, get_high_level_category
 from .settings import get_settings
 from .woa_generation import WoaGenerator
 

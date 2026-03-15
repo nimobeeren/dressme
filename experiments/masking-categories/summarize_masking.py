@@ -19,16 +19,16 @@ def main():
     parser.add_argument("files", nargs="+", type=argparse.FileType("r"), help="Annotation JSON files")
     args = parser.parse_args()
 
-    # Collect all annotations keyed by (avatar, category, garment)
-    all_annotations: list[tuple[str, str, str, str]] = []  # (avatar, category, garment, rating)
+    # Collect all annotations keyed by (avatar, category, wearable)
+    all_annotations: list[tuple[str, str, str, str]] = []  # (avatar, category, wearable, rating)
 
     for f in args.files:
         data = json.load(f)
         # Infer avatar name from file path: output/masking/{avatar_name}/annotations.json
         avatar_name = f.name.split("/")[-2] if "/" in f.name else "unknown"
         for item_id, rating in data.items():
-            category, garment = item_id.split("/", 1)
-            all_annotations.append((avatar_name, category, garment, rating))
+            category, wearable = item_id.split("/", 1)
+            all_annotations.append((avatar_name, category, wearable, rating))
 
     if not all_annotations:
         print("No annotations found.", file=sys.stderr)

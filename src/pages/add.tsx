@@ -1,13 +1,37 @@
+import { FullPageSpinner } from "@/components/full-page-spinner";
 import { Button } from "@/components/ui/button";
-import { Form, FormDescription, FormItem } from "@/components/ui/form";
-import { WearableAddCard } from "@/components/wearable-add-card";
-import { WearableFileInputButton } from "@/components/wearable-file-input-button";
-import { useCreateWearables, useMe } from "@/hooks/api";
+import { Card } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useClassifyWearable, useCreateWearables, useMe } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FullPageSpinner } from "@/components/full-page-spinner";
-import { CheckIcon, CircleSlashIcon, LoaderCircleIcon } from "lucide-react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { CheckIcon, CircleSlashIcon, LoaderCircleIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useEffect } from "react";
+import {
+  Control,
+  FieldPath,
+  FieldValues,
+  useFieldArray,
+  useForm,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 import { Link, Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 
@@ -32,6 +56,7 @@ const formSchema = z.object({
     .min(1),
 });
 
+/** Page for adding wearables. */
 export function AddPage() {
   const { data: me, isPending: meIsPending } = useMe();
   const navigate = useNavigate();
@@ -114,7 +139,7 @@ export function AddPage() {
                   onRemove={() => wearablesFieldArray.remove(index)}
                 />
               ))}
-              <WearableFileInputButton onChange={onFileInputChange} />
+              <FileInputButton onChange={onFileInputChange} />
             </div>
             <FormDescription>These can be product images or just quick snaps.</FormDescription>
           </FormItem>
@@ -143,5 +168,149 @@ export function AddPage() {
         </form>
       </Form>
     </div>
+  );
+}
+
+interface WearableAddCardProps {
+  /** Name of the form field (e.g. `wearables.0` or `wearables.1`). */
+  name: string;
+  /** Stable field ID used as query key. */
+  fieldId: string;
+  /** The image file to classify. */
+  file: File;
+  /** Preview image source. */
+  previewSrc: string;
+  /** Form control. */
+  control: Control<any>;
+  /** Callback for when remove button is clicked. */
+  onRemove: () => void;
+}
+
+/** A card representing a single wearable to be added. */
+function WearableAddCard({
+  name,
+  fieldId,
+  file,
+  previewSrc,
+  control,
+  onRemove,
+}: WearableAddCardProps) {
+  const classifyQuery = useClassifyWearable(file, fieldId);
+
+  return (
+    <div className="group relative w-64">
+      <Card className="flex flex-col overflow-hidden">
+        <img src={previewSrc} className="aspect-3/4 object-cover" />
+        <CategoryFormField
+          control={control}
+          name={`${name}.category`}
+          suggestion={classifyQuery.data?.category ?? undefined}
+          pending={classifyQuery.isPending}
+        />
+      </Card>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onRemove}
+        className="absolute right-2 top-2 z-10 size-10 -translate-y-1/2 translate-x-1/2 rounded-full opacity-0 duration-75 group-focus-within:opacity-100 group-hover:opacity-100"
+      >
+        <Trash2Icon className="!size-6" />
+      </Button>
+    </div>
+  );
+}
+
+const CATEGORY_GROUPS = [
+  { label: "Tops", options: ["t-shirt", "shirt", "sweater", "jacket", "top"] },
+  { label: "Bottoms", options: ["pants", "shorts", "skirt"] },
+] as const;
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+interface CategoryFormFieldProps<TFieldValues extends FieldValues> {
+  control: Control<TFieldValues>;
+  name: FieldPath<TFieldValues>;
+  /** Suggested value from auto-classification. Applied once if the user hasn't picked a value. */
+  suggestion?: string;
+  pending?: boolean;
+}
+
+function CategoryFormField<TFieldValues extends FieldValues>({
+  control,
+  name,
+  suggestion,
+  pending,
+}: CategoryFormFieldProps<TFieldValues>) {
+  const { setValue, getValues } = useFormContext();
+
+  // Apply suggestion to form state so it participates in validation/submission
+  useEffect(() => {
+    if (suggestion && !getValues(name)) {
+      setValue(name, suggestion as any);
+    }
+  }, [suggestion, name, setValue, getValues]);
+
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <Select onValueChange={field.onChange} value={field.value || suggestion}>
+            <FormControl>
+              <SelectTrigger aria-label="Category" className="h-auto rounded-none border-none">
+                <SelectValue
+                  placeholder={pending ? "Determining category..." : "Please select a category"}
+                />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {CATEGORY_GROUPS.map((group) => (
+                <SelectGroup key={group.label}>
+                  <SelectLabel>{group.label}</SelectLabel>
+                  {group.options.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {capitalize(option)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+interface WearableFileInputButtonProps {
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+/**
+ * A large button with a plus icon used to upload wearable image files.
+ *
+ * The native file input is hidden and the button is used to trigger it.
+ */
+function FileInputButton({ onChange }: WearableFileInputButtonProps) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      tabIndex={-1}
+      className="relative aspect-3/4 h-auto w-64 border-2 p-4 text-6xl text-foreground"
+    >
+      <PlusIcon className="!size-12" />
+      <input
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={onChange}
+        className="absolute inset-0 text-[0px] text-transparent file:hidden"
+      />
+    </Button>
   );
 }

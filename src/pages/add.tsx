@@ -260,7 +260,10 @@ function CategoryFormField<TFieldValues extends FieldValues>({
         <FormItem>
           <Select onValueChange={field.onChange} value={field.value || suggestion}>
             <FormControl>
-              <SelectTrigger aria-label="Category" className="h-auto rounded-none border-none">
+              <SelectTrigger
+                aria-label="Category"
+                className="h-auto rounded-t-none border-none focus:ring-inset"
+              >
                 <SelectValue
                   placeholder={pending ? "Determining category..." : "Please select a category"}
                 />

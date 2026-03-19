@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import TypedDict
 from uuid import uuid4
 
 from sqlmodel import Session
@@ -6,50 +7,61 @@ from sqlmodel import Session
 from ..settings import get_settings
 from ..blob_storage import get_blob_storage
 from ..image_utils import get_content_type_from_path
+from .. import schemas
 from . import create_db_and_tables, engine
 from .models import User, Wearable, WearableOnAvatarImage
 
+
+class WearableSeedData(TypedDict):
+    name: str
+    category: schemas.WearableCategory
+    image_path: str
+
 settings = get_settings()
 
-selfie_data = {"name": "human_3", "image_path": "images/humans/selfie_3.jpg"}
-avatar_data = {"name": "human_3", "image_path": "images/avatars/avatar_3.jpg"}
+selfie_data = {"name": "human_4", "image_path": "images/humans/selfie_4.jpg"}
+avatar_data = {"name": "human_4", "image_path": "images/avatars/avatar_4.jpg"}
 
-wearables_data = {
+wearables_data: dict[str, WearableSeedData] = {
     "tshirt": {
         "name": "tshirt",
-        "description": "purple t-shirt",
-        "category": "upper_body",
-        "image_path": "images/garments/tops/tshirt.webp",
+        "category": "t-shirt",
+        "image_path": "images/wearables/tops/t-shirt/purple-tshirt-product.webp",
+    },
+    "shirt": {
+        "name": "shirt",
+        "category": "shirt",
+        "image_path": "images/wearables/tops/shirt/button-down-casual.jpeg",
     },
     "sweater": {
         "name": "sweater",
-        "description": "oversized pink sweater",
-        "category": "upper_body",
-        "image_path": "images/garments/tops/sweater.jpg",
+        "category": "sweater",
+        "image_path": "images/wearables/tops/sweater/pullover-casual.webp",
     },
-    "striped_sweater": {
-        "name": "striped_sweater",
-        "description": "black and white striped sweater",
-        "category": "upper_body",
-        "image_path": "images/garments/tops/striped_sweater.webp",
+    "jacket": {
+        "name": "jacket",
+        "category": "jacket",
+        "image_path": "images/wearables/tops/jacket/blazer-casual.webp",
     },
-    "jeans": {
-        "name": "jeans",
-        "description": "slim fit washed jeans",
-        "category": "lower_body",
-        "image_path": "images/garments/bottoms/jeans.webp",
+    "top": {
+        "name": "top",
+        "category": "top",
+        "image_path": "images/wearables/tops/top/basic-top-product.webp",
     },
-    "joggers": {
-        "name": "joggers",
-        "description": "pink joggers",
-        "category": "lower_body",
-        "image_path": "images/garments/bottoms/joggers.jpg",
+    "pants": {
+        "name": "pants",
+        "category": "pants",
+        "image_path": "images/wearables/bottoms/pants/jeans-product.webp",
     },
-    "gym_shorts": {
-        "name": "gym_shorts",
-        "description": "short white gym shorts",
-        "category": "lower_body",
-        "image_path": "images/garments/bottoms/gym_shorts.webp",
+    "shorts": {
+        "name": "shorts",
+        "category": "shorts",
+        "image_path": "images/wearables/bottoms/shorts/gym-shorts-product.webp",
+    },
+    "skirt": {
+        "name": "skirt",
+        "category": "skirt",
+        "image_path": "images/wearables/bottoms/skirt/mini-skirt-product.webp",
     },
 }
 
@@ -118,7 +130,6 @@ def seed():
             # Add wearable
             wearable = Wearable(
                 category=wearable_data["category"],
-                description=wearable_data["description"],
                 image_key=wearable_image_key,
                 user_id=user.id,
             )

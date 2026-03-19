@@ -145,6 +145,34 @@ docker run -p 8000:8000 --env-file .env dressme-api
 
 The API will be available at `http://localhost:8000`.
 
+### Code Checks
+
+#### Client
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm lint
+```
+
+#### API
+
+```bash
+cd api
+uv run pytest
+uv run pyright  # type checking
+```
+
+### Evals
+
+Evals measure the performance of AI components. To run them:
+
+```bash
+cd api
+uv run pytest -m eval -s               # run all evals once
+uv run pytest -m eval -s --runs 3      # run multiple times for consistency
+```
+
 ### Inspecting the Database
 
 While `docker compose` is running, you can interact with the local PostgreSQL database using:
@@ -204,24 +232,6 @@ You can then use this access token when making API requests, for example:
 ```bash
 curl -X GET 'http://localhost:8000/wearables' \
     --header 'Authorization: Bearer $YOUR_ACCESS_TOKEN'
-```
-
-### Code Checks
-
-#### Client
-
-```bash
-pnpm test
-pnpm typecheck
-pnpm lint
-```
-
-#### API
-
-```bash
-cd api
-uv run pytest
-uv run pyright  # type checking
 ```
 
 ## Deployment

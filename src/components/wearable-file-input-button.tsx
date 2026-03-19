@@ -16,7 +16,7 @@ export function WearableFileInputButton({ onChange }: WearableFileInputButtonPro
       type="button"
       variant="outline"
       tabIndex={-1}
-      className="relative aspect-3/4 h-64 border-2 p-4 text-6xl text-foreground"
+      className="relative aspect-3/4 h-auto w-64 border-2 p-4 text-6xl text-foreground"
     >
       <PlusIcon className="!size-12" />
       <input

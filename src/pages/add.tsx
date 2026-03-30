@@ -89,7 +89,7 @@ export function AddPage() {
   function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();
     if (e.target.files) {
-      wearablesFieldArray.replace(
+      wearablesFieldArray.append(
         Array.from(e.target.files).map((file) => ({
           file,
           preview: URL.createObjectURL(file),

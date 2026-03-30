@@ -1,3 +1,4 @@
+import type { Wearable } from "@/api";
 import { FullPageSpinner } from "@/components/full-page-spinner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,22 +36,32 @@ import {
 import { Link, Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 
+type WearableCategory = Wearable["category"];
+
+// Record ensures every WearableCategory is assigned to a group.
+// Adding a category to the API type without adding it here causes a type error.
+const CATEGORY_TO_GROUP: Record<WearableCategory, "Tops" | "Bottoms"> = {
+  "t-shirt": "Tops",
+  shirt: "Tops",
+  sweater: "Tops",
+  jacket: "Tops",
+  top: "Tops",
+  pants: "Bottoms",
+  shorts: "Bottoms",
+  skirt: "Bottoms",
+};
+
+const ALL_CATEGORIES = Object.keys(CATEGORY_TO_GROUP) as [WearableCategory, ...WearableCategory[]];
+
+const CATEGORY_GROUPS = Object.entries(Object.groupBy(ALL_CATEGORIES, (c) => CATEGORY_TO_GROUP[c]));
+
 const formSchema = z.object({
   wearables: z
     .array(
       z.object({
         file: z.instanceof(File),
         preview: z.string(),
-        category: z.enum([
-          "t-shirt",
-          "shirt",
-          "sweater",
-          "jacket",
-          "top",
-          "pants",
-          "shorts",
-          "skirt",
-        ]),
+        category: z.enum(ALL_CATEGORIES),
       }),
     )
     .min(1),
@@ -93,8 +104,7 @@ export function AddPage() {
         Array.from(e.target.files).map((file) => ({
           file,
           preview: URL.createObjectURL(file),
-          // Undefined is invalid when submitting the form but fine as an initial value
-          category: undefined as any,
+          category: undefined as unknown as WearableCategory,
         })),
       );
     }
@@ -220,11 +230,6 @@ function WearableAddCard({
   );
 }
 
-const CATEGORY_GROUPS = [
-  { label: "Tops", options: ["t-shirt", "shirt", "sweater", "jacket", "top"] },
-  { label: "Bottoms", options: ["pants", "shorts", "skirt"] },
-] as const;
-
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -270,10 +275,10 @@ function CategoryFormField<TFieldValues extends FieldValues>({
               </SelectTrigger>
             </FormControl>
             <SelectContent>
-              {CATEGORY_GROUPS.map((group) => (
-                <SelectGroup key={group.label}>
-                  <SelectLabel>{group.label}</SelectLabel>
-                  {group.options.map((option) => (
+              {CATEGORY_GROUPS.map(([label, options]) => (
+                <SelectGroup key={label}>
+                  <SelectLabel>{label}</SelectLabel>
+                  {options.map((option) => (
                     <SelectItem key={option} value={option}>
                       {capitalize(option)}
                     </SelectItem>

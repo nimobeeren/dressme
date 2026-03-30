@@ -2,29 +2,28 @@ import io
 from typing import override
 from uuid import UUID, uuid4
 
-from PIL import Image
-import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine, select
-from sqlmodel.pool import StaticPool
-
 import dressme.db as db_module
+import pytest
 from dressme import db
 from dressme.auth import verify_token
 from dressme.avatar_generation import AvatarGenerator
-from dressme import schemas
-from dressme.wearable_classification import WearableClassifier
+from dressme.blob_storage import BlobStorage, get_blob_storage
 from dressme.main import (
     app,
     get_avatar_generator,
     get_current_user,
-    get_wearable_classifier,
     get_session,
+    get_wearable_classifier,
     get_woa_generator,
 )
-from dressme.blob_storage import BlobStorage, get_blob_storage
 from dressme.settings import get_settings
+from dressme.wearable_categories import WearableCategory
+from dressme.wearable_classification import WearableClassifier
 from dressme.woa_generation import WoaGenerator
+from fastapi.testclient import TestClient
+from PIL import Image
+from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel.pool import StaticPool
 
 test_user_id = "auth0|1"
 settings = get_settings()
@@ -58,7 +57,7 @@ class MockWearableClassifier(WearableClassifier):
     def __init__(self):
         pass  # skip client init
 
-    async def classify(self, image_data: bytes) -> schemas.WearableCategory | None:
+    async def classify(self, image_data: bytes) -> WearableCategory:
         return "t-shirt"
 
 

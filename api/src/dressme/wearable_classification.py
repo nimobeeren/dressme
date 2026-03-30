@@ -5,18 +5,18 @@ from google.genai import types
 from PIL import Image
 from pydantic import BaseModel
 
-from . import schemas
+from .wearable_categories import WearableCategory
 
 
 class ClassificationResult(BaseModel):
-    category: schemas.WearableCategory
+    category: WearableCategory | None
 
 
 class WearableClassifier:
     def __init__(self, api_key: str):
         self._client = genai.Client(api_key=api_key)
 
-    async def classify(self, image_data: bytes) -> schemas.WearableCategory:
+    async def classify(self, image_data: bytes) -> WearableCategory | None:
         """Classify a wearable image into one of the known categories.
 
         Approximate cost: $0.0003 per invocation

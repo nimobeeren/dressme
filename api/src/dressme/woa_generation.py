@@ -1,32 +1,31 @@
 import io
+from typing import get_args
 
 import httpx
 from replicate.client import Client  # type: ignore
 
-from . import schemas
 from .settings import get_settings
+from .wearable_categories import WearableCategory, get_body_part
 
-TOP_CATEGORIES = {"t-shirt", "shirt", "sweater", "jacket", "top"}
-BOTTOM_CATEGORIES = {"pants", "shorts", "skirt"}
-
-MASK_PROMPTS = {
+# Used by the VTON and image segmentation models
+WEARABLE_DESCRIPTIONS: dict[str, str] = {
     "t-shirt": "t-shirt",
     "shirt": "shirt",
     "sweater": "sweater",
     "jacket": "jacket",
-    "top": "tank top",
+    "top": "tank top",  # because segmentation struggles with just "top"
     "pants": "pants",
     "shorts": "shorts",
     "skirt": "skirt",
 }
 
-
-def get_body_part(category: str) -> schemas.BodyPart:
-    if category in TOP_CATEGORIES:
-        return "top"
-    if category in BOTTOM_CATEGORIES:
-        return "bottom"
-    raise ValueError(f"Unknown wearable category: {category}")
+# Ensure every WearableCategory is covered
+_expected_categories = set(get_args(WearableCategory))
+assert set(WEARABLE_DESCRIPTIONS.keys()) == _expected_categories, (
+    f"MASK_PROMPTS out of sync with WearableCategory: "
+    f"missing={_expected_categories - WEARABLE_DESCRIPTIONS.keys()}, "
+    f"extra={WEARABLE_DESCRIPTIONS.keys() - _expected_categories}"
+)
 
 
 class WoaGenerator:
@@ -65,7 +64,7 @@ class WoaGenerator:
                 input={
                     "garm_img": wearable_input,
                     "human_img": avatar_input,
-                    "garment_des": MASK_PROMPTS[category],
+                    "garment_des": WEARABLE_DESCRIPTIONS[category],
                     "category": "upper_body" if body_part == "top" else "lower_body",
                 },
             )
@@ -94,9 +93,8 @@ class WoaGenerator:
             "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
             input={
                 "image": woa_input,
-                # TODO: this prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
-                # Should probably do some classification of wearable into known working wearable types to use as prompt
-                "mask_prompt": MASK_PROMPTS[category],
+                # This prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
+                "mask_prompt": WEARABLE_DESCRIPTIONS[category],
                 "negative_mask_prompt": "",
                 "adjustment_factor": 0,
             },

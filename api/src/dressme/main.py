@@ -1,6 +1,6 @@
 import io
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 from typing import Annotated, Any, Literal, Sequence, cast
 from uuid import UUID, uuid4
 
@@ -28,17 +28,13 @@ from . import db, schemas
 from .auth import verify_token
 from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
+from .blob_storage import BlobStorage, get_blob_storage
 from .combining import combine_wearables
-from .wearable_classification import WearableClassifier
-from .woa_generation import (
-    BOTTOM_CATEGORIES,
-    TOP_CATEGORIES,
-    WoaGenerator,
-    get_body_part,
-)
 from .image_utils import compress_to_jpeg, read_upload, safe_open_image
 from .settings import get_settings
-from .blob_storage import BlobStorage, get_blob_storage
+from .wearable_categories import WearableCategory, get_body_part
+from .wearable_classification import WearableClassifier
+from .woa_generation import WoaGenerator
 
 settings = get_settings()
 
@@ -213,7 +209,7 @@ def get_wearables(
     return [
         schemas.Wearable(
             id=wearable.id,
-            category=cast(schemas.WearableCategory, wearable.category),
+            category=cast(WearableCategory, wearable.category),
             body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
@@ -249,7 +245,7 @@ async def classify_wearable(
 @app.post("/wearables", status_code=status.HTTP_201_CREATED)
 def create_wearables(
     *,
-    category: Annotated[list[schemas.WearableCategory], Form()],
+    category: Annotated[list[WearableCategory], Form()],
     image: Annotated[list[UploadFile], File()],
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks,
@@ -310,7 +306,7 @@ def create_wearables(
     return [
         schemas.Wearable(
             id=wearable.id,
-            category=cast(schemas.WearableCategory, wearable.category),
+            category=cast(WearableCategory, wearable.category),
             body_part=get_body_part(wearable.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, wearable.image_key
@@ -461,7 +457,7 @@ def get_outfits(
 
         top = schemas.Wearable(
             id=outfit.top.id,
-            category=cast(schemas.WearableCategory, outfit.top.category),
+            category=cast(WearableCategory, outfit.top.category),
             body_part=get_body_part(outfit.top.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.top.image_key
@@ -470,7 +466,7 @@ def get_outfits(
         )
         bottom = schemas.Wearable(
             id=outfit.bottom.id,
-            category=cast(schemas.WearableCategory, outfit.bottom.category),
+            category=cast(WearableCategory, outfit.bottom.category),
             body_part=get_body_part(outfit.bottom.category),
             wearable_image_url=blob_storage.get_signed_url(
                 settings.WEARABLES_BUCKET, outfit.bottom.image_key
@@ -500,7 +496,7 @@ def create_outfit(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Top wearable with ID '{top_id}' not found or not owned by user.",
         )
-    if top.category not in TOP_CATEGORIES:
+    if get_body_part(top.category) != "top":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Top wearable must have "body_part": "top".',
@@ -516,7 +512,7 @@ def create_outfit(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Bottom wearable with ID '{bottom_id}' not found or not owned by user.",
         )
-    if bottom.category not in BOTTOM_CATEGORIES:
+    if get_body_part(bottom.category) != "bottom":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Bottom wearable must have "body_part": "bottom".',

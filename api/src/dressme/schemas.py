@@ -5,11 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-WearableCategory = Literal[
-    "t-shirt", "shirt", "sweater", "jacket", "top", "pants", "shorts", "skirt", None
-]
-
-BodyPart = Literal["top", "bottom"]
+from .wearable_categories import BodyPart, WearableCategory
 
 
 class User(BaseModel):

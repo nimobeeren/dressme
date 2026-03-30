@@ -30,7 +30,12 @@ from .avatar_generation import AvatarGenerator
 from .background_tasks import generate_avatar_task, generate_woa_image_task
 from .combining import combine_wearables
 from .wearable_classification import WearableClassifier
-from .woa_generation import BOTTOM_CATEGORIES, TOP_CATEGORIES, WoaGenerator, get_body_part
+from .woa_generation import (
+    BOTTOM_CATEGORIES,
+    TOP_CATEGORIES,
+    WoaGenerator,
+    get_body_part,
+)
 from .image_utils import compress_to_jpeg, read_upload, safe_open_image
 from .settings import get_settings
 from .blob_storage import BlobStorage, get_blob_storage
@@ -47,9 +52,7 @@ def get_woa_generator() -> WoaGenerator:
 
 
 def get_wearable_classifier() -> WearableClassifier:
-    return WearableClassifier(
-        api_key=settings.GEMINI_API_KEY.get_secret_value()
-    )
+    return WearableClassifier(api_key=settings.GEMINI_API_KEY.get_secret_value())
 
 
 logging.basicConfig(
@@ -225,13 +228,21 @@ def get_wearables(
 async def classify_wearable(
     *,
     image: UploadFile,
+    # Route should only be accessible to authenticated users
     current_user: db.User = Depends(get_current_user),
     classifier: WearableClassifier = Depends(get_wearable_classifier),
 ) -> schemas.ClassifyResponse:
     contents = read_upload(image)
     img = safe_open_image(contents)
     jpeg_data = compress_to_jpeg(img)
-    category = await classifier.classify(jpeg_data)
+    try:
+        category = await classifier.classify(jpeg_data)
+    except Exception as e:
+        logging.error(f"Wearable classification failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Wearable classification failed",
+        )
     return schemas.ClassifyResponse(category=category)
 
 

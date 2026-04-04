@@ -40,14 +40,26 @@ settings = get_settings()
 
 
 def get_avatar_generator() -> AvatarGenerator:
+    if settings.MODE == "test":
+        from .test_doubles import MockAvatarGenerator
+
+        return MockAvatarGenerator()
     return AvatarGenerator()
 
 
 def get_woa_generator() -> WoaGenerator:
+    if settings.MODE == "test":
+        from .test_doubles import MockWoaGenerator
+
+        return MockWoaGenerator()
     return WoaGenerator()
 
 
 def get_wearable_classifier() -> WearableClassifier:
+    if settings.MODE == "test":
+        from .test_doubles import MockWearableClassifier
+
+        return MockWearableClassifier()
     return WearableClassifier(api_key=settings.GEMINI_API_KEY.get_secret_value())
 
 
@@ -77,7 +89,7 @@ def custom_generate_unique_id(route: APIRoute):
 app = FastAPI(
     lifespan=lifespan,
     generate_unique_id_function=custom_generate_unique_id,
-    root_path="/api",
+    root_path="" if settings.MODE == "test" else "/api",
 )
 
 app.add_middleware(
@@ -565,3 +577,29 @@ def delete_outfit(
         session.delete(outfit)
         session.commit()
         return Response(status_code=status.HTTP_200_OK)
+
+
+# Test-only endpoints for E2E test isolation
+if settings.MODE == "test":
+    from fastapi.responses import FileResponse
+    from sqlmodel import SQLModel
+
+    from .blob_storage import FilesystemStorage
+    from .test_doubles import IMAGES_DIR
+
+    @app.post("/test/reset")
+    def test_reset():
+        """Reset database and blob storage for test isolation."""
+        SQLModel.metadata.drop_all(db.engine)
+        SQLModel.metadata.create_all(db.engine)
+        storage = get_blob_storage()
+        assert isinstance(storage, FilesystemStorage)
+        storage.clear()
+        return {"status": "reset"}
+
+    @app.get("/test-static/placeholder.jpg")
+    def test_static_placeholder():
+        return FileResponse(
+            IMAGES_DIR / "avatars" / "avatar_1.jpg",
+            media_type="image/jpeg",
+        )

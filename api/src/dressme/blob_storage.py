@@ -1,7 +1,10 @@
 """Blob storage module for image uploads and signed URL generation."""
 
+import shutil
+import tempfile
 from abc import ABC, abstractmethod
 from functools import lru_cache
+from pathlib import Path
 from typing import override
 
 import boto3
@@ -82,7 +85,37 @@ class R2Storage(BlobStorage):
         )
 
 
+class FilesystemStorage(BlobStorage):
+    """Filesystem-based blob storage for E2E testing. No external dependencies."""
+
+    def __init__(self, base_dir: Path):
+        self._base_dir = base_dir
+
+    @override
+    def upload(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+        path = self._base_dir / bucket / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    @override
+    def download(self, bucket: str, key: str) -> bytes:
+        return (self._base_dir / bucket / key).read_bytes()
+
+    @override
+    def get_signed_url(self, bucket: str, key: str, expires_in: int = 3600) -> str:
+        return "http://localhost:8000/test-static/placeholder.jpg"
+
+    def clear(self) -> None:
+        """Delete all stored files and recreate the base directory."""
+        if self._base_dir.exists():
+            shutil.rmtree(self._base_dir)
+        self._base_dir.mkdir(parents=True)
+
+
 @lru_cache
 def get_blob_storage() -> BlobStorage:
     """Get a cached blob storage instance. Use as a FastAPI dependency."""
+    if settings.MODE == "test":
+        base_dir = Path(tempfile.mkdtemp(prefix="dressme-e2e-"))
+        return FilesystemStorage(base_dir)
     return R2Storage()

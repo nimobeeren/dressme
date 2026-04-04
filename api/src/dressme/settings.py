@@ -24,7 +24,7 @@ def _find_env_file() -> Path | None:
 
 
 class Settings(BaseSettings):
-    MODE: Literal["development", "production"] = "production"
+    MODE: Literal["development", "production", "test"] = "production"
 
     # Auth0
     AUTH0_ALGORITHMS: str

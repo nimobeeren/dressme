@@ -20,6 +20,10 @@ dist-ssr
 
 # Playwright
 .playwright-cli
+playwright/.auth/
+test-results/
+playwright-report/
+e2e/test.db
 
 # Editor directories and files
 .vscode/*

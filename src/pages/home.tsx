@@ -66,8 +66,8 @@ type FormFieldValues = {
  */
 function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[] }) {
   const { data: me } = useMe();
-  const tops = wearables.filter((wearable) => wearable.category === "upper_body");
-  const bottoms = wearables.filter((wearable) => wearable.category === "lower_body");
+  const tops = wearables.filter((wearable) => wearable.body_part === "top");
+  const bottoms = wearables.filter((wearable) => wearable.body_part === "bottom");
 
   const form = useForm<FormFieldValues>({
     defaultValues: {

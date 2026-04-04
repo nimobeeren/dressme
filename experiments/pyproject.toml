@@ -5,6 +5,7 @@ description = ""
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "google-genai>=1.65.0",
+    "httpx>=0.28.1",
     "ipykernel>=7.2.0",
     "nbstripout>=0.9.1",
     "numpy>=2.4.2",

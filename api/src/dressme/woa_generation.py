@@ -1,9 +1,31 @@
 import io
+from typing import get_args
 
 import httpx
 from replicate.client import Client  # type: ignore
 
 from .settings import get_settings
+from .wearable_categories import WearableCategory, get_body_part
+
+# Used by the VTON and image segmentation models
+WEARABLE_DESCRIPTIONS: dict[str, str] = {
+    "t-shirt": "t-shirt",
+    "shirt": "shirt",
+    "sweater": "sweater",
+    "jacket": "jacket",
+    "top": "tank top",  # because segmentation struggles with just "top"
+    "pants": "pants",
+    "shorts": "shorts",
+    "skirt": "skirt",
+}
+
+# Ensure every WearableCategory is covered
+_expected_categories = set(get_args(WearableCategory))
+assert set(WEARABLE_DESCRIPTIONS.keys()) == _expected_categories, (
+    f"MASK_PROMPTS out of sync with WearableCategory: "
+    f"missing={_expected_categories - WEARABLE_DESCRIPTIONS.keys()}, "
+    f"extra={WEARABLE_DESCRIPTIONS.keys() - _expected_categories}"
+)
 
 
 class WoaGenerator:
@@ -16,7 +38,6 @@ class WoaGenerator:
         *,
         avatar_image: bytes | str,
         wearable_image: bytes | str,
-        wearable_description: str,
         category: str,
     ) -> bytes:
         """
@@ -25,8 +46,17 @@ class WoaGenerator:
 
         Approximate cost: $0.04 per invocation
         """
-        avatar_input = io.BytesIO(avatar_image) if isinstance(avatar_image, bytes) else avatar_image
-        wearable_input = io.BytesIO(wearable_image) if isinstance(wearable_image, bytes) else wearable_image
+        avatar_input = (
+            io.BytesIO(avatar_image)
+            if isinstance(avatar_image, bytes)
+            else avatar_image
+        )
+        wearable_input = (
+            io.BytesIO(wearable_image)
+            if isinstance(wearable_image, bytes)
+            else wearable_image
+        )
+        body_part = get_body_part(category)
 
         woa_image_url = str(
             await self._client.async_run(
@@ -34,8 +64,8 @@ class WoaGenerator:
                 input={
                     "garm_img": wearable_input,
                     "human_img": avatar_input,
-                    "garment_des": wearable_description,
-                    "category": category,
+                    "garment_des": WEARABLE_DESCRIPTIONS[category],
+                    "category": "upper_body" if body_part == "top" else "lower_body",
                 },
             )
         )
@@ -49,7 +79,7 @@ class WoaGenerator:
         self,
         *,
         woa_image: bytes | str,
-        wearable_description: str,
+        category: str,
     ) -> bytes:
         """
         Generate a mask for a WOA image, isolating the wearable item
@@ -63,9 +93,8 @@ class WoaGenerator:
             "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
             input={
                 "image": woa_input,
-                # TODO: this prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
-                # Should probably do some classification of wearable into known working wearable types to use as prompt
-                "mask_prompt": wearable_description,
+                # This prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
+                "mask_prompt": WEARABLE_DESCRIPTIONS[category],
                 "negative_mask_prompt": "",
                 "adjustment_factor": 0,
             },
@@ -84,5 +113,3 @@ class WoaGenerator:
             response = await client.get(mask_image_url)
             response.raise_for_status()
             return response.content
-
-

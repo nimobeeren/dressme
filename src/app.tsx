@@ -64,7 +64,7 @@ export function App() {
 }
 
 /** Blocks UI until the backend responds to a simple health check. */
-function ApiWarmupGate({ children }: { children: React.ReactNode }) {
+export function ApiWarmupGate({ children }: { children: React.ReactNode }) {
   const { isPending, error } = useHealth();
 
   if (isPending || error) {

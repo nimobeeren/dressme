@@ -5,7 +5,6 @@ import { render } from "vitest-browser-react";
 import { MemoryRouter } from "react-router";
 
 export { setAuthState } from "./auth-state";
-export { TEST_IMAGE_PREFIX } from "./constants";
 
 import { TEST_IMAGE_PREFIX } from "./constants";
 

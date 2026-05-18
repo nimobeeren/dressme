@@ -3,8 +3,7 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin } from "vitest/config";
-
-const TEST_IMAGE_PREFIX = "/test-images";
+import { TEST_IMAGE_PREFIX } from "./src/test/constants";
 
 /**
  * Serves static fixture images from `src/test/fixtures/images/` at URLs under
@@ -24,16 +23,20 @@ function testFixtureImages(): Plugin {
       server.middlewares.use((req, res, next) => {
         const url = req.url ?? "";
         if (!url.startsWith(`${TEST_IMAGE_PREFIX}/`)) return next();
+
         const match = url.match(new RegExp(`^${TEST_IMAGE_PREFIX}/([^/]+)/([^?]+)`));
         if (!match) return next();
+
         const [, bucket, key] = match;
         const dir = bucketToDir[bucket];
         if (!dir) return next();
+
         const file = path.join(dir, decodeURIComponent(key));
         if (!file.startsWith(dir) || !fs.existsSync(file)) {
           res.statusCode = 404;
           return res.end();
         }
+
         const ext = path.extname(file).toLowerCase();
         const contentType =
           ext === ".webp" ? "image/webp" : ext === ".png" ? "image/png" : "image/jpeg";

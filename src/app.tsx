@@ -50,16 +50,22 @@ export function App() {
       <BrowserRouter>
         <ApiWarmupGate>
           <AuthProvider>
-            <Routes>
-              <Route index Component={withAuthenticationRequired(HomePage)} />
-              <Route path="/add" Component={withAuthenticationRequired(AddPage)} />
-              <Route path="*" Component={NotFoundPage} />
-            </Routes>
+            <AppRoutes />
           </AuthProvider>
         </ApiWarmupGate>
       </BrowserRouter>
       <Toaster />
     </QueryClientProvider>
+  );
+}
+
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route index Component={withAuthenticationRequired(HomePage)} />
+      <Route path="/add" Component={withAuthenticationRequired(AddPage)} />
+      <Route path="*" Component={NotFoundPage} />
+    </Routes>
   );
 }
 

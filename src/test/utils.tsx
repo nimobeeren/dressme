@@ -2,7 +2,6 @@ import type { Outfit, User, Wearable } from "@/api";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";
-import { MemoryRouter } from "react-router";
 
 export { setAuthState } from "./auth-state";
 
@@ -17,10 +16,7 @@ export function fixtureImageUrl(
 }
 
 /** Renders a component inside the same providers the real app uses. */
-export async function renderWithProviders(
-  ui: React.ReactElement,
-  { initialEntries = ["/"] }: { initialEntries?: string[] } = {},
-) {
+export async function renderWithProviders(ui: React.ReactElement) {
   // Fresh QueryClient per render — retries off so errors surface immediately.
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -31,10 +27,8 @@ export async function renderWithProviders(
 
   return await render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={initialEntries}>
-        {ui}
-        <Toaster />
-      </MemoryRouter>
+      {ui}
+      <Toaster />
     </QueryClientProvider>,
   );
 }

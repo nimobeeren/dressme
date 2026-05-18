@@ -29,7 +29,10 @@ function testFixtureImages(): Plugin {
 
         const [, bucket, key] = match;
         const dir = bucketToDir[bucket];
-        if (!dir) return next();
+        if (!dir) {
+          res.statusCode = 404;
+          return res.end();
+        }
 
         const file = path.join(dir, decodeURIComponent(key));
         if (!file.startsWith(dir) || !fs.existsSync(file)) {

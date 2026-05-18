@@ -2,6 +2,7 @@ import { playwright } from "@vitest/browser-playwright";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
+import { lookup } from "mime-types";
 import { defineConfig, type Plugin } from "vitest/config";
 import { TEST_IMAGE_PREFIX } from "./src/test/constants";
 
@@ -40,9 +41,12 @@ function testFixtureImages(): Plugin {
           return res.end();
         }
 
-        const ext = path.extname(file).toLowerCase();
-        const contentType =
-          ext === ".webp" ? "image/webp" : ext === ".png" ? "image/png" : "image/jpeg";
+        const contentType = lookup(file);
+        if (!contentType) {
+          res.statusCode = 415;
+          return res.end();
+        }
+
         res.setHeader("content-type", contentType);
         fs.createReadStream(file).pipe(res);
       });

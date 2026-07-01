@@ -221,6 +221,7 @@ function WearableAddCard({
       <Button
         type="button"
         variant="outline"
+        aria-label="Remove"
         onClick={onRemove}
         className="absolute right-2 top-2 z-10 size-10 -translate-y-1/2 translate-x-1/2 rounded-full opacity-0 duration-75 group-focus-within:opacity-100 group-hover:opacity-100"
       >

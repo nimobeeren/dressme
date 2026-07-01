@@ -108,13 +108,19 @@ describe("/", () => {
 
     const screen = await renderHomePage();
 
-    // Radix's RadioGroup.Item renders as a <button role="radio"> — find the pending one.
-    // It's the second top in order, and both tops have `data-state` attributes we can't
-    // rely on, so we click the second radio in the tops tab.
+    // Radix's RadioGroup.Item renders as a <button role="radio">. The tops tab
+    // lists the ready top first (auto-selected) and the pending top second.
     const radios = screen.getByRole("radio");
+    await expect.element(radios.first()).toBeChecked();
+    await expect.element(radios.nth(1)).not.toBeChecked();
+
     await userEvent.click(radios.nth(1));
 
+    // The user is told why nothing happened, and the pending item stays
+    // unselected while the ready one remains selected.
     await expect.element(screen.getByText(/still being generated/i)).toBeVisible();
+    await expect.element(radios.nth(1)).not.toBeChecked();
+    await expect.element(radios.first()).toBeChecked();
   });
 
   test("unauthenticated: HomePage does not render and login redirect is triggered", async () => {
@@ -135,7 +141,7 @@ describe("/", () => {
     expect(authSpies.loginWithRedirect).toHaveBeenCalled();
   });
 
-  test("favoriting an outfit calls createOutfit; un-favoriting calls deleteOutfit", async ({
+  test("favoriting an outfit toggles the star control and the favorites list", async ({
     worker,
   }) => {
     const top = buildWearable({
@@ -148,10 +154,9 @@ describe("/", () => {
       wearable_image_url: "/test-images/dressme-wearables/blue-pants.webp",
     });
 
-    // Start with no outfits; createOutfit should be hit once.
+    // The fake server remembers writes so that refetches reflect what the user
+    // just did, the same way the real backend would.
     let outfits = [] as ReturnType<typeof buildOutfit>[];
-    let createCalls = 0;
-    let deleteCalls = 0;
     worker.use(
       http.get("*/me", () =>
         HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: true })),
@@ -159,23 +164,34 @@ describe("/", () => {
       http.get("*/wearables", () => HttpResponse.json([top, bottom])),
       http.get("*/outfits", () => HttpResponse.json(outfits)),
       http.post("*/outfits", () => {
-        createCalls++;
         outfits = [buildOutfit(top, bottom, { id: "outfit-1" })];
         return HttpResponse.json({ id: "outfit-1" });
       }),
       http.delete("*/outfits", () => {
-        deleteCalls++;
         outfits = [];
         return new HttpResponse(null, { status: 204 });
       }),
     );
 
     const screen = await renderHomePage();
-    // Button toggles its accessible name between the two states, so re-query
-    // each time instead of reusing a stale locator.
+
+    // The auto-selected outfit isn't a favorite yet: the star invites the user
+    // to save it, and the favorites tab is empty.
+    await expect.element(screen.getByRole("button", { name: /save as favorite/i })).toBeVisible();
+    await userEvent.click(screen.getByRole("tab", { name: /favorites/i }));
+    await expect.element(screen.getByText(/it will show up here/i)).toBeVisible();
+
+    // Favoriting flips the star to its "saved" state and the outfit shows up
+    // under favorites.
     await userEvent.click(screen.getByRole("button", { name: /save as favorite/i }));
-    await expect.poll(() => createCalls).toBe(1);
+    await expect
+      .element(screen.getByRole("button", { name: /remove from favorites/i }))
+      .toBeVisible();
+    await expect.element(screen.getByRole("radio")).toBeInTheDocument();
+
+    // Un-favoriting flips the star back and empties the favorites tab again.
     await userEvent.click(screen.getByRole("button", { name: /remove from favorites/i }));
-    await expect.poll(() => deleteCalls).toBe(1);
+    await expect.element(screen.getByRole("button", { name: /save as favorite/i })).toBeVisible();
+    await expect.element(screen.getByText(/it will show up here/i)).toBeVisible();
   });
 });

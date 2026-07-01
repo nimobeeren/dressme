@@ -109,12 +109,8 @@ describe("/add", () => {
     // Card is present: the combobox (category select) shows.
     await expect.element(screen.getByRole("combobox", { name: /category/i })).toBeInTheDocument();
 
-    // Trash button has no accessible name; find it by the fact that it's the
-    // only other button in the card besides combobox/file input trigger.
-    // The Trash2 Button is a <button> inside the card with an aria-hidden svg.
-    // We'll find it via the lucide icon's class name.
-    const trashButton = screen.container.querySelector(".group button") as HTMLButtonElement;
-    await userEvent.click(trashButton);
+    // A user removes the card by clicking its "Remove" button.
+    await userEvent.click(screen.getByRole("button", { name: /remove/i }));
 
     await expect
       .element(screen.getByRole("combobox", { name: /category/i }))
@@ -124,16 +120,12 @@ describe("/add", () => {
   test("successful submit creates wearables and navigates home with a toast", async ({
     worker,
   }) => {
-    let createCalls = 0;
     worker.use(
       http.get("*/me", () =>
         HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: true })),
       ),
       http.post("*/wearables/classify", () => HttpResponse.json({ category: "t-shirt" })),
-      http.post("*/wearables", () => {
-        createCalls++;
-        return HttpResponse.json({});
-      }),
+      http.post("*/wearables", () => HttpResponse.json({})),
     );
     const screen = await renderAddPage();
 
@@ -148,7 +140,8 @@ describe("/add", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /done/i }));
 
-    await expect.poll(() => createCalls).toBe(1);
+    // Submitting takes the user home (the outfit-preview prompt) and confirms
+    // the save with a toast — both only happen once the create request resolves.
     await expect
       .element(screen.getByText(/select a top and bottom to see your outfit preview/i))
       .toBeVisible();

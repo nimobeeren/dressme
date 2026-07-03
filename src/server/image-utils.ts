@@ -1,4 +1,4 @@
-import sharp, { type Sharp } from "sharp";
+import type { Sharp } from "sharp";
 import { getSettings } from "./settings";
 
 const MIME_TO_EXT: Record<string, string> = {
@@ -8,7 +8,12 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/gif": ".gif",
 };
 
+async function getSharp() {
+  return (await import("sharp")).default;
+}
+
 export async function safeOpenImage(data: Buffer): Promise<Sharp> {
+  const sharp = await getSharp();
   const settings = getSettings();
 
   try {

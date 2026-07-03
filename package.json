@@ -96,5 +96,15 @@
     "workerDirectory": [
       "public"
     ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "@google/genai",
+      "protobufjs",
+      "workerd",
+      "esbuild",
+      "msw"
+    ]
   }
 }

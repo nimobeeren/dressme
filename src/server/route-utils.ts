@@ -11,36 +11,39 @@ export interface UserRow {
   avatarImageKey: string | null;
 }
 
-export class AuthErrorResponse extends NextResponse {
-  constructor(status: number, detail: string) {
-    super(JSON.stringify({ detail }), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-}
-
 export async function extractBearerToken(request: NextRequest): Promise<string | undefined> {
   const header = request.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) return undefined;
   return header.slice(7);
 }
 
-export async function getCurrentUser(request: NextRequest): Promise<UserRow> {
-  const token = await extractBearerToken(request);
-
-  let payload;
+/** Calls the handler if the user is authenticated, or returns an error response. */
+export async function withAuth(
+  request: NextRequest,
+  handler: (user: UserRow) => Promise<NextResponse>,
+): Promise<NextResponse> {
   try {
-    payload = await getVerifyToken()(token);
-  } catch (error) {
-    if (error instanceof UnauthenticatedError) {
-      throw new AuthErrorResponse(401, "Requires authentication");
+    const token = await extractBearerToken(request);
+
+    let payload;
+    try {
+      payload = await getVerifyToken()(token);
+    } catch (error) {
+      if (error instanceof UnauthenticatedError) {
+        return NextResponse.json({ detail: "Requires authentication" }, { status: 401 });
+      }
+      return NextResponse.json({ detail: String(error) }, { status: 403 });
     }
-    throw new AuthErrorResponse(403, String(error));
+
+    const user = await getCurrentUserForPayload(payload.sub);
+    return handler(user);
+  } catch (error) {
+    console.error("withAuth error:", error);
+    return NextResponse.json({ detail: String(error) }, { status: 500 });
   }
+}
 
-  const auth0UserId = payload.sub;
-
+async function getCurrentUserForPayload(auth0UserId: string): Promise<UserRow> {
   const db = getDb();
 
   const existing = await db.query.users.findFirst({

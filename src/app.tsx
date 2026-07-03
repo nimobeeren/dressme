@@ -50,11 +50,7 @@ export function App() {
       <BrowserRouter>
         <ApiWarmupGate>
           <AuthProvider>
-            <Routes>
-              <Route index Component={withAuthenticationRequired(HomePage)} />
-              <Route path="/add" Component={withAuthenticationRequired(AddPage)} />
-              <Route path="*" Component={NotFoundPage} />
-            </Routes>
+            <AppRoutes />
           </AuthProvider>
         </ApiWarmupGate>
       </BrowserRouter>
@@ -63,8 +59,18 @@ export function App() {
   );
 }
 
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route index Component={withAuthenticationRequired(HomePage)} />
+      <Route path="/add" Component={withAuthenticationRequired(AddPage)} />
+      <Route path="*" Component={NotFoundPage} />
+    </Routes>
+  );
+}
+
 /** Blocks UI until the backend responds to a simple health check. */
-function ApiWarmupGate({ children }: { children: React.ReactNode }) {
+export function ApiWarmupGate({ children }: { children: React.ReactNode }) {
   const { isPending, error } = useHealth();
 
   if (isPending || error) {

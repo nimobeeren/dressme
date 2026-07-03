@@ -139,6 +139,8 @@ function Preview({
           size="icon"
           className="absolute right-4 top-4"
           disabled={!activeTopId || !activeBottomId}
+          aria-label={activeOutfitId ? "Remove from favorites" : "Save as favorite"}
+          aria-pressed={!!activeOutfitId}
           onClick={() =>
             activeOutfitId
               ? deleteOutfit(activeOutfitId)

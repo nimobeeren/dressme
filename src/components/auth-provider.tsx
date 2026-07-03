@@ -1,8 +1,8 @@
 import { setTokenGetter } from "@/hooks/api";
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
+import { useRouter } from "next/navigation";
 import pRetry from "p-retry";
 import { useEffect } from "react";
-import { useNavigate } from "react-router";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -58,21 +58,20 @@ function TokenInitializer() {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   return (
     <Auth0Provider
-      domain={import.meta.env.VITE_AUTH0_DOMAIN}
-      clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
+      domain={process.env.NEXT_PUBLIC_AUTH0_DOMAIN!}
+      clientId={process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID!}
       authorizationParams={{
         redirect_uri: window.location.origin,
-        audience: import.meta.env.VITE_AUTH0_API_AUDIENCE,
+        audience: process.env.NEXT_PUBLIC_AUTH0_API_AUDIENCE!,
       }}
       useRefreshTokens
-      // Need to set a redirect callback to make it work with React Router
-      // See: https://github.com/auth0/auth0-react/blob/1644bb53f7ef1bc5b62a904a0908587b3f12dd54/EXAMPLES.md#1-protecting-a-route-in-a-react-router-dom-app
+      // Need to set a redirect callback so Auth0 redirects work with the Next.js router.
       onRedirectCallback={(appState) =>
-        navigate(appState?.returnTo || window.location.pathname, { replace: true })
+        router.replace(appState?.returnTo || window.location.pathname)
       }
     >
       <TokenInitializer />

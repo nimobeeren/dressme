@@ -1,4 +1,4 @@
-import type { Outfit, User, Wearable } from "@/api";
+import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { http, HttpResponse } from "msw";
 
 // A tiny valid PNG (1x1 transparent) used as a stand-in for any endpoint that

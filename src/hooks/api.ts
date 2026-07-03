@@ -1,46 +1,24 @@
 import {
   classifyWearable,
-  client,
   createOutfit,
   createWearables,
   deleteOutfit,
-  health,
   getMe,
   getOutfits,
   getWearables,
+  health,
   updateAvatarImage,
-  type BodyCreateWearables,
-  type Outfit,
-  type User,
-  type Wearable,
-} from "@/api";
+} from "@/lib/api-client";
+import type { Outfit, User, Wearable } from "@/shared/schemas";
+import type { WearableCategory } from "@/shared/wearable-categories";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-// A function that used to get the auth token
-let tokenGetter: (() => Promise<string>) | null = null;
-
-// The token getter needs to be set at runtime because it uses React hooks
-export function setTokenGetter(getter: () => Promise<string>) {
-  tokenGetter = getter;
-}
-
-client.setConfig({
-  baseUrl: import.meta.env.VITE_API_BASE_URL,
-  auth: async () => {
-    if (!tokenGetter) {
-      throw new Error("Token getter not initialized");
-    }
-    return await tokenGetter();
-  },
-});
+export { setTokenGetter } from "@/lib/api-client";
 
 export function useMe() {
   return useQuery<User>({
     queryKey: ["me"],
-    queryFn: async () => {
-      const result = await getMe();
-      return result.data;
-    },
+    queryFn: () => getMe(),
     // Poll while selfie is uploaded but avatar not yet generated
     refetchInterval: (query) =>
       query.state.data?.has_selfie_image && !query.state.data?.has_avatar_image ? 3000 : false,
@@ -50,10 +28,7 @@ export function useMe() {
 export function useHealth() {
   return useQuery({
     queryKey: ["health"],
-    queryFn: async () => {
-      const result = await health();
-      return result.data;
-    },
+    queryFn: () => health(),
     retry: false,
     refetchInterval: (query) => (query.state.status === "error" ? 5000 : false),
   });
@@ -62,9 +37,7 @@ export function useHealth() {
 export function useUpdateAvatarImage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (image: Blob) => {
-      await updateAvatarImage({ body: { image } });
-    },
+    mutationFn: (image: Blob) => updateAvatarImage(image),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["me"] });
     },
@@ -74,10 +47,7 @@ export function useUpdateAvatarImage() {
 export function useWearables() {
   return useQuery<Wearable[]>({
     queryKey: ["wearables"],
-    queryFn: async () => {
-      const result = await getWearables();
-      return result.data;
-    },
+    queryFn: () => getWearables(),
     refetchInterval: (query) => {
       const wearables = query.state.data;
       if (wearables?.some((w) => w.generation_status === "pending")) {
@@ -89,19 +59,17 @@ export function useWearables() {
 }
 
 type WearablesInput = Array<{
-  category: BodyCreateWearables["category"][0];
-  image: BodyCreateWearables["image"][0];
+  category: WearableCategory;
+  image: Blob | File;
 }>;
 
 export function useCreateWearables() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (wearables: WearablesInput) => {
-      const formData = {
-        category: wearables.map((wearable) => wearable.category),
-        image: wearables.map((wearable) => wearable.image),
-      };
-      await createWearables({ body: formData });
+      for (const wearable of wearables) {
+        await createWearables([wearable]);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wearables"] });
@@ -112,10 +80,7 @@ export function useCreateWearables() {
 export function useClassifyWearable(file: File, fieldId: string) {
   return useQuery({
     queryKey: ["classify", fieldId],
-    queryFn: async ({ signal }) => {
-      const result = await classifyWearable({ body: { image: file }, signal });
-      return result.data;
-    },
+    queryFn: ({ signal }) => classifyWearable(file, { signal }),
     retry: false,
     staleTime: Infinity,
     gcTime: 0,
@@ -125,24 +90,15 @@ export function useClassifyWearable(file: File, fieldId: string) {
 export function useOutfits() {
   return useQuery<Outfit[]>({
     queryKey: ["outfits"],
-    queryFn: async () => {
-      const result = await getOutfits();
-      return result.data;
-    },
+    queryFn: () => getOutfits(),
   });
 }
 
 export function useCreateOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ topId, bottomId }: { topId: string; bottomId: string }) => {
-      await createOutfit({
-        query: {
-          top_id: topId,
-          bottom_id: bottomId,
-        },
-      });
-    },
+    mutationFn: ({ topId, bottomId }: { topId: string; bottomId: string }) =>
+      createOutfit({ top_id: topId, bottom_id: bottomId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });
     },
@@ -152,9 +108,7 @@ export function useCreateOutfit() {
 export function useDeleteOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      await deleteOutfit({ query: { id } });
-    },
+    mutationFn: (id: string) => deleteOutfit(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfits"] });
     },

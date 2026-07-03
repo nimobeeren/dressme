@@ -1,6 +1,17 @@
 import { afterEach, beforeAll, vi } from "vitest";
+import React from "react";
 import { authSpies, getAuthState, resetAuthState } from "./auth-state";
 import { ensureWorkerStarted, worker } from "./worker";
+import { mockRouter } from "./mocks/next-navigation";
+
+afterEach(() => {
+  mockRouter.push.mockReset();
+  mockRouter.replace.mockReset();
+  mockRouter.back.mockReset();
+  mockRouter.forward.mockReset();
+  mockRouter.refresh.mockReset();
+  mockRouter.prefetch.mockReset();
+});
 
 /**
  * Mock `@auth0/auth0-react` globally. Tests mutate auth state via
@@ -33,18 +44,12 @@ vi.mock("@auth0/auth0-react", () => ({
   },
 }));
 
-// Importing `@/hooks/api` triggers its top-level `client.setConfig` with the
-// real env vars. We then override that config to hit same-origin URLs (so MSW
-// can intercept without caring about `VITE_API_BASE_URL`) and wire the token
-// getter to our mocked Auth0 spy.
-import { client } from "@/api";
-import { setTokenGetter } from "@/hooks/api";
+// Wire the API client's token getter to our mocked Auth0 spy. The base URL is
+// forced to "" via `define` in vitest.config.ts so MSW can intercept
+// same-origin URLs.
+import { setTokenGetter } from "@/lib/api-client";
 
 setTokenGetter(async () => authSpies.getAccessTokenSilently());
-client.setConfig({
-  baseUrl: "",
-  auth: async () => authSpies.getAccessTokenSilently(),
-});
 
 // Start MSW once for the whole test run (idempotent across files).
 beforeAll(async () => {

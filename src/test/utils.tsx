@@ -1,4 +1,4 @@
-import type { Outfit, User, Wearable } from "@/api";
+import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";

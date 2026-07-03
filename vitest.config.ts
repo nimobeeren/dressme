@@ -59,7 +59,7 @@ export default defineConfig({
   // Force same-origin API URLs in tests so MSW can intercept with simple
   // `/wearables`-style paths instead of `/api/wearables`.
   define: {
-    "import.meta.env.VITE_API_BASE_URL": JSON.stringify(""),
+    "process.env.NEXT_PUBLIC_API_BASE_URL": JSON.stringify(""),
   },
   optimizeDeps: {
     // Keep React and everything that touches it in a single pre-bundle so we
@@ -71,7 +71,6 @@ export default defineConfig({
       "react/jsx-runtime",
       "react/jsx-dev-runtime",
       "react-hook-form",
-      "react-router",
       "@tanstack/react-query",
       "@auth0/auth0-react",
     ],
@@ -80,6 +79,8 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "next/link": path.resolve(__dirname, "./src/test/mocks/next-link"),
+      "next/navigation": path.resolve(__dirname, "./src/test/mocks/next-navigation"),
     },
   },
   test: {

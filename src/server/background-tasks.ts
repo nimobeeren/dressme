@@ -1,0 +1,98 @@
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { getBlobStorage } from "./services";
+import { getSettings } from "./settings";
+import { getDb, schema } from "./db";
+
+export async function generateAvatarTask(userId: string): Promise<void> {
+  const settings = getSettings();
+  const db = getDb();
+  const blobStorage = getBlobStorage();
+
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.id, userId),
+  });
+
+  if (!user || !user.selfieImageKey) {
+    throw new Error("User does not have a selfie image");
+  }
+
+  try {
+    const selfieData = await blobStorage.download(settings.SELFIES_BUCKET, user.selfieImageKey);
+
+    const { generateAvatar } = await import("./avatar-generation");
+    const avatarData = await generateAvatar(selfieData);
+
+    const avatarKey = `${randomUUID()}.jpg`;
+    await blobStorage.upload(settings.AVATARS_BUCKET, avatarKey, avatarData, "image/jpeg");
+
+    await db
+      .update(schema.users)
+      .set({ avatarImageKey: avatarKey })
+      .where(eq(schema.users.id, userId));
+
+    console.info(`Avatar generation succeeded for user '${userId}'`);
+  } catch (error) {
+    console.error(`Avatar generation failed for user '${userId}'`, error);
+  }
+}
+
+export async function generateWoaTask(wearableId: string, userId: string): Promise<void> {
+  const settings = getSettings();
+  const db = getDb();
+  const blobStorage = getBlobStorage();
+
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.id, userId),
+  });
+
+  const wearable = await db.query.wearables.findFirst({
+    where: eq(schema.wearables.id, wearableId),
+  });
+
+  if (!user || !wearable || !user.avatarImageKey) {
+    throw new Error("User does not have an avatar image");
+  }
+
+  try {
+    const wearableImageData = await blobStorage.download(
+      settings.WEARABLES_BUCKET,
+      wearable.imageKey,
+    );
+    const avatarImageData = await blobStorage.download(
+      settings.AVATARS_BUCKET,
+      user.avatarImageKey,
+    );
+
+    const { generateWoaImage, generateMask } = await import("./woa-generation");
+
+    const woaImageData = await generateWoaImage({
+      avatarImage: avatarImageData,
+      wearableImage: wearableImageData,
+      category: wearable.category,
+    });
+
+    const maskImageData = await generateMask({
+      woaImage: woaImageData,
+      category: wearable.category,
+    });
+
+    const woaKey = `${randomUUID()}.jpg`;
+    const maskKey = `${randomUUID()}.jpg`;
+
+    await blobStorage.upload(settings.WOA_BUCKET, woaKey, woaImageData, "image/jpeg");
+    await blobStorage.upload(settings.WOA_BUCKET, maskKey, maskImageData, "image/jpeg");
+
+    await db.insert(schema.wearableOnAvatarImages).values({
+      userId: user.id,
+      avatarImageKey: user.avatarImageKey,
+      wearableImageKey: wearable.imageKey,
+      imageKey: woaKey,
+      maskImageKey: maskKey,
+    });
+
+    console.info(`WOA generation succeeded for wearable '${wearableId}'`);
+  } catch (error) {
+    console.error(`WOA generation failed for wearable '${wearableId}'`, error);
+  }
+}

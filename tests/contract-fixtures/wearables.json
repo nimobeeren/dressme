@@ -1,0 +1,58 @@
+[
+  {
+    "id": "8514b140-4393-4851-9bee-e6d008ece6b9",
+    "category": "t-shirt",
+    "body_part": "top",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/e3c08bfb-a464-4245-bf3a-196876d21b5b.webp",
+    "generation_status": "success"
+  },
+  {
+    "id": "6f478602-2845-4d39-a5a8-4b97975fadd2",
+    "category": "shirt",
+    "body_part": "top",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/d947ccba-d5d2-447b-8f20-67d647103a32.jpeg",
+    "generation_status": "success"
+  },
+  {
+    "id": "02a81309-753b-4dd0-a89a-29a4df77cd6e",
+    "category": "sweater",
+    "body_part": "top",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/21f319d5-36e4-4684-bfaa-5d356afbe921.webp",
+    "generation_status": "success"
+  },
+  {
+    "id": "af89329b-a7b9-4259-9acb-9d2bdf30c456",
+    "category": "jacket",
+    "body_part": "top",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/e29be2fb-2526-405f-905c-c85718adde14.webp",
+    "generation_status": "success"
+  },
+  {
+    "id": "a8b5c95b-ff33-4526-b767-fdce70270fc2",
+    "category": "top",
+    "body_part": "top",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/b65d7a61-2115-40e1-b3f4-c40c964b68ff.webp",
+    "generation_status": "success"
+  },
+  {
+    "id": "9ccfd66f-a5b7-4024-9189-9b26611d54cd",
+    "category": "pants",
+    "body_part": "bottom",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/c57e4a67-52cc-44a0-bc43-9574375456f3.webp",
+    "generation_status": "success"
+  },
+  {
+    "id": "cfa1618e-1524-4ae4-9955-4b6f29879411",
+    "category": "shorts",
+    "body_part": "bottom",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/ad325e93-e2d4-4667-ac35-69f01cb71c43.webp",
+    "generation_status": "success"
+  },
+  {
+    "id": "0652109b-9387-4a90-bdc6-6f08f13b258e",
+    "category": "skirt",
+    "body_part": "bottom",
+    "wearable_image_url": "http://localhost:9100/dressme-wearables/b724fc1f-d041-43ad-bed1-e6bb566c2e87.webp",
+    "generation_status": "success"
+  }
+]

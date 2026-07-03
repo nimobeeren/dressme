@@ -36,3 +36,8 @@ test-results
 
 # Misc
 .DS_Store
+
+# next.js
+.next/
+next-env.d.ts
+.vercel

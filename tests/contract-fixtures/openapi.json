@@ -1,0 +1,569 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "summary": "Get Me",
+        "operationId": "get_me",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/images/avatars/me": {
+      "put": {
+        "summary": "Update Avatar Image",
+        "operationId": "update_avatar_image",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_update_avatar_image"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/wearables": {
+      "get": {
+        "summary": "Get Wearables",
+        "operationId": "get_wearables",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Wearable"
+                  },
+                  "type": "array",
+                  "title": "Response Get Wearables"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create Wearables",
+        "description": "Create one or more wearables.\n\nMultiple wearables can be created in one request by passing fields multiple times with the same\nname. All fields must appear the same number of times.",
+        "operationId": "create_wearables",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_wearables"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Wearable"
+                  },
+                  "type": "array",
+                  "title": "Response Create Wearables"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/wearables/classify": {
+      "post": {
+        "summary": "Classify Wearable",
+        "operationId": "classify_wearable",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_classify_wearable"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/images/outfit": {
+      "get": {
+        "summary": "Get Outfit Image",
+        "operationId": "get_outfit_image",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "top_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Top Id"
+            }
+          },
+          {
+            "name": "bottom_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Bottom Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/outfits": {
+      "get": {
+        "summary": "Get Outfits",
+        "operationId": "get_outfits",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Outfit"
+                  },
+                  "title": "Response Get Outfits"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Outfit",
+        "operationId": "create_outfit",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "top_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Top Id"
+            }
+          },
+          {
+            "name": "bottom_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Bottom Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Outfit",
+        "operationId": "delete_outfit",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_classify_wearable": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": ["image"],
+        "title": "Body_classify_wearable"
+      },
+      "Body_create_wearables": {
+        "properties": {
+          "category": {
+            "items": {
+              "type": "string",
+              "enum": ["t-shirt", "shirt", "sweater", "jacket", "top", "pants", "shorts", "skirt"]
+            },
+            "type": "array",
+            "title": "Category"
+          },
+          "image": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": ["category", "image"],
+        "title": "Body_create_wearables"
+      },
+      "Body_update_avatar_image": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": ["image"],
+        "title": "Body_update_avatar_image"
+      },
+      "ClassifyResponse": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["t-shirt", "shirt", "sweater", "jacket", "top", "pants", "shorts", "skirt"]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": ["category"],
+        "title": "ClassifyResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Outfit": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "top": {
+            "$ref": "#/components/schemas/Wearable"
+          },
+          "bottom": {
+            "$ref": "#/components/schemas/Wearable"
+          }
+        },
+        "type": "object",
+        "required": ["id", "top", "bottom"],
+        "title": "Outfit"
+      },
+      "User": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "has_selfie_image": {
+            "type": "boolean",
+            "title": "Has Selfie Image"
+          },
+          "has_avatar_image": {
+            "type": "boolean",
+            "title": "Has Avatar Image"
+          }
+        },
+        "type": "object",
+        "required": ["id", "has_selfie_image", "has_avatar_image"],
+        "title": "User"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      },
+      "Wearable": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["t-shirt", "shirt", "sweater", "jacket", "top", "pants", "shorts", "skirt"],
+            "title": "Category"
+          },
+          "body_part": {
+            "type": "string",
+            "enum": ["top", "bottom"],
+            "title": "Body Part"
+          },
+          "wearable_image_url": {
+            "type": "string",
+            "title": "Wearable Image Url"
+          },
+          "generation_status": {
+            "type": "string",
+            "enum": ["pending", "success"],
+            "title": "Generation Status"
+          }
+        },
+        "type": "object",
+        "required": ["id", "category", "body_part", "wearable_image_url", "generation_status"],
+        "title": "Wearable"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

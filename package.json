@@ -29,7 +29,6 @@
     "@auth0/auth0-react": "^2.20.0",
     "@aws-sdk/client-s3": "^3.1079.0",
     "@aws-sdk/s3-request-presigner": "^3.1079.0",
-    "@cloudflare/containers": "^0.0.31",
     "@google/genai": "^2.10.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-label": "^2.1.1",
@@ -59,7 +58,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.20.1",
     "@electric-sql/pglite": "^0.5.4",
     "@eslint/js": "^9.9.0",
     "@types/mime-types": "^3.0.1",

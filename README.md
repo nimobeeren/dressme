@@ -8,32 +8,23 @@ A virtual wardrobe that shows you how clothes look on you.
 
 ## Tech Stack
 
-- Next.js (App Router)
-- shadcn/ui + Tailwind
-- Drizzle ORM + PostgreSQL (Neon)
-- Auth0 (SPA auth via `@auth0/auth0-react`)
-- Vercel (hosting + serverless functions)
-- Replicate + Gemini (AI generation)
-- Vitest (browser + node tests)
-
-## Repository Structure
-
-- `src/app/` — Next.js App Router (pages + API routes)
-- `src/server/` — backend logic (DB, auth, storage, generation)
-- `src/views/` — page-level React components
-- `src/components/` — shared UI components
-- `src/shared/` — shared schemas + category definitions
-- `src/lib/` — API client + utilities
-- `src/test/` — test mocks and helpers
-- `tests/` — golden fixtures, contract fixtures, server tests
-- `scripts/` — seed script
-- `images/` — sample images for seeding
-- `api/` — legacy FastAPI backend (to be deleted at cutover)
-- `worker/` — legacy Cloudflare Worker (to be deleted at cutover)
+- shadcn/ui
+- Tailwind
+- React
+- Auth0
+- Drizzle
+- PostgreSQL
+- Neon
+- Vercel
+- Replicate
+- Google Gemini
 
 ## Installation
 
-1. Install [pnpm](https://pnpm.io/installation) and [Docker](https://docs.docker.com/get-docker/).
+1. Install the required tooling:
+
+- [pnpm](https://pnpm.io/installation)
+- [Docker](https://docs.docker.com/get-docker/)
 
 2. Install dependencies:
 
@@ -41,13 +32,11 @@ A virtual wardrobe that shows you how clothes look on you.
 pnpm install
 ```
 
-3. Copy environment file and fill in missing values:
+3. Copy the example environment file and fill in the missing values:
 
 ```bash
 cp .env.example .env
 ```
-
-4. Add `http://localhost:3000` to your Auth0 application's **Allowed Callback URLs**, **Allowed Logout URLs**, and **Allowed Web Origins**.
 
 ## Development
 

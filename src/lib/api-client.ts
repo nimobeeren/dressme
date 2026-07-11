@@ -4,12 +4,10 @@
 
 import {
   classifyResponseSchema,
-  healthSchema,
   outfitSchema,
   userSchema,
   wearableSchema,
   type ClassifyResponse,
-  type Health,
   type Outfit,
   type User,
   type Wearable,
@@ -76,11 +74,6 @@ async function request({ method, path, query, body, signal, auth = true }: Reque
   }
 
   return response;
-}
-
-export async function health(): Promise<Health> {
-  const response = await request({ method: "GET", path: "/healthz", auth: false });
-  return healthSchema.parse(await response.json());
 }
 
 export async function getMe(): Promise<User> {

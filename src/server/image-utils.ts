@@ -1,13 +1,6 @@
 import type { Sharp } from "sharp";
 import { getSettings } from "./settings";
 
-const MIME_TO_EXT: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
-};
-
 async function getSharp() {
   return (await import("sharp")).default;
 }
@@ -45,14 +38,6 @@ export async function readUpload(data: Buffer): Promise<Buffer> {
     );
   }
   return data;
-}
-
-export function getExtensionFromContentType(contentType: string): string {
-  const ext = MIME_TO_EXT[contentType.toLowerCase()];
-  if (!ext) {
-    throw new Error(`Unknown content type: ${contentType}`);
-  }
-  return ext;
 }
 
 export class UploadTooLargeError extends Error {

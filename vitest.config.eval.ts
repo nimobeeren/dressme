@@ -7,6 +7,7 @@ export default defineConfig({
     include: ["tests/eval/**/*.eval.test.ts"],
     environment: "node",
     setupFiles: ["./tests/eval/vitest.setup.ts"],
+    maxConcurrency: 20,
   },
   resolve: {
     alias: {

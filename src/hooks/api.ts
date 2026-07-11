@@ -6,7 +6,6 @@ import {
   getMe,
   getOutfits,
   getWearables,
-  health,
   updateAvatarImage,
 } from "@/lib/api-client";
 import type { Outfit, User, Wearable } from "@/shared/schemas";
@@ -22,15 +21,6 @@ export function useMe() {
     // Poll while selfie is uploaded but avatar not yet generated
     refetchInterval: (query) =>
       query.state.data?.has_selfie_image && !query.state.data?.has_avatar_image ? 3000 : false,
-  });
-}
-
-export function useHealth() {
-  return useQuery({
-    queryKey: ["health"],
-    queryFn: () => health(),
-    retry: false,
-    refetchInterval: (query) => (query.state.status === "error" ? 5000 : false),
   });
 }
 

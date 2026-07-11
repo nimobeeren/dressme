@@ -145,18 +145,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      wearables.map((w) => ({
+    const result = await Promise.all(
+      wearables.map(async (w) => ({
         id: w.id,
         category: w.category,
         body_part: getBodyPart(w.category as WearableCategory),
-        wearable_image_url: blobStorage.getSignedUrl(
+        wearable_image_url: await blobStorage.getSignedUrl(
           settings.WEARABLES_BUCKET,
           w.imageKey,
         ),
-        generation_status: "pending",
+        generation_status: "pending" as const,
       })),
-      { status: 201 },
     );
+
+    return NextResponse.json(result, { status: 201 });
   });
 }

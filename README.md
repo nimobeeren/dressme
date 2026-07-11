@@ -120,7 +120,9 @@ curl -X GET 'http://localhost:3000/api/wearables' \
 Evals measure the performance of AI components. To run the classification eval:
 
 ```bash
-pnpm test:eval
+pnpm test:evals
+EVAL_REPEATS=2 pnpm test:evals                 # 2 extra runs per case (3 total)
+pnpm test:evals -- --maxConcurrency=10         # override concurrency (default is 20)
 ```
 
 ## Deployment

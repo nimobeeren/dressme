@@ -11,6 +11,18 @@ async function makePngImage(width = 10, height = 10): Promise<Buffer> {
     .toBuffer();
 }
 
+// A valid PNG whose decoded pixel count (64M) exceeds MAX_IMAGE_PIXELS (50M),
+// exercising sharp's `limitInputPixels` decompression-bomb guard. PNG deflates
+// the solid color to a tiny file, so this proves the guard is on decoded
+// dimensions, not encoded file size.
+async function makeDecompressionBomb(): Promise<Buffer> {
+  return sharp({
+    create: { width: 8000, height: 8000, channels: 3, background: { r: 0, g: 0, b: 0 } },
+  })
+    .png()
+    .toBuffer();
+}
+
 describe("readUpload", () => {
   beforeEach(() => {
     const s = getSettings();
@@ -55,6 +67,15 @@ describe("safeOpenImage", () => {
       "Could not read the uploaded file as an image.",
     );
   });
+
+  test("throws on a decompression-bomb image", async () => {
+    // 8000x8000 = 64M pixels, over the 50M default MAX_IMAGE_PIXELS. The
+    // encoded PNG stays tiny, so this proves the guard is on decoded
+    // dimensions, not file size.
+    await expect(safeOpenImage(await makeDecompressionBomb())).rejects.toThrow(
+      "Could not read the uploaded file as an image.",
+    );
+  });
 });
 
 describe("compressToJpeg", () => {
@@ -64,6 +85,16 @@ describe("compressToJpeg", () => {
     });
     const result = await compressToJpeg(img);
     // JPEG files start with FF D8 FF
+    expect(result[0]).toBe(0xff);
+    expect(result[1]).toBe(0xd8);
+    expect(result[2]).toBe(0xff);
+  });
+
+  test("flattens an RGBA image to JPEG", async () => {
+    const img = sharp({
+      create: { width: 10, height: 10, channels: 4, background: { r: 0, g: 255, b: 0, alpha: 1 } },
+    });
+    const result = await compressToJpeg(img);
     expect(result[0]).toBe(0xff);
     expect(result[1]).toBe(0xd8);
     expect(result[2]).toBe(0xff);

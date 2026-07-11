@@ -31,6 +31,23 @@ async function makeValidJpeg2(width = 10, height = 10): Promise<Buffer> {
     .toBuffer();
 }
 
+// A valid PNG that decodes to more pixels than MAX_IMAGE_PIXELS (50M), which
+// sharp's `limitInputPixels` guard rejects. PNG deflates the solid color, so
+// the encoded file stays small while the decoded pixel count (64M) is huge.
+async function makeDecompressionBomb(): Promise<Buffer> {
+  return sharp({
+    create: { width: 8000, height: 8000, channels: 3, background: { r: 0, g: 0, b: 0 } },
+  })
+    .png()
+    .toBuffer();
+}
+
+// Bytes larger than MAX_UPLOAD_SIZE (10 MiB); content does not need to be a
+// real image since `readUpload` rejects before `safeOpenImage` ever runs.
+function makeOversizedUpload(): Buffer {
+  return Buffer.alloc(10 * 1024 * 1024 + 1, 0);
+}
+
 // Mock avatar generation to avoid real API calls
 vi.mock("../../src/server/avatar-generation", () => ({
   generateAvatar: vi.fn().mockResolvedValue(Buffer.from([0xff, 0xd8, 0xff])),
@@ -57,6 +74,10 @@ class MockBlobStorage implements BlobStorage {
 
   async getSignedUrl(bucket: string, key: string, _expiresIn?: number) {
     return `https://signed-url/${bucket}/${key}`;
+  }
+
+  clear() {
+    this._data.clear();
   }
 }
 
@@ -108,6 +129,14 @@ function makeToken(sub = TEST_USER_ID): JwtPayload {
   return { sub };
 }
 
+function applyServiceOverrides() {
+  setServices({
+    blobStorage: mockBlobStorage,
+    verifyToken: async (_token) => makeToken(),
+    waitUntil: mockWaitUntil,
+  });
+}
+
 beforeAll(async () => {
   const pg = new PGlite();
   db = drizzle({ client: pg, schema });
@@ -116,11 +145,7 @@ beforeAll(async () => {
 
   mockBlobStorage = new MockBlobStorage();
 
-  setServices({
-    blobStorage: mockBlobStorage,
-    verifyToken: async (_token) => makeToken(),
-    waitUntil: mockWaitUntil,
-  });
+  applyServiceOverrides();
 });
 
 afterAll(() => {
@@ -129,9 +154,16 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Flush any pending background tasks before truncating tables
+  // Re-apply overrides before flushing so any background tasks scheduled by the
+  // previous test (via the mocked `waitUntil`) see the mock blob storage
+  // instead of constructing a real R2Storage.
+  applyServiceOverrides();
   await flushBackgroundTasks();
   pendingBgTasks = [];
+  // Reset the in-memory blob store between tests. Upstream uses a per-test
+  // MockBlobStorage fixture; here we reuse one instance but clear its data so
+  // uploads from one test can't satisfy downloads in another.
+  mockBlobStorage.clear();
   // Truncate all tables between tests (order matters for FK constraints)
   await db.$client.exec("DELETE FROM outfit");
   await db.$client.exec("DELETE FROM wearableonavatarimage");
@@ -141,15 +173,6 @@ beforeEach(async () => {
 
 afterEach(() => {
   resetServices();
-});
-
-// Re-apply services after reset
-beforeEach(async () => {
-  setServices({
-    blobStorage: mockBlobStorage,
-    verifyToken: async (_token) => makeToken(),
-    waitUntil: mockWaitUntil,
-  });
 });
 
 describe("GET /api/healthz", () => {
@@ -200,6 +223,32 @@ describe("GET /api/users/me", () => {
     expect(body.has_selfie_image).toBe(false);
     expect(body.has_avatar_image).toBe(false);
   });
+
+  test("auto-creates and persists a new user on first request", async () => {
+    // No user row exists for TEST_USER_ID yet — authenticate as a brand-new
+    // auth0 sub so withAuth's getCurrentUserForPayload must create one. Verify
+    // the row is committed (visible to a separate query afterwards).
+    const newSub = "auth0|new";
+    setServices({
+      blobStorage: mockBlobStorage,
+      verifyToken: async () => ({ sub: newSub }),
+      waitUntil: mockWaitUntil,
+    });
+
+    const { GET } = await import("../../src/app/api/users/me/route");
+    const req = new NextRequest("http://localhost/api/users/me");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.has_selfie_image).toBe(false);
+    expect(body.has_avatar_image).toBe(false);
+
+    const persisted = await db.query.users.findFirst({
+      where: eq(schema.users.auth0UserId, newSub),
+    });
+    expect(persisted).toBeDefined();
+    expect(persisted?.id).toBe(body.id);
+  });
 });
 
 describe("PUT /api/images/avatars/me", () => {
@@ -235,7 +284,15 @@ describe("PUT /api/images/avatars/me", () => {
     });
     expect(updated?.selfieImageKey).toBeTruthy();
     expect(updated?.selfieImageKey).toMatch(/\.jpg$/);
+    expect(updated?.avatarImageKey).toMatch(/\.jpg$/);
     expect(updated?.avatarImageKey).toBeTruthy();
+
+    // The selfie (uploaded) and the generated avatar were both persisted to
+    // blob storage as JPEGs, at the keys recorded on the user row.
+    const selfieData = await mockBlobStorage.download("dressme-selfies", updated!.selfieImageKey!);
+    expect(selfieData.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+    const avatarData = await mockBlobStorage.download("dressme-avatars", updated!.avatarImageKey!);
+    expect(avatarData.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
   });
 
   test("returns 400 when user already has selfie", async () => {
@@ -277,6 +334,36 @@ describe("PUT /api/images/avatars/me", () => {
     });
     const res = await PUT(req);
     expect(res.status).toBe(422);
+  });
+
+  test("returns 422 for a decompression-bomb image", async () => {
+    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    const { PUT } = await import("../../src/app/api/images/avatars/me/route");
+    const formData = new FormData();
+    formData.append(
+      "image",
+      new Blob([await makeDecompressionBomb()], { type: "image/png" }),
+      "bomb.png",
+    );
+    const req = new NextRequest("http://localhost/api/images/avatars/me", {
+      method: "PUT",
+      body: formData,
+    });
+    const res = await PUT(req);
+    expect(res.status).toBe(422);
+  });
+
+  test("returns 413 for an oversized upload", async () => {
+    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    const { PUT } = await import("../../src/app/api/images/avatars/me/route");
+    const formData = new FormData();
+    formData.append("image", new Blob([makeOversizedUpload()], { type: "image/jpeg" }), "huge.jpg");
+    const req = new NextRequest("http://localhost/api/images/avatars/me", {
+      method: "PUT",
+      body: formData,
+    });
+    const res = await PUT(req);
+    expect(res.status).toBe(413);
   });
 });
 
@@ -374,13 +461,37 @@ describe("POST /api/wearables", () => {
     const body = await res.json();
     expect(body).toHaveLength(2);
     expect(body[0].category).toBe("t-shirt");
+    expect(body[0].body_part).toBe("top");
     expect(body[1].category).toBe("pants");
+    expect(body[1].body_part).toBe("bottom");
+
+    // Both wearables get a signed URL in the response (the GET handler does
+    // this via Promise.all; the POST handler must too — the response is JSON,
+    // so a raw Promise would serialize to `{}`).
+    expect(typeof body[0].wearable_image_url).toBe("string");
+    expect(body[0].wearable_image_url).toContain("signed-url");
+    expect(typeof body[1].wearable_image_url).toBe("string");
+    expect(body[1].generation_status).toBe("pending");
 
     // Verify DB state
     const wearables = await db.query.wearables.findMany({
       where: eq(schema.wearables.userId, user.id),
     });
     expect(wearables).toHaveLength(2);
+    expect(wearables[0].imageKey).toMatch(/\.jpg$/);
+    expect(wearables[1].imageKey).toMatch(/\.jpg$/);
+
+    // The uploaded wearables were converted to JPEGs in blob storage.
+    const w1Data = await mockBlobStorage.download("dressme-wearables", wearables[0].imageKey);
+    expect(w1Data.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+
+    // WOA generation ran for both wearables (mocked, so it completes
+    // synchronously once the scheduled tasks are flushed).
+    await flushBackgroundTasks();
+    const woaImages = await db.query.wearableOnAvatarImages.findMany({
+      where: eq(schema.wearableOnAvatarImages.userId, user.id),
+    });
+    expect(woaImages).toHaveLength(2);
   });
 
   test("returns 422 when category and image counts don't match", async () => {
@@ -422,6 +533,76 @@ describe("POST /api/wearables", () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  test("returns 400 when avatar is still generating (selfie but no avatar)", async () => {
+    await db
+      .insert(schema.users)
+      .values({ auth0UserId: TEST_USER_ID, selfieImageKey: "selfie.jpg" });
+    const { POST } = await import("../../src/app/api/wearables/route");
+    const formData = new FormData();
+    formData.append(
+      "image",
+      new Blob([await makeValidJpeg()], { type: "image/webp" }),
+      "test.webp",
+    );
+    formData.append("category", "t-shirt");
+    const req = new NextRequest("http://localhost/api/wearables", {
+      method: "POST",
+      body: formData,
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  test("returns 413 for an oversized upload", async () => {
+    await createUserWithAvatar();
+    const { POST } = await import("../../src/app/api/wearables/route");
+    const formData = new FormData();
+    formData.append("image", new Blob([makeOversizedUpload()], { type: "image/jpeg" }), "huge.jpg");
+    formData.append("category", "t-shirt");
+    const req = new NextRequest("http://localhost/api/wearables", {
+      method: "POST",
+      body: formData,
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+  });
+
+  test("returns 422 for a decompression-bomb image", async () => {
+    await createUserWithAvatar();
+    const { POST } = await import("../../src/app/api/wearables/route");
+    const formData = new FormData();
+    formData.append(
+      "image",
+      new Blob([await makeDecompressionBomb()], { type: "image/png" }),
+      "bomb.png",
+    );
+    formData.append("category", "t-shirt");
+    const req = new NextRequest("http://localhost/api/wearables", {
+      method: "POST",
+      body: formData,
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+  });
+
+  test("returns 422 for an invalid image", async () => {
+    await createUserWithAvatar();
+    const { POST } = await import("../../src/app/api/wearables/route");
+    const formData = new FormData();
+    formData.append(
+      "image",
+      new Blob([Buffer.from("this is not an image")], { type: "text/plain" }),
+      "not_an_image.txt",
+    );
+    formData.append("category", "t-shirt");
+    const req = new NextRequest("http://localhost/api/wearables", {
+      method: "POST",
+      body: formData,
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(422);
   });
 });
 
@@ -477,8 +658,28 @@ describe("GET /api/outfits", () => {
     const body = await res.json();
     expect(body).toHaveLength(1);
     expect(body[0].id).toBe(outfit.id);
+    expect(body[0].top.id).toBe(top.id);
+    expect(body[0].top.category).toBe("t-shirt");
     expect(body[0].top.generation_status).toBe("success");
+    expect(body[0].top.wearable_image_url).toContain("signed-url");
+    expect(body[0].bottom.id).toBe(bottom.id);
+    expect(body[0].bottom.category).toBe("pants");
     expect(body[0].bottom.generation_status).toBe("pending");
+    expect(body[0].bottom.wearable_image_url).toContain("signed-url");
+  });
+
+  test("returns an empty array when user has no outfits", async () => {
+    await db
+      .insert(schema.users)
+      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .returning();
+
+    const { GET } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest("http://localhost/api/outfits");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual([]);
   });
 });
 
@@ -533,6 +734,101 @@ describe("POST /api/outfits", () => {
     const res = await POST(req);
     expect(res.status).toBe(404);
   });
+
+  test("returns 404 for non-existent bottom", async () => {
+    const { top } = await createOutfitFixtures();
+    const { POST } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest("http://localhost/api/outfits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ top_id: top.id, bottom_id: randomUUID() }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(404);
+  });
+
+  test("returns 200 when the exact outfit already exists", async () => {
+    const { user, top, bottom } = await createOutfitFixtures();
+    await db.insert(schema.outfits).values({
+      userId: user.id,
+      topId: top.id,
+      bottomId: bottom.id,
+    });
+    const { POST } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest("http://localhost/api/outfits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ top_id: top.id, bottom_id: bottom.id }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    // Creating the same outfit twice must not duplicate it.
+    const outfits = await db.query.outfits.findMany({
+      where: eq(schema.outfits.userId, user.id),
+    });
+    expect(outfits).toHaveLength(1);
+  });
+
+  test("returns 400 when top has the wrong body part", async () => {
+    const { bottom } = await createOutfitFixtures();
+    const { POST } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest("http://localhost/api/outfits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Use the (pants) bottom as the top — its body_part is "bottom".
+      body: JSON.stringify({ top_id: bottom.id, bottom_id: bottom.id }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.detail).toBe('Top wearable must have "body_part": "top".');
+  });
+
+  test("returns 400 when bottom has the wrong body part", async () => {
+    const { top } = await createOutfitFixtures();
+    const { POST } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest("http://localhost/api/outfits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Use the (t-shirt) top as the bottom — its body_part is "top".
+      body: JSON.stringify({ top_id: top.id, bottom_id: top.id }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.detail).toBe('Bottom wearable must have "body_part": "bottom".');
+  });
+
+  test("returns 404 when the bottom wearable belongs to another user", async () => {
+    const { user, top } = await createOutfitFixtures();
+    const [otherUser] = await db
+      .insert(schema.users)
+      .values({ auth0UserId: "auth0|2", avatarImageKey: "avatar2.jpg" })
+      .returning();
+    const [otherBottom] = await db
+      .insert(schema.wearables)
+      .values({
+        userId: otherUser.id,
+        category: "pants",
+        imageKey: "bottom2.jpg",
+      })
+      .returning();
+    const { POST } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest("http://localhost/api/outfits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ top_id: top.id, bottom_id: otherBottom.id }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(404);
+
+    // No outfit should be created for the authenticated user.
+    const outfits = await db.query.outfits.findMany({
+      where: eq(schema.outfits.userId, user.id),
+    });
+    expect(outfits).toHaveLength(0);
+  });
 });
 
 describe("DELETE /api/outfits", () => {
@@ -580,6 +876,61 @@ describe("DELETE /api/outfits", () => {
       where: eq(schema.outfits.id, outfit.id),
     });
     expect(existing).toBeUndefined();
+  });
+
+  test("returns 404 for a non-existent id", async () => {
+    const { DELETE } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest(`http://localhost/api/outfits?id=${randomUUID()}`, {
+      method: "DELETE",
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(404);
+  });
+
+  test("returns 404 when the outfit belongs to another user", async () => {
+    // Create an outfit as a different user.
+    const [otherUser] = await db
+      .insert(schema.users)
+      .values({ auth0UserId: "auth0|2", avatarImageKey: "avatar2.jpg" })
+      .returning();
+    const [otherTop] = await db
+      .insert(schema.wearables)
+      .values({
+        userId: otherUser.id,
+        category: "t-shirt",
+        imageKey: "top2.jpg",
+      })
+      .returning();
+    const [otherBottom] = await db
+      .insert(schema.wearables)
+      .values({
+        userId: otherUser.id,
+        category: "pants",
+        imageKey: "bottom2.jpg",
+      })
+      .returning();
+    const [outfit] = await db
+      .insert(schema.outfits)
+      .values({
+        userId: otherUser.id,
+        topId: otherTop.id,
+        bottomId: otherBottom.id,
+      })
+      .returning();
+
+    // The authenticated user (auth0|1) must not be able to delete it.
+    const { DELETE } = await import("../../src/app/api/outfits/route");
+    const req = new NextRequest(`http://localhost/api/outfits?id=${outfit.id}`, {
+      method: "DELETE",
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(404);
+
+    // The outfit still exists.
+    const stillExists = await db.query.outfits.findFirst({
+      where: eq(schema.outfits.id, outfit.id),
+    });
+    expect(stillExists).toBeDefined();
   });
 });
 
@@ -659,9 +1010,86 @@ describe("GET /api/images/outfit", () => {
       })
       .returning();
 
+    const missingId = randomUUID();
     const { GET } = await import("../../src/app/api/images/outfit/route");
     const req = new NextRequest(
-      `http://localhost/api/images/outfit?top_id=${randomUUID()}&bottom_id=${bottom.id}`,
+      `http://localhost/api/images/outfit?top_id=${missingId}&bottom_id=${bottom.id}`,
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.detail).toContain(missingId);
+  });
+
+  test("returns 404 for missing bottom", async () => {
+    const [user] = await db
+      .insert(schema.users)
+      .values({
+        auth0UserId: TEST_USER_ID,
+        avatarImageKey: "avatar.jpg",
+      })
+      .returning();
+    const [top] = await db
+      .insert(schema.wearables)
+      .values({
+        userId: user.id,
+        category: "t-shirt",
+        imageKey: "top.jpg",
+      })
+      .returning();
+
+    const missingId = randomUUID();
+    const { GET } = await import("../../src/app/api/images/outfit/route");
+    const req = new NextRequest(
+      `http://localhost/api/images/outfit?top_id=${top.id}&bottom_id=${missingId}`,
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.detail).toContain(missingId);
+  });
+
+  test("returns 404 when the top WOA image is missing", async () => {
+    const [user] = await db
+      .insert(schema.users)
+      .values({
+        auth0UserId: TEST_USER_ID,
+        avatarImageKey: "avatar.jpg",
+      })
+      .returning();
+
+    // Top wearable has no WOA image.
+    const [top] = await db
+      .insert(schema.wearables)
+      .values({
+        userId: user.id,
+        category: "t-shirt",
+        imageKey: "top.jpg",
+      })
+      .returning();
+
+    // Bottom wearable has a WOA image and the matching blob data.
+    const [bottom] = await db
+      .insert(schema.wearables)
+      .values({
+        userId: user.id,
+        category: "pants",
+        imageKey: "bottom.jpg",
+      })
+      .returning();
+    await db.insert(schema.wearableOnAvatarImages).values({
+      userId: user.id,
+      avatarImageKey: "avatar.jpg",
+      wearableImageKey: "bottom.jpg",
+      imageKey: "woa_bottom.jpg",
+      maskImageKey: "mask_bottom.jpg",
+    });
+    mockBlobStorage.upload("dressme-woa", "woa_bottom.jpg", await makeValidJpeg(), "image/webp");
+    mockBlobStorage.upload("dressme-woa", "mask_bottom.jpg", await makeValidJpeg(), "image/webp");
+
+    const { GET } = await import("../../src/app/api/images/outfit/route");
+    const req = new NextRequest(
+      `http://localhost/api/images/outfit?top_id=${top.id}&bottom_id=${bottom.id}`,
     );
     const res = await GET(req);
     expect(res.status).toBe(404);

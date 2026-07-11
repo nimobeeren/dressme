@@ -18,7 +18,6 @@ export const defaultUser: User = {
 };
 
 export const defaultHandlers = [
-  http.get("*/healthz", () => HttpResponse.json({ status: "ok" })),
   http.get("*/me", () => HttpResponse.json(defaultUser)),
   http.get("*/wearables", () => HttpResponse.json<Wearable[]>([])),
   http.get("*/outfits", () => HttpResponse.json<Outfit[]>([])),

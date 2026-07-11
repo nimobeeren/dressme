@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { setSettings } from "../../src/server/settings";
 
 const geminiKey = process.env.GEMINI_API_KEY;

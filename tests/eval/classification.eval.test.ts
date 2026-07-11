@@ -1,13 +1,21 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, relative } from "node:path";
 import { describe, expect, test } from "vitest";
 import { classifyWearableImage } from "../../src/server/wearable-classification";
-import type { WearableCategory } from "../../src/shared/wearable-categories";
 
 const WEARABLES_DIR = join(import.meta.dirname, "..", "..", "images", "wearables");
 
-function discoverCases(): Array<{ expected: string; path: string }> {
-  const cases: Array<{ expected: string; path: string }> = [];
+// Additional times each case runs after the first (0 = single pass). Passed
+// directly to vitest's `repeats` option.
+const repeats = Number(process.env.EVAL_REPEATS ?? 0);
+if (!Number.isInteger(repeats) || repeats < 0) {
+  throw new Error(
+    `EVAL_REPEATS must be a non-negative integer (got ${JSON.stringify(process.env.EVAL_REPEATS)})`,
+  );
+}
+
+function discoverCases(): Array<{ expected: string; path: string; relPath: string }> {
+  const cases: Array<{ expected: string; path: string; relPath: string }> = [];
   const groups = readdirSync(WEARABLES_DIR).filter((f) => !f.startsWith("."));
   for (const group of groups.sort()) {
     const groupPath = join(WEARABLES_DIR, group);
@@ -20,7 +28,11 @@ function discoverCases(): Array<{ expected: string; path: string }> {
       for (const file of files.sort()) {
         const filePath = join(catPath, file);
         if (statSync(filePath).isFile()) {
-          cases.push({ expected: category, path: filePath });
+          cases.push({
+            expected: category,
+            path: filePath,
+            relPath: relative(WEARABLES_DIR, filePath),
+          });
         }
       }
     }
@@ -35,19 +47,19 @@ describe("wearable classification eval", () => {
     expect(cases.length).toBeGreaterThan(0);
   });
 
+  // `concurrent: true` lets cases run in parallel up to vitest's
+  // `--maxConcurrency` limit (override via CLI flag).
   test.each(cases)(
-    "classifies $path as '$expected'",
-    async ({ expected, path }) => {
+    "classifies $relPath as $expected",
+    { timeout: 30000, repeats, concurrent: true },
+    async ({ expected, path, relPath }) => {
       const imageData = readFileSync(path);
       const predicted = await classifyWearableImage(imageData);
       // Eval doesn't assert correctness (accuracy varies by model),
       // it just logs the result for manual inspection
       const correct = predicted === expected;
       const status = correct ? "✓" : "✗";
-      console.log(
-        `${expected.padEnd(12)} ${String(predicted).padEnd(12)} ${status} ${basename(path)}`,
-      );
+      console.log(`${expected.padEnd(12)} ${String(predicted).padEnd(12)} ${status} ${relPath}`);
     },
-    { timeout: 30000 },
   );
 });

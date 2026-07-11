@@ -22,7 +22,7 @@
     "test": "vitest && vitest -c vitest.config.node.ts run",
     "test:browser": "vitest",
     "test:server": "vitest -c vitest.config.node.ts run",
-    "test:eval": "vitest -c vitest.config.eval.ts run",
+    "test:evals": "vitest -c vitest.config.eval.ts run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -71,6 +71,7 @@
     "@vitest/browser": "^4.1.6",
     "@vitest/browser-playwright": "^4.1.6",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

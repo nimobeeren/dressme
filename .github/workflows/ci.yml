@@ -48,6 +48,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://dressme:dressme@localhost:5432/local
 
+      - run: pnpm exec playwright install --with-deps chromium
+
       - run: pnpm test:browser
 
       - run: pnpm build

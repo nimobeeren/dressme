@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       bottomMaskData,
     );
 
-    return new NextResponse(outfitImage, {
+    return new NextResponse(new Uint8Array(outfitImage), {
       headers: {
         "Content-Type": "image/jpeg",
         "Cache-Control": "public, max-age=3600",

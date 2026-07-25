@@ -195,7 +195,7 @@ export function AddPage() {
   );
 }
 
-interface WearableAddCardProps {
+interface WearableAddCardProps<TFieldValues extends FieldValues> {
   /** Name of the form field (e.g. `wearables.0` or `wearables.1`). */
   name: string;
   /** Stable field ID used as query key. */
@@ -205,20 +205,20 @@ interface WearableAddCardProps {
   /** Preview image source. */
   previewSrc: string;
   /** Form control. */
-  control: Control<any>;
+  control: Control<TFieldValues>;
   /** Callback for when remove button is clicked. */
   onRemove: () => void;
 }
 
 /** A card representing a single wearable to be added. */
-function WearableAddCard({
+function WearableAddCard<TFieldValues extends FieldValues>({
   name,
   fieldId,
   file,
   previewSrc,
   control,
   onRemove,
-}: WearableAddCardProps) {
+}: WearableAddCardProps<TFieldValues>) {
   const classifyQuery = useClassifyWearable(file, fieldId);
 
   return (
@@ -227,7 +227,7 @@ function WearableAddCard({
         <img src={previewSrc} className="aspect-3/4 object-cover" />
         <CategoryFormField
           control={control}
-          name={`${name}.category`}
+          name={`${name}.category` as FieldPath<TFieldValues>}
           suggestion={classifyQuery.data?.category ?? undefined}
           pending={classifyQuery.isPending}
         />

@@ -10,7 +10,7 @@ import { healthSchema, outfitSchema, userSchema, wearableSchema } from "./schema
  * (api/scripts/record_contract.py). Parsing them against the zod schemas
  * proves the schemas describe the wire format the frontend was built against.
  */
-describe("contract fixtures parse against the shared schemas", () => {
+describe("schemas", () => {
   test("GET /healthz", () => {
     expect(healthSchema.parse(healthFixture)).toEqual(healthFixture);
   });

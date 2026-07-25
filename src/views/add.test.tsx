@@ -32,7 +32,7 @@ async function waitForFileInput(
   return fileInput;
 }
 
-describe("/add", () => {
+describe("add", () => {
   test("redirects to home when user has no avatar", async ({ worker }) => {
     worker.use(
       http.get("*/me", () =>

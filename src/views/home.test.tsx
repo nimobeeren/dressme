@@ -15,7 +15,7 @@ async function renderHomePage() {
   return renderWithProviders(<HomePage />);
 }
 
-describe("/", () => {
+describe("home", () => {
   test("shows upload button when user has no selfie", async () => {
     // Default handlers already return a user without selfie/avatar.
     const screen = await renderHomePage();

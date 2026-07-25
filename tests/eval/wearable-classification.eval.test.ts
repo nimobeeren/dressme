@@ -40,7 +40,7 @@ function discoverCases(): Array<{ expected: string; path: string; relPath: strin
   return cases;
 }
 
-describe("wearable classification eval", () => {
+describe("wearable-classification", () => {
   const cases = discoverCases();
 
   test("has test cases", () => {

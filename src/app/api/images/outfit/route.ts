@@ -12,10 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   return withAuth(request, async (user) => {
     if (!user.avatarImageKey) {
-      return NextResponse.json(
-        { detail: "User has no avatar image." },
-        { status: 404 },
-      );
+      return NextResponse.json({ detail: "User has no avatar image." }, { status: 404 });
     }
 
     const url = new URL(request.url);
@@ -23,10 +20,7 @@ export async function GET(request: NextRequest) {
     const bottomId = url.searchParams.get("bottom_id");
 
     if (!topId || !bottomId) {
-      return NextResponse.json(
-        { detail: "Missing top_id or bottom_id" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Missing top_id or bottom_id" }, { status: 400 });
     }
 
     const settings = getSettings();
@@ -61,31 +55,26 @@ export async function GET(request: NextRequest) {
 
     const topOnAvatar = woaImages.find(
       (w) =>
-        w.avatarImageKey === user.avatarImageKey &&
-        w.wearableImageKey === topWearable.imageKey,
+        w.avatarImageKey === user.avatarImageKey && w.wearableImageKey === topWearable.imageKey,
     );
 
     const bottomOnAvatar = woaImages.find(
       (w) =>
-        w.avatarImageKey === user.avatarImageKey &&
-        w.wearableImageKey === bottomWearable.imageKey,
+        w.avatarImageKey === user.avatarImageKey && w.wearableImageKey === bottomWearable.imageKey,
     );
 
     if (!topOnAvatar || !bottomOnAvatar) {
-      return NextResponse.json(
-        { detail: "Outfit image not found." },
-        { status: 404 },
-      );
+      return NextResponse.json({ detail: "Outfit image not found." }, { status: 404 });
     }
 
-    const avatarData = await blobStorage.download(
-      settings.AVATARS_BUCKET,
-      user.avatarImageKey,
-    );
+    const avatarData = await blobStorage.download(settings.AVATARS_BUCKET, user.avatarImageKey);
     const topData = await blobStorage.download(settings.WOA_BUCKET, topOnAvatar.imageKey);
     const bottomData = await blobStorage.download(settings.WOA_BUCKET, bottomOnAvatar.imageKey);
     const topMaskData = await blobStorage.download(settings.WOA_BUCKET, topOnAvatar.maskImageKey);
-    const bottomMaskData = await blobStorage.download(settings.WOA_BUCKET, bottomOnAvatar.maskImageKey);
+    const bottomMaskData = await blobStorage.download(
+      settings.WOA_BUCKET,
+      bottomOnAvatar.maskImageKey,
+    );
 
     const { combineWearables } = await import("@/server/combining");
     const outfitImage = await combineWearables(

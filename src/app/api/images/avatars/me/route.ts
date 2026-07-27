@@ -22,20 +22,14 @@ export async function PUT(request: NextRequest) {
 
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("multipart/form-data")) {
-      return NextResponse.json(
-        { detail: "Expected multipart/form-data" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Expected multipart/form-data" }, { status: 400 });
     }
 
     const formData = await request.formData();
     const image = formData.get("image");
 
     if (!(image instanceof File)) {
-      return NextResponse.json(
-        { detail: "Missing image file" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Missing image file" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await image.arrayBuffer());
@@ -43,10 +37,7 @@ export async function PUT(request: NextRequest) {
     try {
       await readUpload(buffer);
     } catch (err: any) {
-      return NextResponse.json(
-        { detail: err.message },
-        { status: err.status || 413 },
-      );
+      return NextResponse.json({ detail: err.message }, { status: err.status || 413 });
     }
 
     let img;
@@ -67,10 +58,7 @@ export async function PUT(request: NextRequest) {
     const key = `${randomUUID()}.jpg`;
     await blobStorage.upload(settings.SELFIES_BUCKET, key, jpegData, "image/jpeg");
 
-    await db
-      .update(schema.users)
-      .set({ selfieImageKey: key })
-      .where(eq(schema.users.id, user.id));
+    await db.update(schema.users).set({ selfieImageKey: key }).where(eq(schema.users.id, user.id));
 
     const waitUntil = getWaitUntil();
     waitUntil(

@@ -48,7 +48,9 @@ export async function GET(request: NextRequest) {
         wearable_image_url: completedKeys.has(w.imageKey)
           ? await blobStorage.getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey)
           : "",
-        generation_status: completedKeys.has(w.imageKey) ? "success" as const : "pending" as const,
+        generation_status: completedKeys.has(w.imageKey)
+          ? ("success" as const)
+          : ("pending" as const),
       })),
     );
 
@@ -67,10 +69,7 @@ export async function POST(request: NextRequest) {
 
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("multipart/form-data")) {
-      return NextResponse.json(
-        { detail: "Expected multipart/form-data" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Expected multipart/form-data" }, { status: 400 });
     }
 
     const formData = await request.formData();
@@ -99,10 +98,7 @@ export async function POST(request: NextRequest) {
       try {
         await readUpload(buffer);
       } catch (err: any) {
-        return NextResponse.json(
-          { detail: err.message },
-          { status: err.status || 413 },
-        );
+        return NextResponse.json({ detail: err.message }, { status: err.status || 413 });
       }
 
       let img;
@@ -150,10 +146,7 @@ export async function POST(request: NextRequest) {
         id: w.id,
         category: w.category,
         body_part: getBodyPart(w.category as WearableCategory),
-        wearable_image_url: await blobStorage.getSignedUrl(
-          settings.WEARABLES_BUCKET,
-          w.imageKey,
-        ),
+        wearable_image_url: await blobStorage.getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey),
         generation_status: "pending" as const,
       })),
     );

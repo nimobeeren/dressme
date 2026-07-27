@@ -10,20 +10,14 @@ export async function POST(request: NextRequest) {
   return withAuth(request, async (_user) => {
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("multipart/form-data")) {
-      return NextResponse.json(
-        { detail: "Expected multipart/form-data" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Expected multipart/form-data" }, { status: 400 });
     }
 
     const formData = await request.formData();
     const image = formData.get("image");
 
     if (!(image instanceof File)) {
-      return NextResponse.json(
-        { detail: "Missing image file" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Missing image file" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await image.arrayBuffer());
@@ -31,10 +25,7 @@ export async function POST(request: NextRequest) {
     try {
       await readUpload(buffer);
     } catch (err: any) {
-      return NextResponse.json(
-        { detail: err.message },
-        { status: err.status || 413 },
-      );
+      return NextResponse.json({ detail: err.message }, { status: err.status || 413 });
     }
 
     let img;
@@ -55,10 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ category });
     } catch (error) {
       console.error("Wearable classification failed:", error);
-      return NextResponse.json(
-        { detail: "Wearable classification failed" },
-        { status: 502 },
-      );
+      return NextResponse.json({ detail: "Wearable classification failed" }, { status: 502 });
     }
   });
 }

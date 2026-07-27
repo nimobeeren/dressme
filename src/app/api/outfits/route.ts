@@ -89,10 +89,7 @@ export async function POST(request: NextRequest) {
       topId = formData.get("top_id") as string;
       bottomId = formData.get("bottom_id") as string;
     } else {
-      return NextResponse.json(
-        { detail: "Unsupported content type" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Unsupported content type" }, { status: 400 });
     }
 
     const top = await db.query.wearables.findFirst({
@@ -155,10 +152,7 @@ export async function DELETE(request: NextRequest) {
     const id = url.searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { detail: "Missing id parameter" },
-        { status: 400 },
-      );
+      return NextResponse.json({ detail: "Missing id parameter" }, { status: 400 });
     }
 
     const outfit = await db.query.outfits.findFirst({
@@ -166,10 +160,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!outfit || outfit.userId !== user.id) {
-      return NextResponse.json(
-        { detail: "Outfit not found." },
-        { status: 404 },
-      );
+      return NextResponse.json({ detail: "Outfit not found." }, { status: 404 });
     }
 
     await db.delete(schema.outfits).where(eq(schema.outfits.id, id));

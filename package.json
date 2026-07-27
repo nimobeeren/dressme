@@ -14,14 +14,14 @@
     "build": "next build",
     "deploy": "vercel",
     "dev": "next dev",
+    "evals": "vitest --project evals run --slowTestThreshold=10000",
     "lint": "eslint .",
     "prepare": "husky",
     "preview": "next start",
     "seed": "tsx scripts/seed.ts",
-    "test": "vitest && vitest -c vitest.config.node.ts run",
-    "test:browser": "vitest",
-    "test:server": "vitest -c vitest.config.node.ts run",
-    "test:evals": "vitest -c vitest.config.eval.ts run",
+    "test": "vitest --project browser --project server",
+    "test:browser": "vitest --project browser",
+    "test:server": "vitest --project server",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

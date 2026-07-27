@@ -6,6 +6,63 @@ import { lookup } from "mime-types";
 import { defineConfig, type Plugin } from "vitest/config";
 import { TEST_IMAGE_PREFIX } from "./src/test/constants";
 
+export default defineConfig({
+  test: {
+    projects: [
+      {
+        test: {
+          name: "browser",
+          include: ["src/**/*.test.{ts,tsx}"],
+          setupFiles: ["./src/test/setup.tsx"],
+          browser: {
+            enabled: true,
+            provider: playwright(),
+            headless: true,
+            screenshotFailures: false,
+            instances: [{ browser: "chromium" }],
+          },
+        },
+        plugins: [react(), testFixtureImages()],
+        // Force same-origin API URLs in tests so MSW can intercept with simple
+        // `/wearables`-style paths instead of `/api/wearables`.
+        define: {
+          "process.env.NEXT_PUBLIC_API_BASE_URL": JSON.stringify(""),
+        },
+        resolve: {
+          alias: {
+            "@": path.resolve(__dirname, "./src"),
+            "next/link": path.resolve(__dirname, "./src/test/mocks/next-link"),
+            "next/navigation": path.resolve(__dirname, "./src/test/mocks/next-navigation"),
+          },
+        },
+      },
+      {
+        test: {
+          name: "server",
+          include: ["tests/server/**/*.test.ts"],
+          environment: "node",
+          setupFiles: ["./tests/server/vitest.setup.ts"],
+          alias: {
+            "@": path.resolve(__dirname, "./src"),
+          },
+        },
+      },
+      {
+        test: {
+          name: "evals",
+          include: ["tests/evals/**/*.eval.ts"],
+          environment: "node",
+          setupFiles: ["./tests/evals/vitest.setup.ts"],
+          alias: {
+            "@": path.resolve(__dirname, "./src"),
+          },
+          maxConcurrency: 20,
+        },
+      },
+    ],
+  },
+});
+
 /**
  * Serves static fixture images from `src/test/fixtures/images/` at URLs under
  * `/test-images/<bucket>/<filename>`. Fixtures reference real files so that
@@ -53,45 +110,3 @@ function testFixtureImages(): Plugin {
     },
   };
 }
-
-export default defineConfig({
-  plugins: [react(), testFixtureImages()],
-  // Force same-origin API URLs in tests so MSW can intercept with simple
-  // `/wearables`-style paths instead of `/api/wearables`.
-  define: {
-    "process.env.NEXT_PUBLIC_API_BASE_URL": JSON.stringify(""),
-  },
-  optimizeDeps: {
-    // Keep React and everything that touches it in a single pre-bundle so we
-    // don't end up with multiple copies of React in the test browser.
-    include: [
-      "react",
-      "react-dom",
-      "react-dom/client",
-      "react/jsx-runtime",
-      "react/jsx-dev-runtime",
-      "react-hook-form",
-      "@tanstack/react-query",
-      "@auth0/auth0-react",
-    ],
-  },
-  resolve: {
-    dedupe: ["react", "react-dom"],
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "next/link": path.resolve(__dirname, "./src/test/mocks/next-link"),
-      "next/navigation": path.resolve(__dirname, "./src/test/mocks/next-navigation"),
-    },
-  },
-  test: {
-    include: ["src/**/*.test.{ts,tsx}"],
-    setupFiles: ["./src/test/setup.tsx"],
-    browser: {
-      enabled: true,
-      provider: playwright(),
-      headless: true,
-      screenshotFailures: false,
-      instances: [{ browser: "chromium" }],
-    },
-  },
-});

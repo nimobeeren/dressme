@@ -109,17 +109,17 @@ curl -X GET 'http://localhost:3000/api/wearables' \
 Evals measure the performance of AI components. To run the classification eval:
 
 ```bash
-pnpm test:evals
-EVAL_REPEATS=2 pnpm test:evals                 # 2 extra runs per case (3 total)
-pnpm test:evals -- --maxConcurrency=10         # override concurrency (default is 20)
+pnpm evals
+EVAL_REPEATS=2 pnpm evals                 # 2 extra runs per case (3 total)
+pnpm evals -- --maxConcurrency=10         # override concurrency (default is 20)
 ```
 
 ## Deployment
 
-The app is deployed on Vercel:
+The app is automatically deployed to Vercel on every push.
+
+To deploy manually:
 
 ```bash
-pnpm build    # verifies production build
+pnpm deploy
 ```
-
-Deployment is triggered automatically on push to the main branch via CI.

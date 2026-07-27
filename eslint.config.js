@@ -10,7 +10,6 @@ export default tseslint.config(
       "dist",
       ".next",
       "next-env.d.ts",
-      "**/.venv",
       "worker-configuration.d.ts",
       "public/mockServiceWorker.js",
     ],

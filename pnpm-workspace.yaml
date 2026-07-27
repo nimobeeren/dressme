@@ -1,3 +1,8 @@
-onlyBuiltDependencies:
-  - esbuild
-  - workerd
+allowBuilds:
+  "@google/genai": true
+  browser-tabs-lock: true
+  esbuild: true
+  msw: true
+  protobufjs: true
+  sharp: true
+  workerd: true

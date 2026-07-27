@@ -11,10 +11,8 @@
   },
   "packageManager": "pnpm@11.17.0+sha512.cca3cea332ad254bb84145f966d19f4879615210346fc92c79a047f23a0d7b3cca3c3792f0076ba1f1831d277efbcf0a9119b31a9a60eca7fb3d6231f331ef72",
   "scripts": {
-    "api-logs": "node ./tail-api-logs.mjs",
     "build": "next build",
-    "cf-typegen": "wrangler types",
-    "deploy": "pnpm run build && wrangler deploy",
+    "deploy": "vercel",
     "dev": "next dev",
     "lint": "eslint .",
     "prepare": "husky",
@@ -89,8 +87,7 @@
     "typescript-eslint": "^8.0.1",
     "vite": "^7.0.6",
     "vitest": "^4.1.6",
-    "vitest-browser-react": "^2.2.0",
-    "wrangler": "^4.58.0"
+    "vitest-browser-react": "^2.2.0"
   },
   "msw": {
     "workerDirectory": [

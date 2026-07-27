@@ -23,7 +23,7 @@ A virtual wardrobe that shows you how clothes look on you.
 
 1. Install the required tooling:
 
-- [pnpm](https://pnpm.io/installation)
+- [pnpm 11](https://pnpm.io/installation)
 - [Docker](https://docs.docker.com/get-docker/)
 
 2. Install dependencies:

@@ -55,13 +55,6 @@ export class R2Storage implements BlobStorage {
   }
 
   async getSignedUrl(bucket: string, key: string, expiresIn = 3600): Promise<string> {
-    const settings = getSettings();
-
-    if (settings.MODE === "development") {
-      const publicEndpoint = settings.S3_ENDPOINT_URL.replace("host.docker.internal", "localhost");
-      return `${publicEndpoint}/${bucket}/${key}`;
-    }
-
     return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: bucket, Key: key }), {
       expiresIn,
     });

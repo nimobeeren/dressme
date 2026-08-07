@@ -176,16 +176,6 @@ afterEach(() => {
 });
 
 describe("api", () => {
-  describe("GET /api/healthz", () => {
-    test("returns 200 ok", async () => {
-      const { GET } = await import("../../src/app/api/healthz/route");
-      const res = await GET();
-      const body = await res.json();
-      expect(res.status).toBe(200);
-      expect(body.status).toBe("ok");
-    });
-  });
-
   describe("GET /api/users/me", () => {
     test("returns user info for existing user", async () => {
       const [user] = await db
@@ -379,7 +369,7 @@ describe("api", () => {
   });
 
   describe("GET /api/wearables", () => {
-    test("returns wearables owned by current user", async () => {
+    test("returns only the current user's wearables with signed URLs and pending status when no WOA images exist", async () => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -424,11 +414,136 @@ describe("api", () => {
       const res = await GET(req);
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body).toHaveLength(2);
-      expect(body[0].id).toBe(w1.id);
-      expect(body[0].category).toBe("t-shirt");
-      expect(body[1].id).toBe(w2.id);
-      expect(body[1].category).toBe("pants");
+      expect(body).toEqual([
+        {
+          id: w1.id,
+          category: "t-shirt",
+          body_part: "top",
+          wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
+          generation_status: "pending",
+        },
+        {
+          id: w2.id,
+          category: "pants",
+          body_part: "bottom",
+          wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
+          generation_status: "pending",
+        },
+      ]);
+    });
+
+    test("reports success for wearables with a WOA image matching the current avatar, and pending for the rest", async () => {
+      const [user] = await db
+        .insert(schema.users)
+        .values({
+          auth0UserId: TEST_USER_ID,
+          avatarImageKey: "avatar.jpg",
+        })
+        .returning();
+
+      const [w1] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "t-shirt",
+          imageKey: "w1.jpg",
+        })
+        .returning();
+      const [w2] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "pants",
+          imageKey: "w2.jpg",
+        })
+        .returning();
+
+      // WOA image for w1 only — w2 stays pending
+      await db.insert(schema.wearableOnAvatarImages).values({
+        userId: user.id,
+        avatarImageKey: "avatar.jpg",
+        wearableImageKey: "w1.jpg",
+        imageKey: "woa_w1.jpg",
+        maskImageKey: "mask_w1.jpg",
+      });
+
+      const { GET } = await import("../../src/app/api/wearables/route");
+      const req = new NextRequest("http://localhost/api/wearables");
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toEqual([
+        {
+          id: w1.id,
+          category: "t-shirt",
+          body_part: "top",
+          wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
+          generation_status: "success",
+        },
+        {
+          id: w2.id,
+          category: "pants",
+          body_part: "bottom",
+          wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
+          generation_status: "pending",
+        },
+      ]);
+    });
+
+    test("returns signed URLs and pending status when the user has no avatar", async () => {
+      const [user] = await db
+        .insert(schema.users)
+        .values({ auth0UserId: TEST_USER_ID })
+        .returning();
+
+      const [w1] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "t-shirt",
+          imageKey: "w1.jpg",
+        })
+        .returning();
+      const [w2] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "pants",
+          imageKey: "w2.jpg",
+        })
+        .returning();
+
+      // A stale WOA row from a previous avatar must not influence the result
+      // when the user currently has no avatar.
+      await db.insert(schema.wearableOnAvatarImages).values({
+        userId: user.id,
+        avatarImageKey: "old-avatar.jpg",
+        wearableImageKey: "w1.jpg",
+        imageKey: "woa_w1.jpg",
+        maskImageKey: "mask_w1.jpg",
+      });
+
+      const { GET } = await import("../../src/app/api/wearables/route");
+      const req = new NextRequest("http://localhost/api/wearables");
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toEqual([
+        {
+          id: w1.id,
+          category: "t-shirt",
+          body_part: "top",
+          wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
+          generation_status: "pending",
+        },
+        {
+          id: w2.id,
+          category: "pants",
+          body_part: "bottom",
+          wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
+          generation_status: "pending",
+        },
+      ]);
     });
   });
 

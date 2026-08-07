@@ -4,10 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": "22.18.0"
+    "node": "24.18.0"
   },
+  "packageManager": "pnpm@11.14.0",
   "volta": {
-    "node": "22.18.0"
+    "node": "24.18.0",
+    "pnpm": "11.14.0"
   },
   "scripts": {
     "api-logs": "node ./tail-api-logs.mjs",
@@ -94,16 +96,6 @@
   "msw": {
     "workerDirectory": [
       "public"
-    ]
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "sharp",
-      "@google/genai",
-      "protobufjs",
-      "workerd",
-      "esbuild",
-      "msw"
     ]
   }
 }

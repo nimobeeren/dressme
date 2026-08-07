@@ -34,7 +34,7 @@ export async function readUpload(data: Buffer): Promise<Buffer> {
   const settings = getSettings();
   if (data.length > settings.MAX_UPLOAD_SIZE) {
     throw new UploadTooLargeError(
-      `Image must be smaller than ${settings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+      `Upload must be smaller than ${settings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
     );
   }
   return data;

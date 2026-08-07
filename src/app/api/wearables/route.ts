@@ -18,37 +18,30 @@ export async function GET(request: NextRequest) {
       where: eq(schema.wearables.userId, user.id),
     });
 
-    if (!user.avatarImageKey) {
-      return NextResponse.json(
-        userWearables.map((w) => ({
-          id: w.id,
-          category: w.category,
-          body_part: getBodyPart(w.category as WearableCategory),
-          wearable_image_url: "",
-          generation_status: "pending",
-        })),
-      );
+    const completedKeys = new Set<string>();
+    if (user.avatarImageKey) {
+      const woaImages = await db.query.wearableOnAvatarImages.findMany({
+        where: eq(schema.wearableOnAvatarImages.userId, user.id),
+      });
+      for (const w of woaImages) {
+        if (w.avatarImageKey === user.avatarImageKey) {
+          completedKeys.add(w.wearableImageKey);
+        }
+      }
     }
-
-    const woaImages = await db.query.wearableOnAvatarImages.findMany({
-      where: eq(schema.wearableOnAvatarImages.userId, user.id),
-    });
-
-    const completedKeys = new Set(
-      woaImages
-        .filter((w) => w.avatarImageKey === user.avatarImageKey)
-        .map((w) => w.wearableImageKey),
-    );
 
     const result = await Promise.all(
       userWearables.map(async (w) => ({
         id: w.id,
         category: w.category,
         body_part: getBodyPart(w.category as WearableCategory),
-        wearable_image_url: completedKeys.has(w.imageKey)
-          ? await blobStorage.getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey)
-          : "",
-        generation_status: completedKeys.has(w.imageKey) ? "success" as const : "pending" as const,
+        wearable_image_url: await blobStorage.getSignedUrl(
+          settings.WEARABLES_BUCKET,
+          w.imageKey,
+        ),
+        generation_status: completedKeys.has(w.imageKey)
+          ? ("success" as const)
+          : ("pending" as const),
       })),
     );
 

@@ -37,7 +37,7 @@ describe("image-utils", () => {
 
     test("throws when over size limit", async () => {
       const data = Buffer.alloc(101);
-      await expect(readUpload(data)).rejects.toThrow("Image must be smaller than");
+      await expect(readUpload(data)).rejects.toThrow("Upload must be smaller than");
     });
 
     test("exact limit is allowed", async () => {

@@ -34,6 +34,12 @@ export async function generateWoaImage(params: {
   wearableImage: Buffer;
   category: string;
 }): Promise<Buffer> {
+  /**
+   * Generate a WearableOnAvatar (WOA) image — a rendering of the given
+   * avatar wearing the given wearable item.
+   *
+   * Approximate cost: $0.04 per invocation.
+   */
   const { avatarImage, wearableImage, category } = params;
   const settings = getSettings();
   const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
@@ -66,6 +72,12 @@ export async function generateMask(params: {
   woaImage: Buffer;
   category: string;
 }): Promise<Buffer> {
+  /**
+   * Generate a mask for a WOA image, isolating the wearable item
+   * for compositing purposes.
+   *
+   * Approximate cost: $0.004 per invocation.
+   */
   const { woaImage, category } = params;
   const settings = getSettings();
   const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });

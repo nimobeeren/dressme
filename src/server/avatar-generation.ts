@@ -18,12 +18,16 @@ no shoes/accessories
 facing camera
 relaxed gaze`;
 
+/**
+ * Generate a game-like avatar image from a selfie image.
+ * Approximate cost: $0.08 per invocation.
+ */
 export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
   const settings = getSettings();
   const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-exp-image-generation",
+    model: "gemini-3.1-flash-image",
     contents: [
       { inlineData: { mimeType: "image/jpeg", data: selfieImageData.toString("base64") } },
       PROMPT,

@@ -69,10 +69,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         audience: process.env.NEXT_PUBLIC_AUTH0_API_AUDIENCE!,
       }}
       useRefreshTokens
+      // TODO: is this needed?
       // Need to set a redirect callback so Auth0 redirects work with the Next.js router.
-      onRedirectCallback={(appState) =>
-        router.replace(appState?.returnTo || window.location.pathname)
-      }
+      // onRedirectCallback={(appState) =>
+      //   router.replace(appState?.returnTo || window.location.pathname)
+      // }
     >
       <TokenInitializer />
       {children}

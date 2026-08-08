@@ -4,9 +4,9 @@ import { eq } from "drizzle-orm";
 import { withAuth } from "@/server/route-utils";
 import { getBlobStorage, getWaitUntil } from "@/server/services";
 import { getSettings } from "@/server/settings";
-import { readUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
+import { parseUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
 import { getDb, schema } from "@/server/db";
-import { getBodyPart, type WearableCategory } from "@/shared/wearable-categories";
+import { getBodyPart } from "@/shared/wearable-categories";
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (user) => {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       userWearables.map(async (w) => ({
         id: w.id,
         category: w.category,
-        body_part: getBodyPart(w.category as WearableCategory),
+        body_part: getBodyPart(w.category),
         wearable_image_url: await blobStorage.getSignedUrl(
           settings.WEARABLES_BUCKET,
           w.imageKey,
@@ -58,17 +58,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contentType = request.headers.get("content-type") ?? "";
-    if (!contentType.includes("multipart/form-data")) {
+    let upload;
+    try {
+      upload = await parseUpload(request);
+    } catch (err: any) {
       return NextResponse.json(
-        { detail: "Expected multipart/form-data" },
-        { status: 400 },
+        { detail: err.message },
+        { status: err.status ?? 500 },
       );
     }
 
-    const formData = await request.formData();
-    const categories = formData.getAll("category") as string[];
-    const images = formData.getAll("image") as File[];
+    const categories = upload.fields.get("category") ?? [];
+    const images = upload.files.get("image") ?? [];
 
     if (categories.length !== images.length) {
       return NextResponse.json(
@@ -87,16 +88,7 @@ export async function POST(request: NextRequest) {
       const category = categories[i];
       const image = images[i];
 
-      const buffer = Buffer.from(await image.arrayBuffer());
-
-      try {
-        await readUpload(buffer);
-      } catch (err: any) {
-        return NextResponse.json(
-          { detail: err.message },
-          { status: err.status || 413 },
-        );
-      }
+      const buffer = image.data;
 
       let img;
       try {
@@ -142,7 +134,7 @@ export async function POST(request: NextRequest) {
       wearables.map(async (w) => ({
         id: w.id,
         category: w.category,
-        body_part: getBodyPart(w.category as WearableCategory),
+        body_part: getBodyPart(w.category),
         wearable_image_url: await blobStorage.getSignedUrl(
           settings.WEARABLES_BUCKET,
           w.imageKey,

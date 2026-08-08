@@ -1,15 +1,30 @@
 import { GoogleGenAI } from "@google/genai";
 import { getSettings } from "./settings";
-import type { WearableCategory } from "@/shared/wearable-categories";
+import { WEARABLE_CATEGORIES, type WearableCategory } from "@/shared/wearable-categories";
+import { classifyResponseSchema } from "@/shared/schemas";
 
+async function getSharp() {
+  return (await import("sharp")).default;
+}
+
+/**
+ * Classify a wearable image into one of the known categories.
+ * Approximate cost: $0.0003 per invocation.
+ */
 export async function classifyWearableImage(imageData: Buffer): Promise<WearableCategory | null> {
   const settings = getSettings();
   const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
 
+  const sharp = await getSharp();
+  const downscaled = await sharp(imageData)
+    .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+    .jpeg()
+    .toBuffer();
+
   const response = await ai.models.generateContent({
     model: "gemini-3.1-flash-lite",
     contents: [
-      { inlineData: { mimeType: "image/jpeg", data: imageData.toString("base64") } },
+      { inlineData: { mimeType: "image/jpeg", data: downscaled.toString("base64") } },
       "classify this wearable",
     ],
     config: {
@@ -20,8 +35,7 @@ export async function classifyWearableImage(imageData: Buffer): Promise<Wearable
           category: {
             type: "STRING",
             nullable: true,
-            description:
-              "The category of the wearable: t-shirt, shirt, sweater, jacket, top, pants, shorts, or skirt",
+            description: `The category of the wearable, one of: ${WEARABLE_CATEGORIES.join(", ")}`,
           },
         },
       },
@@ -31,6 +45,6 @@ export async function classifyWearableImage(imageData: Buffer): Promise<Wearable
   const text = response.text;
   if (!text) throw new Error("Response text is null");
 
-  const result = JSON.parse(text) as { category: string | null };
-  return result.category as WearableCategory | null;
+  const parsed = classifyResponseSchema.parse(JSON.parse(text));
+  return parsed.category;
 }

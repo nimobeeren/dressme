@@ -1,6 +1,10 @@
 import Replicate from "replicate";
 import { getSettings } from "./settings";
-import { getBodyPart, type WearableCategory } from "@/shared/wearable-categories";
+import {
+  CATEGORY_BODY_PARTS,
+  parseWearableCategory,
+  type WearableCategory,
+} from "@/shared/wearable-categories";
 
 // Record<WearableCategory, string> ensures every category is covered. Adding a
 // category to WEARABLE_CATEGORIES in wearable-categories.ts without adding it
@@ -34,10 +38,11 @@ export async function generateWoaImage(params: {
   const settings = getSettings();
   const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
 
-  // getBodyPart throws on unknown categories; the exhaustive Record then
-  // guarantees a description exists for every valid WearableCategory.
-  const bodyPart = getBodyPart(category as WearableCategory);
-  const description = WEARABLE_DESCRIPTIONS[category as WearableCategory];
+  // parseWearableCategory throws on unknown input; the resulting WearableCategory
+  // safely indexes both exhaustive Records below without further casts.
+  const validCategory = parseWearableCategory(category);
+  const bodyPart = CATEGORY_BODY_PARTS[validCategory];
+  const description = WEARABLE_DESCRIPTIONS[validCategory];
 
   const avatarDataUri = `data:image/jpeg;base64,${avatarImage.toString("base64")}`;
   const wearableDataUri = `data:image/jpeg;base64,${wearableImage.toString("base64")}`;
@@ -66,9 +71,9 @@ export async function generateMask(params: {
   const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
 
   const woaDataUri = `data:image/jpeg;base64,${woaImage.toString("base64")}`;
-  // Validate category (throws on unknown); Record guarantees a description exists.
-  getBodyPart(category as WearableCategory);
-  const description = WEARABLE_DESCRIPTIONS[category as WearableCategory];
+  // parseWearableCategory throws on unknown input; the resulting WearableCategory
+  // safely indexes the exhaustive Record below without further casts.
+  const description = WEARABLE_DESCRIPTIONS[parseWearableCategory(category)];
 
   const results = (await client.run(
     "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",

@@ -31,12 +31,25 @@ export const CATEGORY_BODY_PARTS: Record<WearableCategory, BodyPart> = {
   skirt: "bottom",
 };
 
+// Use a Set so .has() accepts any string without a cast.
+const WEARABLE_CATEGORIES_SET: ReadonlySet<string> = new Set(WEARABLE_CATEGORIES);
+
+/** Type guard — narrows an unknown string into a WearableCategory. */
+export function isWearableCategory(category: string): category is WearableCategory {
+  return WEARABLE_CATEGORIES_SET.has(category);
+}
+
+/** Parse a string into a WearableCategory, throwing on unknown values.
+ * "Parse, don't validate": the return type reflects the narrowing. */
+export function parseWearableCategory(category: string): WearableCategory {
+  if (!isWearableCategory(category)) {
+    throw new Error(`Unknown wearable category: ${category}`);
+  }
+  return category;
+}
+
 /** Get the body part for a wearable category.
  * Throws if the category is unknown. */
 export function getBodyPart(category: string): BodyPart {
-  const bodyPart = CATEGORY_BODY_PARTS[category as WearableCategory];
-  if (bodyPart === undefined) {
-    throw new Error(`Unknown wearable category: ${category}`);
-  }
-  return bodyPart;
+  return CATEGORY_BODY_PARTS[parseWearableCategory(category)];
 }

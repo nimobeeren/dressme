@@ -15,37 +15,37 @@ import type { BlobStorage } from "../../src/server/blob-storage";
 const TEST_USER_ID = "auth0|1";
 
 // Create a valid JPEG image programmatically
-async function makeValidJpeg(width = 10, height = 10): Promise<Buffer> {
+async function makeValidJpeg(width = 10, height = 10): Promise<Buffer<ArrayBuffer>> {
   return sharp({
     create: { width, height, channels: 3, background: { r: 100, g: 150, b: 200 } },
   })
     .jpeg()
-    .toBuffer();
+    .toBuffer() as Promise<Buffer<ArrayBuffer>>;
 }
 
 // Another valid JPEG for testing multiple items
-async function makeValidJpeg2(width = 10, height = 10): Promise<Buffer> {
+async function makeValidJpeg2(width = 10, height = 10): Promise<Buffer<ArrayBuffer>> {
   return sharp({
     create: { width, height, channels: 3, background: { r: 200, g: 100, b: 50 } },
   })
     .jpeg()
-    .toBuffer();
+    .toBuffer() as Promise<Buffer<ArrayBuffer>>;
 }
 
 // A valid PNG that decodes to more pixels than MAX_IMAGE_PIXELS (50M), which
 // sharp's `limitInputPixels` guard rejects. PNG deflates the solid color, so
 // the encoded file stays small while the decoded pixel count (64M) is huge.
-async function makeDecompressionBomb(): Promise<Buffer> {
+async function makeDecompressionBomb(): Promise<Buffer<ArrayBuffer>> {
   return sharp({
     create: { width: 8000, height: 8000, channels: 3, background: { r: 0, g: 0, b: 0 } },
   })
     .png()
-    .toBuffer();
+    .toBuffer() as Promise<Buffer<ArrayBuffer>>;
 }
 
 // Bytes larger than MAX_UPLOAD_SIZE (10 MiB); content does not need to be a
 // real image since `readUpload` rejects before `safeOpenImage` ever runs.
-function makeOversizedUpload(): Buffer {
+function makeOversizedUpload(): Buffer<ArrayBuffer> {
   return Buffer.alloc(10 * 1024 * 1024 + 1, 0);
 }
 

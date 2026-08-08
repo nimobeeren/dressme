@@ -1,6 +1,5 @@
 import { setTokenGetter } from "@/hooks/api";
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { useRouter } from "next/navigation";
 import pRetry from "p-retry";
 import { useEffect } from "react";
 
@@ -58,7 +57,7 @@ function TokenInitializer() {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const router = useRouter();
+  // const router = useRouter();
 
   return (
     <Auth0Provider

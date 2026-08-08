@@ -2,15 +2,16 @@ import { afterEach, beforeAll, vi } from "vitest";
 import React from "react";
 import { authSpies, getAuthState, resetAuthState } from "./auth-state";
 import { ensureWorkerStarted, worker } from "./worker";
-import { mockRouter } from "./mocks/next-navigation";
+import { mockRouter, resetPathname } from "./mocks/next-navigation";
 
 afterEach(() => {
-  mockRouter.push.mockReset();
-  mockRouter.replace.mockReset();
-  mockRouter.back.mockReset();
-  mockRouter.forward.mockReset();
-  mockRouter.refresh.mockReset();
-  mockRouter.prefetch.mockReset();
+  mockRouter.push.mockClear();
+  mockRouter.replace.mockClear();
+  mockRouter.back.mockClear();
+  mockRouter.forward.mockClear();
+  mockRouter.refresh.mockClear();
+  mockRouter.prefetch.mockClear();
+  resetPathname();
 });
 
 /**

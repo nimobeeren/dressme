@@ -1,13 +1,11 @@
-import { AddPage } from "@/views/add";
-import { mockRouter } from "@/test/mocks/next-navigation";
-import { buildUser, buildWearable, renderWithProviders } from "@/test/utils";
+import { buildUser, buildWearable, renderApp } from "@/test/utils";
 import { http, HttpResponse } from "msw";
 import { userEvent } from "vitest/browser";
-import { describe, expect, vi } from "vitest";
+import { describe, expect } from "vitest";
 import { test } from "@/test/test";
 
 async function renderAddPage() {
-  return renderWithProviders(<AddPage />);
+  return renderApp({ initialPath: "/add" });
 }
 
 /** A tiny File object to stand in for an uploaded image. */
@@ -39,10 +37,9 @@ describe("add", () => {
         HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: false })),
       ),
     );
-    await renderAddPage();
-    await vi.waitFor(() => {
-      expect(mockRouter.replace).toHaveBeenCalledWith("/");
-    });
+    const screen = await renderAddPage();
+    // The user is bounced back to home, where their avatar is still generating.
+    await expect.element(screen.getByText(/generating your avatar/i)).toBeVisible();
   });
 
   test("renders the page when user has an avatar", async ({ worker }) => {
@@ -140,8 +137,11 @@ describe("add", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /done/i }));
 
-    // Submitting takes the user home and confirms the save with a toast.
+    // Submitting takes the user home (the outfit-preview prompt) and confirms
+    // the save with a toast — both only happen once the create request resolves.
+    await expect
+      .element(screen.getByText(/select a top and bottom to see your outfit preview/i))
+      .toBeVisible();
     await expect.element(screen.getByText(/added item to your wardrobe/i)).toBeVisible();
-    expect(mockRouter.push).toHaveBeenCalledWith("/");
   });
 });

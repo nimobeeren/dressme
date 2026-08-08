@@ -131,6 +131,8 @@ EVAL_REPEATS=2 pnpm evals                 # 2 extra runs per case (3 total)
 pnpm evals -- --maxConcurrency=10         # override concurrency (default is 20)
 ```
 
+Evals are defined in `tests/evals/` and use a `.eval.ts` extension.
+
 ## Deployment
 
 The app is automatically deployed to Vercel on every push.

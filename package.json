@@ -13,6 +13,7 @@
     "dev": "next dev",
     "evals": "vitest --project evals run --slowTestThreshold=10000",
     "lint": "eslint .",
+    "migrate": "drizzle-kit migrate",
     "prepare": "husky",
     "preview": "next start",
     "seed": "tsx scripts/seed.ts",

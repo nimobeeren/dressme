@@ -51,6 +51,14 @@ pnpm dev
 
 The app will be available at `http://localhost:3000`.
 
+### Running Migrations
+
+To ensure the database schema is up to date, run the migrations:
+
+```bash
+pnpm migrate
+```
+
 ### Seeding Test Data
 
 Insert some test data into the database:

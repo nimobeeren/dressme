@@ -1,6 +1,6 @@
 /** Zod schemas describing the API wire format, shared between the route
  * handlers and the client. Field names are snake_case — this is the contract
- * inherited from the FastAPI backend and preserved by the migration. */
+ * inherited from the historical FastAPI backend. */
 
 import { z } from "zod";
 import { BODY_PARTS, WEARABLE_CATEGORIES } from "./wearable-categories";

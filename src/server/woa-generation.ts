@@ -2,12 +2,15 @@ import Replicate from "replicate";
 import { getSettings } from "./settings";
 import { getBodyPart, type WearableCategory } from "@/shared/wearable-categories";
 
-const WEARABLE_DESCRIPTIONS: Record<string, string> = {
+// Record<WearableCategory, string> ensures every category is covered. Adding a
+// category to WEARABLE_CATEGORIES in wearable-categories.ts without adding it
+// here causes a type error.
+const WEARABLE_DESCRIPTIONS: Record<WearableCategory, string> = {
   "t-shirt": "t-shirt",
   shirt: "shirt",
   sweater: "sweater",
   jacket: "jacket",
-  top: "tank top",
+  top: "tank top", // because segmentation struggles with just "top"
   pants: "pants",
   shorts: "shorts",
   skirt: "skirt",
@@ -31,8 +34,10 @@ export async function generateWoaImage(params: {
   const settings = getSettings();
   const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
 
-  const description = WEARABLE_DESCRIPTIONS[category];
+  // getBodyPart throws on unknown categories; the exhaustive Record then
+  // guarantees a description exists for every valid WearableCategory.
   const bodyPart = getBodyPart(category as WearableCategory);
+  const description = WEARABLE_DESCRIPTIONS[category as WearableCategory];
 
   const avatarDataUri = `data:image/jpeg;base64,${avatarImage.toString("base64")}`;
   const wearableDataUri = `data:image/jpeg;base64,${wearableImage.toString("base64")}`;
@@ -61,13 +66,16 @@ export async function generateMask(params: {
   const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
 
   const woaDataUri = `data:image/jpeg;base64,${woaImage.toString("base64")}`;
-  const description = WEARABLE_DESCRIPTIONS[category];
+  // Validate category (throws on unknown); Record guarantees a description exists.
+  getBodyPart(category as WearableCategory);
+  const description = WEARABLE_DESCRIPTIONS[category as WearableCategory];
 
   const results = (await client.run(
     "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
     {
       input: {
         image: woaDataUri,
+        // This prompt is very sensitive, for example "tshirt" fails every time while "t-shirt" works
         mask_prompt: description,
         negative_mask_prompt: "",
         adjustment_factor: 0,

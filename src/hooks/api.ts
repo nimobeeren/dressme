@@ -56,11 +56,7 @@ type WearablesInput = Array<{
 export function useCreateWearables() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (wearables: WearablesInput) => {
-      for (const wearable of wearables) {
-        await createWearables([wearable]);
-      }
-    },
+    mutationFn: (wearables: WearablesInput) => createWearables(wearables),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wearables"] });
     },

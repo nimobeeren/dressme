@@ -9,15 +9,15 @@ export async function generateAvatarTask(userId: string): Promise<void> {
   const db = getDb();
   const blobStorage = getBlobStorage();
 
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.id, userId),
-  });
-
-  if (!user || !user.selfieImageKey) {
-    throw new Error("User does not have a selfie image");
-  }
-
   try {
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+
+    if (!user || !user.selfieImageKey) {
+      throw new Error("User does not have a selfie image");
+    }
+
     const selfieData = await blobStorage.download(settings.SELFIES_BUCKET, user.selfieImageKey);
 
     const { generateAvatar } = await import("./avatar-generation");
@@ -42,19 +42,20 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
   const db = getDb();
   const blobStorage = getBlobStorage();
 
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.id, userId),
-  });
-
-  const wearable = await db.query.wearables.findFirst({
-    where: eq(schema.wearables.id, wearableId),
-  });
-
-  if (!user || !wearable || !user.avatarImageKey) {
-    throw new Error("User does not have an avatar image");
-  }
-
   try {
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+    if (!user) throw new Error(`User '${userId}' not found`);
+    if (!user.avatarImageKey) {
+      throw new Error(`User '${userId}' does not have an avatar image`);
+    }
+
+    const wearable = await db.query.wearables.findFirst({
+      where: eq(schema.wearables.id, wearableId),
+    });
+    if (!wearable) throw new Error(`Wearable '${wearableId}' not found`);
+
     const wearableImageData = await blobStorage.download(
       settings.WEARABLES_BUCKET,
       wearable.imageKey,

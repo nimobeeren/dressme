@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/server/route-utils";
-import { getBlobStorage, getWaitUntil } from "@/server/services";
+import { getBlobStorage, getAfter } from "@/server/services";
 import { getSettings } from "@/server/settings";
-import { readUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
+import { parseUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
 import { getDb, schema } from "@/server/db";
-import { getBodyPart, type WearableCategory } from "@/shared/wearable-categories";
+import { getBodyPart } from "@/shared/wearable-categories";
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (user) => {
@@ -18,36 +18,24 @@ export async function GET(request: NextRequest) {
       where: eq(schema.wearables.userId, user.id),
     });
 
-    if (!user.avatarImageKey) {
-      return NextResponse.json(
-        userWearables.map((w) => ({
-          id: w.id,
-          category: w.category,
-          body_part: getBodyPart(w.category as WearableCategory),
-          wearable_image_url: "",
-          generation_status: "pending",
-        })),
-      );
+    const completedKeys = new Set<string>();
+    if (user.avatarImageKey) {
+      const woaImages = await db.query.wearableOnAvatarImages.findMany({
+        where: eq(schema.wearableOnAvatarImages.userId, user.id),
+      });
+      for (const w of woaImages) {
+        if (w.avatarImageKey === user.avatarImageKey) {
+          completedKeys.add(w.wearableImageKey);
+        }
+      }
     }
-
-    const woaImages = await db.query.wearableOnAvatarImages.findMany({
-      where: eq(schema.wearableOnAvatarImages.userId, user.id),
-    });
-
-    const completedKeys = new Set(
-      woaImages
-        .filter((w) => w.avatarImageKey === user.avatarImageKey)
-        .map((w) => w.wearableImageKey),
-    );
 
     const result = await Promise.all(
       userWearables.map(async (w) => ({
         id: w.id,
         category: w.category,
-        body_part: getBodyPart(w.category as WearableCategory),
-        wearable_image_url: completedKeys.has(w.imageKey)
-          ? await blobStorage.getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey)
-          : "",
+        body_part: getBodyPart(w.category),
+        wearable_image_url: await blobStorage.getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey),
         generation_status: completedKeys.has(w.imageKey)
           ? ("success" as const)
           : ("pending" as const),
@@ -67,14 +55,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contentType = request.headers.get("content-type") ?? "";
-    if (!contentType.includes("multipart/form-data")) {
-      return NextResponse.json({ detail: "Expected multipart/form-data" }, { status: 400 });
+    let upload;
+    try {
+      upload = await parseUpload(request);
+    } catch (err: any) {
+      return NextResponse.json({ detail: err.message }, { status: err.status ?? 500 });
     }
 
-    const formData = await request.formData();
-    const categories = formData.getAll("category") as string[];
-    const images = formData.getAll("image") as File[];
+    const categories = upload.fields.get("category") ?? [];
+    const images = upload.files.get("image") ?? [];
 
     if (categories.length !== images.length) {
       return NextResponse.json(
@@ -93,13 +82,7 @@ export async function POST(request: NextRequest) {
       const category = categories[i];
       const image = images[i];
 
-      const buffer = Buffer.from(await image.arrayBuffer());
-
-      try {
-        await readUpload(buffer);
-      } catch (err: any) {
-        return NextResponse.json({ detail: err.message }, { status: err.status || 413 });
-      }
+      const buffer = image.data;
 
       let img;
       try {
@@ -131,21 +114,19 @@ export async function POST(request: NextRequest) {
       wearables.push({ id: wearable.id, category, imageKey: key });
     }
 
-    const waitUntil = getWaitUntil();
+    const after = getAfter();
     for (const wearable of wearables) {
-      waitUntil(
-        (async () => {
-          const { generateWoaTask } = await import("@/server/background-tasks");
-          await generateWoaTask(wearable.id, user.id);
-        })(),
-      );
+      after(async () => {
+        const { generateWoaTask } = await import("@/server/background-tasks");
+        await generateWoaTask(wearable.id, user.id);
+      });
     }
 
     const result = await Promise.all(
       wearables.map(async (w) => ({
         id: w.id,
         category: w.category,
-        body_part: getBodyPart(w.category as WearableCategory),
+        body_part: getBodyPart(w.category),
         wearable_image_url: await blobStorage.getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey),
         generation_status: "pending" as const,
       })),

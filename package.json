@@ -4,10 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": "22.18.0"
-  },
-  "volta": {
-    "node": "22.18.0"
+    "node": "24.18.0"
   },
   "packageManager": "pnpm@11.17.0+sha512.cca3cea332ad254bb84145f966d19f4879615210346fc92c79a047f23a0d7b3cca3c3792f0076ba1f1831d277efbcf0a9119b31a9a60eca7fb3d6231f331ef72",
   "scripts": {
@@ -37,7 +34,7 @@
     "@radix-ui/react-tabs": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.3",
     "@tanstack/react-query": "^5.61.5",
-    "@vercel/functions": "^3.7.5",
+    "busboy": "^1.6.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
@@ -59,6 +56,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
     "@eslint/js": "^9.9.0",
+    "@types/busboy": "^1.5.4",
     "@types/mime-types": "^3.0.1",
     "@types/node": "^22.17.0",
     "@types/pg": "^8.20.0",

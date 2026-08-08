@@ -4,7 +4,7 @@ import { withAuth } from "@/server/route-utils";
 import { getBlobStorage } from "@/server/services";
 import { getSettings } from "@/server/settings";
 import { getDb, schema } from "@/server/db";
-import { getBodyPart, type WearableCategory } from "@/shared/wearable-categories";
+import { getBodyPart } from "@/shared/wearable-categories";
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (user) => {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           top: {
             id: top.id,
             category: top.category,
-            body_part: getBodyPart(top.category as WearableCategory),
+            body_part: getBodyPart(top.category),
             wearable_image_url: await blobStorage.getSignedUrl(
               settings.WEARABLES_BUCKET,
               top.imageKey,
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           bottom: {
             id: bottom.id,
             category: bottom.category,
-            body_part: getBodyPart(bottom.category as WearableCategory),
+            body_part: getBodyPart(bottom.category),
             wearable_image_url: await blobStorage.getSignedUrl(
               settings.WEARABLES_BUCKET,
               bottom.imageKey,
@@ -76,21 +76,13 @@ export async function POST(request: NextRequest) {
     const db = getDb();
 
     const contentType = request.headers.get("content-type") ?? "";
-
-    let topId: string;
-    let bottomId: string;
-
-    if (contentType.includes("application/json")) {
-      const body = await request.json();
-      topId = body.top_id;
-      bottomId = body.bottom_id;
-    } else if (contentType.includes("application/x-www-form-urlencoded")) {
-      const formData = await request.formData();
-      topId = formData.get("top_id") as string;
-      bottomId = formData.get("bottom_id") as string;
-    } else {
-      return NextResponse.json({ detail: "Unsupported content type" }, { status: 400 });
+    if (!contentType.includes("application/json")) {
+      return NextResponse.json({ detail: "Expected application/json" }, { status: 400 });
     }
+
+    const body = await request.json();
+    const topId = body.top_id;
+    const bottomId = body.bottom_id;
 
     const top = await db.query.wearables.findFirst({
       where: eq(schema.wearables.id, topId),
@@ -102,7 +94,7 @@ export async function POST(request: NextRequest) {
         { status: 404 },
       );
     }
-    if (getBodyPart(top.category as WearableCategory) !== "top") {
+    if (getBodyPart(top.category) !== "top") {
       return NextResponse.json(
         { detail: 'Top wearable must have "body_part": "top".' },
         { status: 400 },
@@ -119,7 +111,7 @@ export async function POST(request: NextRequest) {
         { status: 404 },
       );
     }
-    if (getBodyPart(bottom.category as WearableCategory) !== "bottom") {
+    if (getBodyPart(bottom.category) !== "bottom") {
       return NextResponse.json(
         { detail: 'Bottom wearable must have "body_part": "bottom".' },
         { status: 400 },

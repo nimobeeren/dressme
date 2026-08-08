@@ -1,4 +1,4 @@
-import { waitUntil as vercelWaitUntil } from "@vercel/functions";
+import { after as nextAfter } from "next/server";
 import { R2Storage, type BlobStorage } from "./blob-storage";
 import { verifyToken as jwtVerify, type JwtPayload } from "./auth";
 
@@ -19,7 +19,7 @@ export interface WearableClassifier {
   classify(imageData: Buffer): Promise<string | null>;
 }
 
-export type WaitUntilFn = (promise: Promise<unknown>) => void;
+export type AfterFn = (callback: () => void | Promise<void>) => void;
 
 interface ServiceOverrides {
   db?: any;
@@ -28,7 +28,7 @@ interface ServiceOverrides {
   woaGenerator?: WoaGenerator;
   wearableClassifier?: WearableClassifier;
   verifyToken?: (token: string | undefined) => Promise<JwtPayload>;
-  waitUntil?: WaitUntilFn;
+  after?: AfterFn;
 }
 
 let _overrides: ServiceOverrides = {};
@@ -53,7 +53,7 @@ export function getVerifyToken() {
   return jwtVerify;
 }
 
-export function getWaitUntil(): WaitUntilFn {
-  if (_overrides.waitUntil) return _overrides.waitUntil;
-  return vercelWaitUntil;
+export function getAfter(): AfterFn {
+  if (_overrides.after) return _overrides.after;
+  return nextAfter;
 }

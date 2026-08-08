@@ -41,9 +41,8 @@ interface RequestOptions {
   method: string;
   path: string;
   query?: Record<string, string>;
-  body?: FormData;
+  body?: FormData | Record<string, unknown>;
   signal?: AbortSignal;
-  // The health endpoint must work before login; everything else sends a token.
   auth?: boolean;
 }
 
@@ -56,8 +55,21 @@ async function request({ method, path, query, body, signal, auth = true }: Reque
     headers.set("Authorization", `Bearer ${await tokenGetter()}`);
   }
 
+  let payload: BodyInit | undefined;
+  if (body instanceof FormData) {
+    payload = body;
+  } else if (body !== undefined) {
+    headers.set("Content-Type", "application/json");
+    payload = JSON.stringify(body);
+  }
+
   const search = query ? `?${new URLSearchParams(query)}` : "";
-  const response = await fetch(`${BASE_URL}${path}${search}`, { method, headers, body, signal });
+  const response = await fetch(`${BASE_URL}${path}${search}`, {
+    method,
+    headers,
+    body: payload,
+    signal,
+  });
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
@@ -124,8 +136,8 @@ export async function getOutfits(): Promise<Outfit[]> {
   return z.array(outfitSchema).parse(await response.json());
 }
 
-export async function createOutfit(query: { top_id: string; bottom_id: string }): Promise<void> {
-  await request({ method: "POST", path: "/outfits", query });
+export async function createOutfit(params: { top_id: string; bottom_id: string }): Promise<void> {
+  await request({ method: "POST", path: "/outfits", body: params });
 }
 
 export async function deleteOutfit(id: string): Promise<void> {

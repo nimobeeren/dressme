@@ -1,4 +1,5 @@
 import { describe, expect, test, beforeEach } from "vitest";
+import { Readable } from "node:stream";
 import { safeOpenImage, compressToJpeg, readUpload } from "../../src/server/image-utils";
 import { getSettings, setSettings } from "../../src/server/settings";
 import sharp from "sharp";
@@ -29,21 +30,44 @@ describe("image-utils", () => {
       const s = getSettings();
       setSettings({ ...s, MAX_UPLOAD_SIZE: 100 });
     });
+
+    function toStream(data: Buffer): Readable {
+      return Readable.from([data]);
+    }
+
     test("returns contents when within limit", async () => {
       const data = Buffer.from("some image data");
-      const result = await readUpload(data);
+      const result = await readUpload(toStream(data));
       expect(Buffer.isBuffer(result)).toBe(true);
+      expect(result.equals(data)).toBe(true);
     });
 
     test("throws when over size limit", async () => {
       const data = Buffer.alloc(101);
-      await expect(readUpload(data)).rejects.toThrow("Image must be smaller than");
+      await expect(readUpload(toStream(data))).rejects.toThrow("Upload must be smaller than");
     });
 
     test("exact limit is allowed", async () => {
       const data = Buffer.alloc(100);
-      const result = await readUpload(data);
-      expect(result).toEqual(data);
+      const result = await readUpload(toStream(data));
+      expect(result.equals(data)).toBe(true);
+    });
+
+    test("aborts an oversized stream instead of draining it", async () => {
+      // The source would yield forever. readUpload must reject once the cap is
+      // exceeded and destroy the source (bounded read) rather than draining
+      // the oversized remainder into memory.
+      let stopped = false;
+      async function* infinite() {
+        try {
+          while (true) yield Buffer.alloc(1000);
+        } finally {
+          stopped = true;
+        }
+      }
+      const stream = Readable.from(infinite());
+      await expect(readUpload(stream)).rejects.toThrow("Upload must be smaller than");
+      expect(stopped).toBe(true);
     });
   });
 

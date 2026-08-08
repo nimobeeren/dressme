@@ -21,6 +21,15 @@ export const wearables = pgTable(
   (table) => [index("wearable_user_id_idx").on(table.userId)],
 );
 
+/**
+ * Cached result of rendering a wearable on a user's avatar.
+ * Contains both the rendered image and the mask used for combining outfits.
+ *
+ * This table references image keys directly instead of foreign keys to
+ * users/wearables tables. This is intentional: the cached image becomes invalid
+ * when the underlying avatar or wearable image changes, so we track the
+ * specific image versions used to generate it.
+ */
 export const wearableOnAvatarImages = pgTable(
   "wearableonavatarimage",
   {
@@ -40,6 +49,10 @@ export const wearableOnAvatarImages = pgTable(
   ],
 );
 
+/**
+ * A combination of a top and bottom, created by a user.
+ * A user can only have one outfit with the same top and bottom.
+ */
 export const outfits = pgTable(
   "outfit",
   {

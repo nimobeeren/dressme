@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/server/route-utils";
-import { getBlobStorage, getWaitUntil } from "@/server/services";
+import { getBlobStorage, getAfter } from "@/server/services";
 import { getSettings } from "@/server/settings";
-import { readUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
+import { parseUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
 import { getDb, schema } from "@/server/db";
 
 export const maxDuration = 300;
@@ -20,29 +20,20 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const contentType = request.headers.get("content-type") ?? "";
-    if (!contentType.includes("multipart/form-data")) {
-      return NextResponse.json({ detail: "Expected multipart/form-data" }, { status: 400 });
+    let upload;
+    try {
+      upload = await parseUpload(request);
+    } catch (err: any) {
+      return NextResponse.json({ detail: err.message }, { status: err.status ?? 500 });
     }
 
-    const formData = await request.formData();
-    const image = formData.get("image");
-
-    if (!(image instanceof File)) {
+    const image = upload.files.get("image")?.[0];
+    if (!image) {
       return NextResponse.json({ detail: "Missing image file" }, { status: 400 });
     }
-
-    const buffer = Buffer.from(await image.arrayBuffer());
-
-    try {
-      await readUpload(buffer);
-    } catch (err: any) {
-      return NextResponse.json({ detail: err.message }, { status: err.status || 413 });
-    }
-
     let img;
     try {
-      img = await safeOpenImage(buffer);
+      img = await safeOpenImage(image.data);
     } catch {
       return NextResponse.json(
         { detail: "Could not read the uploaded file as an image." },
@@ -60,13 +51,11 @@ export async function PUT(request: NextRequest) {
 
     await db.update(schema.users).set({ selfieImageKey: key }).where(eq(schema.users.id, user.id));
 
-    const waitUntil = getWaitUntil();
-    waitUntil(
-      (async () => {
-        const { generateAvatarTask } = await import("@/server/background-tasks");
-        await generateAvatarTask(user.id);
-      })(),
-    );
+    const after = getAfter();
+    after(async () => {
+      const { generateAvatarTask } = await import("@/server/background-tasks");
+      await generateAvatarTask(user.id);
+    });
 
     return new NextResponse(null, { status: 202 });
   });

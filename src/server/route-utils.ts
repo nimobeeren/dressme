@@ -66,6 +66,9 @@ async function getCurrentUserForPayload(auth0UserId: string): Promise<UserRow> {
       avatarImageKey: newUser.avatarImageKey,
     };
   } catch (error: any) {
+    // Another request could have created the user after the findFirst query but
+    // before the insert query. In that case this error 23505 (PG_UNIQUE_VIOLATION)
+    // will be thrown. We can safely ignore it and return the existing user.
     if (error?.code === "23505") {
       const user = await db.query.users.findFirst({
         where: eq(schema.users.auth0UserId, auth0UserId),

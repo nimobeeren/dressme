@@ -1,6 +1,5 @@
 import { setTokenGetter } from "@/hooks/api";
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { useRouter } from "next/navigation";
 import pRetry from "p-retry";
 import { useEffect } from "react";
 
@@ -58,7 +57,7 @@ function TokenInitializer() {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const router = useRouter();
+  // const router = useRouter();
 
   return (
     <Auth0Provider
@@ -69,10 +68,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         audience: process.env.NEXT_PUBLIC_AUTH0_API_AUDIENCE!,
       }}
       useRefreshTokens
+      // TODO: is this needed?
       // Need to set a redirect callback so Auth0 redirects work with the Next.js router.
-      onRedirectCallback={(appState) =>
-        router.replace(appState?.returnTo || window.location.pathname)
-      }
+      // onRedirectCallback={(appState) =>
+      //   router.replace(appState?.returnTo || window.location.pathname)
+      // }
     >
       <TokenInitializer />
       {children}

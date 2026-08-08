@@ -7,8 +7,8 @@ let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let _overrideDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
-export function setTestDb(db: ReturnType<typeof drizzle<typeof schema>>): void {
-  _overrideDb = db;
+export function setTestDb(db: unknown): void {
+  _overrideDb = db as ReturnType<typeof drizzle<typeof schema>>;
 }
 
 function getPool(): Pool {

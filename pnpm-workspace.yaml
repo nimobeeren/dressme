@@ -6,5 +6,12 @@ allowBuilds:
   protobufjs: true
   sharp: true
   workerd: true
-# Error when package manager version does not match package.json
 pmOnFail: error
+onlyBuiltDependencies:
+  - "@google/genai"
+  - browser-tabs-lock
+  - esbuild
+  - msw
+  - protobufjs
+  - sharp
+  - workerd

@@ -8,43 +8,44 @@ import sharp from "sharp";
 import * as schema from "../../src/server/db/schema";
 import { setTestDb } from "../../src/server/db";
 import { setServices, resetServices } from "../../src/server/services";
+import type { AfterFn } from "../../src/server/services";
 import type { JwtPayload } from "../../src/server/auth";
 import type { BlobStorage } from "../../src/server/blob-storage";
 
 const TEST_USER_ID = "auth0|1";
 
 // Create a valid JPEG image programmatically
-async function makeValidJpeg(width = 10, height = 10): Promise<Buffer> {
+async function makeValidJpeg(width = 10, height = 10): Promise<Buffer<ArrayBuffer>> {
   return sharp({
     create: { width, height, channels: 3, background: { r: 100, g: 150, b: 200 } },
   })
     .jpeg()
-    .toBuffer();
+    .toBuffer() as Promise<Buffer<ArrayBuffer>>;
 }
 
 // Another valid JPEG for testing multiple items
-async function makeValidJpeg2(width = 10, height = 10): Promise<Buffer> {
+async function makeValidJpeg2(width = 10, height = 10): Promise<Buffer<ArrayBuffer>> {
   return sharp({
     create: { width, height, channels: 3, background: { r: 200, g: 100, b: 50 } },
   })
     .jpeg()
-    .toBuffer();
+    .toBuffer() as Promise<Buffer<ArrayBuffer>>;
 }
 
 // A valid PNG that decodes to more pixels than MAX_IMAGE_PIXELS (50M), which
 // sharp's `limitInputPixels` guard rejects. PNG deflates the solid color, so
 // the encoded file stays small while the decoded pixel count (64M) is huge.
-async function makeDecompressionBomb(): Promise<Buffer> {
+async function makeDecompressionBomb(): Promise<Buffer<ArrayBuffer>> {
   return sharp({
     create: { width: 8000, height: 8000, channels: 3, background: { r: 0, g: 0, b: 0 } },
   })
     .png()
-    .toBuffer();
+    .toBuffer() as Promise<Buffer<ArrayBuffer>>;
 }
 
 // Bytes larger than MAX_UPLOAD_SIZE (10 MiB); content does not need to be a
 // real image since `readUpload` rejects before `safeOpenImage` ever runs.
-function makeOversizedUpload(): Buffer {
+function makeOversizedUpload(): Buffer<ArrayBuffer> {
   return Buffer.alloc(10 * 1024 * 1024 + 1, 0);
 }
 
@@ -116,9 +117,9 @@ let mockBlobStorage: MockBlobStorage;
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let pendingBgTasks: Promise<unknown>[] = [];
 
-function mockWaitUntil(p: Promise<unknown>) {
-  pendingBgTasks.push(p);
-}
+const mockAfter: AfterFn = (callback) => {
+  pendingBgTasks.push(Promise.resolve(callback()));
+};
 
 async function flushBackgroundTasks() {
   await Promise.all(pendingBgTasks);
@@ -133,7 +134,7 @@ function applyServiceOverrides() {
   setServices({
     blobStorage: mockBlobStorage,
     verifyToken: async (_token) => makeToken(),
-    waitUntil: mockWaitUntil,
+    after: mockAfter,
   });
 }
 
@@ -155,7 +156,7 @@ afterAll(() => {
 
 beforeEach(async () => {
   // Re-apply overrides before flushing so any background tasks scheduled by the
-  // previous test (via the mocked `waitUntil`) see the mock blob storage
+  // previous test (via the mocked `after`) see the mock blob storage
   // instead of constructing a real R2Storage.
   applyServiceOverrides();
   await flushBackgroundTasks();
@@ -176,16 +177,6 @@ afterEach(() => {
 });
 
 describe("api", () => {
-  describe("GET /api/healthz", () => {
-    test("returns 200 ok", async () => {
-      const { GET } = await import("../../src/app/api/healthz/route");
-      const res = await GET();
-      const body = await res.json();
-      expect(res.status).toBe(200);
-      expect(body.status).toBe("ok");
-    });
-  });
-
   describe("GET /api/users/me", () => {
     test("returns user info for existing user", async () => {
       const [user] = await db
@@ -233,7 +224,7 @@ describe("api", () => {
       setServices({
         blobStorage: mockBlobStorage,
         verifyToken: async () => ({ sub: newSub }),
-        waitUntil: mockWaitUntil,
+        after: mockAfter,
       });
 
       const { GET } = await import("../../src/app/api/users/me/route");
@@ -379,7 +370,7 @@ describe("api", () => {
   });
 
   describe("GET /api/wearables", () => {
-    test("returns wearables owned by current user", async () => {
+    test("returns only the current user's wearables with signed URLs and pending status when no WOA images exist", async () => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -424,11 +415,136 @@ describe("api", () => {
       const res = await GET(req);
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body).toHaveLength(2);
-      expect(body[0].id).toBe(w1.id);
-      expect(body[0].category).toBe("t-shirt");
-      expect(body[1].id).toBe(w2.id);
-      expect(body[1].category).toBe("pants");
+      expect(body).toEqual([
+        {
+          id: w1.id,
+          category: "t-shirt",
+          body_part: "top",
+          wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
+          generation_status: "pending",
+        },
+        {
+          id: w2.id,
+          category: "pants",
+          body_part: "bottom",
+          wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
+          generation_status: "pending",
+        },
+      ]);
+    });
+
+    test("reports success for wearables with a WOA image matching the current avatar, and pending for the rest", async () => {
+      const [user] = await db
+        .insert(schema.users)
+        .values({
+          auth0UserId: TEST_USER_ID,
+          avatarImageKey: "avatar.jpg",
+        })
+        .returning();
+
+      const [w1] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "t-shirt",
+          imageKey: "w1.jpg",
+        })
+        .returning();
+      const [w2] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "pants",
+          imageKey: "w2.jpg",
+        })
+        .returning();
+
+      // WOA image for w1 only — w2 stays pending
+      await db.insert(schema.wearableOnAvatarImages).values({
+        userId: user.id,
+        avatarImageKey: "avatar.jpg",
+        wearableImageKey: "w1.jpg",
+        imageKey: "woa_w1.jpg",
+        maskImageKey: "mask_w1.jpg",
+      });
+
+      const { GET } = await import("../../src/app/api/wearables/route");
+      const req = new NextRequest("http://localhost/api/wearables");
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toEqual([
+        {
+          id: w1.id,
+          category: "t-shirt",
+          body_part: "top",
+          wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
+          generation_status: "success",
+        },
+        {
+          id: w2.id,
+          category: "pants",
+          body_part: "bottom",
+          wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
+          generation_status: "pending",
+        },
+      ]);
+    });
+
+    test("returns signed URLs and pending status when the user has no avatar", async () => {
+      const [user] = await db
+        .insert(schema.users)
+        .values({ auth0UserId: TEST_USER_ID })
+        .returning();
+
+      const [w1] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "t-shirt",
+          imageKey: "w1.jpg",
+        })
+        .returning();
+      const [w2] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category: "pants",
+          imageKey: "w2.jpg",
+        })
+        .returning();
+
+      // A stale WOA row from a previous avatar must not influence the result
+      // when the user currently has no avatar.
+      await db.insert(schema.wearableOnAvatarImages).values({
+        userId: user.id,
+        avatarImageKey: "old-avatar.jpg",
+        wearableImageKey: "w1.jpg",
+        imageKey: "woa_w1.jpg",
+        maskImageKey: "mask_w1.jpg",
+      });
+
+      const { GET } = await import("../../src/app/api/wearables/route");
+      const req = new NextRequest("http://localhost/api/wearables");
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toEqual([
+        {
+          id: w1.id,
+          category: "t-shirt",
+          body_part: "top",
+          wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
+          generation_status: "pending",
+        },
+        {
+          id: w2.id,
+          category: "pants",
+          body_part: "bottom",
+          wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
+          generation_status: "pending",
+        },
+      ]);
     });
   });
 

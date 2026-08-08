@@ -14,7 +14,9 @@ export const WEARABLE_CATEGORIES = [
 
 export type WearableCategory = (typeof WEARABLE_CATEGORIES)[number];
 
-export type BodyPart = "top" | "bottom";
+export const BODY_PARTS = ["top", "bottom"] as const;
+
+export type BodyPart = (typeof BODY_PARTS)[number];
 
 // Record ensures every WearableCategory is assigned a body part. Adding a
 // category to WEARABLE_CATEGORIES without adding it here causes a type error.

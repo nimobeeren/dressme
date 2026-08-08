@@ -15,27 +15,32 @@ export async function combineWearables(
 
   const topResized = await sharp(topImage)
     .resize(width, height, { fit: "fill", kernel: "lanczos3" })
-    .ensureAlpha()
+    .png()
     .toBuffer();
 
   const bottomResized = await sharp(bottomImage)
     .resize(width, height, { fit: "fill", kernel: "lanczos3" })
-    .ensureAlpha()
+    .png()
     .toBuffer();
 
   const topMaskResized = await sharp(topMask)
     .resize(width, height, { fit: "fill", kernel: "lanczos3" })
     .greyscale()
+    .png()
     .toBuffer();
 
   const bottomMaskResized = await sharp(bottomMask)
     .resize(width, height, { fit: "fill", kernel: "lanczos3" })
     .greyscale()
+    .png()
     .toBuffer();
 
-  const topWithAlpha = await sharp(topResized).joinChannel(topMaskResized).toBuffer();
+  const topWithAlpha = await sharp(topResized).joinChannel(topMaskResized).png().toBuffer();
 
-  const bottomWithAlpha = await sharp(bottomResized).joinChannel(bottomMaskResized).toBuffer();
+  const bottomWithAlpha = await sharp(bottomResized)
+    .joinChannel(bottomMaskResized)
+    .png()
+    .toBuffer();
 
   // Compose: bottom over avatar, then top over result
   const result = await sharp(avatarImage)

@@ -4,6 +4,7 @@ import { getBlobStorage } from "./services";
 import { getSettings } from "./settings";
 import { getDb, schema } from "./db";
 
+// TODO: add a test for this
 export async function generateAvatarTask(userId: string): Promise<void> {
   const settings = getSettings();
   const db = getDb();
@@ -37,6 +38,7 @@ export async function generateAvatarTask(userId: string): Promise<void> {
   }
 }
 
+// TODO: add a test for this
 export async function generateWoaTask(wearableId: string, userId: string): Promise<void> {
   const settings = getSettings();
   const db = getDb();
@@ -67,12 +69,14 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
 
     const { generateWoaImage, generateMask } = await import("./woa-generation");
 
+    // Generate an image of the avatar wearing the wearable
     const woaImageData = await generateWoaImage({
       avatarImage: avatarImageData,
       wearableImage: wearableImageData,
       category: wearable.category,
     });
 
+    // Get a mask of the wearable on the avatar using an image segmentation model
     const maskImageData = await generateMask({
       woaImage: woaImageData,
       category: wearable.category,
@@ -81,6 +85,7 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
     const woaKey = `${randomUUID()}.jpg`;
     const maskKey = `${randomUUID()}.jpg`;
 
+    // Upload results to blob storage
     await blobStorage.upload(settings.WOA_BUCKET, woaKey, woaImageData, "image/jpeg");
     await blobStorage.upload(settings.WOA_BUCKET, maskKey, maskImageData, "image/jpeg");
 

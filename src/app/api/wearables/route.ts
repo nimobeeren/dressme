@@ -114,6 +114,8 @@ export async function POST(request: NextRequest) {
       wearables.push({ id: wearable.id, category, imageKey: key });
     }
 
+    // Create WearableOnAvatar (WOA) images
+    // Do this after DB commit to ensure the wearables exist
     const after = getAfter();
     for (const wearable of wearables) {
       after(async () => {
@@ -128,7 +130,7 @@ export async function POST(request: NextRequest) {
         category: w.category,
         body_part: getBodyPart(w.category),
         wearable_image_url: await blobStorage.getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey),
-        generation_status: "pending" as const,
+        generation_status: "pending" as const, // since the generation of the WOA image happens in the background
       })),
     );
 

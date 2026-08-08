@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const blobStorage = getBlobStorage();
     const db = getDb();
 
+    // Get wearable image keys for which a WOA image exists for the current user's avatar
     const woaImages = await db.query.wearableOnAvatarImages.findMany({
       where: eq(schema.wearableOnAvatarImages.userId, user.id),
     });
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
         : [],
     );
 
+    // Fetch outfits along with the top and bottom wearables
     const outfits = await db.query.outfits.findMany({
       where: eq(schema.outfits.userId, user.id),
       with: {
@@ -84,6 +86,7 @@ export async function POST(request: NextRequest) {
     const topId = body.top_id;
     const bottomId = body.bottom_id;
 
+    // Ensure that the top and bottom wearables exist AND belong to the current user
     const top = await db.query.wearables.findFirst({
       where: eq(schema.wearables.id, topId),
     });
@@ -118,6 +121,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if the outfit already exists
     const existing = await db.query.outfits.findFirst({
       where: eq(schema.outfits.userId, user.id),
     });
@@ -126,6 +130,7 @@ export async function POST(request: NextRequest) {
       return new NextResponse(null, { status: 200 });
     }
 
+    // Create the outfit
     await db.insert(schema.outfits).values({
       userId: user.id,
       topId,
@@ -147,6 +152,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ detail: "Missing id parameter" }, { status: 400 });
     }
 
+    // Check if the outfit exists and is owned by the current user
     const outfit = await db.query.outfits.findFirst({
       where: eq(schema.outfits.id, id),
     });
@@ -155,6 +161,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ detail: "Outfit not found." }, { status: 404 });
     }
 
+    // Delete the outfit
     await db.delete(schema.outfits).where(eq(schema.outfits.id, id));
 
     return new NextResponse(null, { status: 200 });

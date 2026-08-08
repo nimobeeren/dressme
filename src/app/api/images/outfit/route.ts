@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const blobStorage = getBlobStorage();
     const db = getDb();
 
+    // Get the top and bottom wearables to get their image keys
     const topWearable = await db.query.wearables.findFirst({
       where: eq(schema.wearables.id, topId),
     });
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
       where: eq(schema.wearableOnAvatarImages.userId, user.id),
     });
 
+    // Find WOA images by matching user, avatar, and wearable image keys
     const topOnAvatar = woaImages.find(
       (w) =>
         w.avatarImageKey === user.avatarImageKey && w.wearableImageKey === topWearable.imageKey,
@@ -67,6 +69,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ detail: "Outfit image not found." }, { status: 404 });
     }
 
+    // Download images from blob storage
     const avatarData = await blobStorage.download(settings.AVATARS_BUCKET, user.avatarImageKey);
     const topData = await blobStorage.download(settings.WOA_BUCKET, topOnAvatar.imageKey);
     const bottomData = await blobStorage.download(settings.WOA_BUCKET, bottomOnAvatar.imageKey);

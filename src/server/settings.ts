@@ -3,27 +3,56 @@ import { z } from "zod";
 export const settingsSchema = z.object({
   MODE: z.enum(["development", "production"]).default("production"),
 
+  // Auth0
+  /** Algorithms used to sign access tokens.
+   * Found in the Auth0 Dashboard → Applications → APIs → Settings → Access Token Settings. */
   AUTH0_ALGORITHMS: z.string(),
+  /** Audience URL to prevent using a valid token against another API.
+   * Must match audience of one of the registered APIs in Auth0 Dashboard → Applications → APIs.
+   * Must match audience set by the client. */
   AUTH0_API_AUDIENCE: z.string(),
+  /** Custom domain assigned to the Auth0 application. */
   AUTH0_DOMAIN: z.string(),
+  /** Issuer URL of the Auth0 application.
+   * Typically equal to `https://<AUTH0_DOMAIN>/` (trailing slash is required). */
   AUTH0_ISSUER: z.string(),
+  /** Auth0 User ID of the user who should own the data added during database seeding.
+   * You can find this ID in the database. */
   AUTH0_SEED_USER_ID: z.string().optional(),
 
+  // Database
+  /** PostgreSQL connection string. */
   DATABASE_URL: z.string(),
 
+  // AI Services
+  /** Replicate API token.
+   * Found in Replicate → Account settings → API tokens. */
   REPLICATE_API_TOKEN: z.string(),
+  /** Gemini API key for avatar generation. */
   GEMINI_API_KEY: z.string(),
 
+  // Blob Storage
+  /** Access key ID for S3-compatible blob storage API (e.g. R2, MinIO). */
   S3_ACCESS_KEY_ID: z.string(),
+  /** Secret access key for S3-compatible blob storage API (e.g. R2, MinIO). */
   S3_SECRET_ACCESS_KEY: z.string(),
+  /** Endpoint URL for S3-compatible blob storage API (e.g. R2, MinIO). */
   S3_ENDPOINT_URL: z.string(),
 
+  // Image upload limits
+  /** Maximum upload file size in bytes (default 10 MB). */
   MAX_UPLOAD_SIZE: z.coerce.number().default(10 * 1024 * 1024),
+  /** Maximum decoded image size in pixels to prevent decompression bombs (~8000x6000). */
   MAX_IMAGE_PIXELS: z.coerce.number().default(50_000_000),
 
+  // Bucket names
+  /** Bucket name for selfie images. */
   SELFIES_BUCKET: z.string().default("dressme-selfies"),
+  /** Bucket name for avatar images. */
   AVATARS_BUCKET: z.string().default("dressme-avatars"),
+  /** Bucket name for wearable images. */
   WEARABLES_BUCKET: z.string().default("dressme-wearables"),
+  /** Bucket name for WearableOnAvatar images and masks. */
   WOA_BUCKET: z.string().default("dressme-woa"),
 });
 

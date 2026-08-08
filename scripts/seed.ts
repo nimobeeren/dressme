@@ -17,6 +17,7 @@ if (!settings.AUTH0_SEED_USER_ID) {
   );
 }
 
+// Path to the repo root
 const ROOT_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const SELFIE_PATH = "images/humans/selfie_4.jpg";
@@ -75,7 +76,7 @@ async function seed() {
   const db = getDb();
   const blobStorage = getBlobStorage();
 
-  // Upload selfie
+  // Upload selfie image
   const selfiePath = path.join(ROOT_PATH, SELFIE_PATH);
   const selfieData = fs.readFileSync(selfiePath);
   const selfieKey = `${randomUUID()}.jpg`;
@@ -86,7 +87,7 @@ async function seed() {
     lookup(selfiePath) || "image/jpeg",
   );
 
-  // Upload avatar
+  // Upload avatar image
   const avatarPath = path.join(ROOT_PATH, AVATAR_PATH);
   const avatarData = fs.readFileSync(avatarPath);
   const avatarKey = `${randomUUID()}.jpg`;
@@ -136,6 +137,7 @@ async function seed() {
 
   // Add wearables
   for (const [name, data] of Object.entries(WEARABLES)) {
+    // Upload wearable image
     const imagePath = path.join(ROOT_PATH, data.imagePath);
     const imageData = fs.readFileSync(imagePath);
     const ext = path.extname(imagePath);
@@ -147,6 +149,7 @@ async function seed() {
       lookup(imagePath) || "image/jpeg",
     );
 
+    // Add wearable
     const [wearable] = await db
       .insert(schema.wearables)
       .values({
@@ -165,13 +168,14 @@ async function seed() {
       const woaKey = `${randomUUID()}.jpg`;
       await blobStorage.upload(settings.WOA_BUCKET, woaKey, woaData, "image/jpeg");
 
-      // Upload mask
+      // Upload mask image
       const maskPath = path.join(ROOT_PATH, "images", "masks", "human_4", "post", `${name}.jpg`);
       if (fs.existsSync(maskPath)) {
         const maskData = fs.readFileSync(maskPath);
         const maskKey = `${randomUUID()}.jpg`;
         await blobStorage.upload(settings.WOA_BUCKET, maskKey, maskData, "image/jpeg");
 
+        // Add WearableOnAvatarImage
         await db.insert(schema.wearableOnAvatarImages).values({
           userId,
           avatarImageKey: avatarKey,

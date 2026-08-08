@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(request: NextRequest) {
   return withAuth(request, async (user) => {
+    // Check if the user already has a selfie (one-time upload only)
     if (user.selfieImageKey !== null) {
       return NextResponse.json(
         { detail: "It's currently not possible to replace an existing avatar image." },
@@ -46,9 +47,11 @@ export async function PUT(request: NextRequest) {
     const blobStorage = getBlobStorage();
     const db = getDb();
 
+    // Upload selfie to blob storage
     const key = `${randomUUID()}.jpg`;
     await blobStorage.upload(settings.SELFIES_BUCKET, key, jpegData, "image/jpeg");
 
+    // Update user and trigger avatar generation
     await db.update(schema.users).set({ selfieImageKey: key }).where(eq(schema.users.id, user.id));
 
     const after = getAfter();

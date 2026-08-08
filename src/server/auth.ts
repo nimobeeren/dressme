@@ -6,6 +6,8 @@ let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 function getJwks() {
   if (!_jwks) {
     const settings = getSettings();
+    // This gets the JWKS from a given URL and does processing so you can
+    // use any of the keys available
     const url = new URL(`https://${settings.AUTH0_DOMAIN}/.well-known/jwks.json`);
     _jwks = createRemoteJWKSet(url);
   }

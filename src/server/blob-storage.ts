@@ -13,6 +13,8 @@ function getClient(): S3Client {
         accessKeyId: settings.S3_ACCESS_KEY_ID,
         secretAccessKey: settings.S3_SECRET_ACCESS_KEY,
       },
+      // R2 requires region_name "auto" and signature_version "s3v4"
+      // MinIO requires path-style addressing to avoid redirect issues
       region: "auto",
       forcePathStyle: true,
     });
@@ -57,6 +59,8 @@ export class R2Storage implements BlobStorage {
   async getSignedUrl(bucket: string, key: string, expiresIn = 3600): Promise<string> {
     const settings = getSettings();
 
+    // In development, return a direct URL without signing
+    // because MinIO has anonymous access enabled
     if (settings.MODE === "development") {
       return `${settings.S3_ENDPOINT_URL}/${bucket}/${key}`;
     }

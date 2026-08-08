@@ -6,6 +6,7 @@ import {
   type WearableCategory,
 } from "@/shared/wearable-categories";
 
+// Used by the VTON and image segmentation models
 // Record<WearableCategory, string> ensures every category is covered. Adding a
 // category to WEARABLE_CATEGORIES in wearable-categories.ts without adding it
 // here causes a type error.

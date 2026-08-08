@@ -1,6 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { getSettings } from "./settings";
 
+async function getSharp() {
+  return (await import("sharp")).default;
+}
+
 const PROMPT = `style the person as a sims 3 character
 no text/UI/diamond above the head
 video game style (PS3)
@@ -20,16 +24,23 @@ relaxed gaze`;
 
 /**
  * Generate a game-like avatar image from a selfie image.
- * Approximate cost: $0.08 per invocation.
+ * Approximate cost: $0.07 per invocation.
  */
 export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
   const settings = getSettings();
   const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
 
+  // Downscale selfie to max 1024px longest side before sending to Gemini
+  const sharp = await getSharp();
+  const downscaled = await sharp(selfieImageData)
+    .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
+    .jpeg()
+    .toBuffer();
+
   const response = await ai.models.generateContent({
     model: "gemini-3.1-flash-image",
     contents: [
-      { inlineData: { mimeType: "image/jpeg", data: selfieImageData.toString("base64") } },
+      { inlineData: { mimeType: "image/jpeg", data: downscaled.toString("base64") } },
       PROMPT,
     ],
     config: {

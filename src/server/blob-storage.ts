@@ -58,8 +58,7 @@ export class R2Storage implements BlobStorage {
     const settings = getSettings();
 
     if (settings.MODE === "development") {
-      const publicEndpoint = settings.S3_ENDPOINT_URL.replace("host.docker.internal", "localhost");
-      return `${publicEndpoint}/${bucket}/${key}`;
+      return `${settings.S3_ENDPOINT_URL}/${bucket}/${key}`;
     }
 
     return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: bucket, Key: key }), {

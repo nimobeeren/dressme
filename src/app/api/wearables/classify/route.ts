@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/server/route-utils";
-import { readUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
+import { parseUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
 
 export const maxDuration = 300;
 export const runtime = "nodejs";
@@ -8,38 +8,27 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   return withAuth(request, async (_user) => {
-    const contentType = request.headers.get("content-type") ?? "";
-    if (!contentType.includes("multipart/form-data")) {
+    let upload;
+    try {
+      upload = await parseUpload(request);
+    } catch (err: any) {
       return NextResponse.json(
-        { detail: "Expected multipart/form-data" },
-        { status: 400 },
+        { detail: err.message },
+        { status: err.status ?? 500 },
       );
     }
 
-    const formData = await request.formData();
-    const image = formData.get("image");
-
-    if (!(image instanceof File)) {
+    const image = upload.files.get("image")?.[0];
+    if (!image) {
       return NextResponse.json(
         { detail: "Missing image file" },
         { status: 400 },
       );
     }
 
-    const buffer = Buffer.from(await image.arrayBuffer());
-
-    try {
-      await readUpload(buffer);
-    } catch (err: any) {
-      return NextResponse.json(
-        { detail: err.message },
-        { status: err.status || 413 },
-      );
-    }
-
     let img;
     try {
-      img = await safeOpenImage(buffer);
+      img = await safeOpenImage(image.data);
     } catch {
       return NextResponse.json(
         { detail: "Could not read the uploaded file as an image." },

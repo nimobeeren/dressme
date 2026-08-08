@@ -1,4 +1,8 @@
 import type { Sharp } from "sharp";
+import type { NextRequest } from "next/server";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+import { Readable } from "node:stream";
+import Busboy from "busboy";
 import { getSettings } from "./settings";
 
 async function getSharp() {
@@ -30,14 +34,121 @@ export async function compressToJpeg(img: Sharp, quality = 75): Promise<Buffer> 
   return img.jpeg({ quality }).toBuffer();
 }
 
-export async function readUpload(data: Buffer): Promise<Buffer> {
-  const settings = getSettings();
-  if (data.length > settings.MAX_UPLOAD_SIZE) {
-    throw new UploadTooLargeError(
-      `Upload must be smaller than ${settings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
-    );
+/**
+ * Read a streaming upload, aborting once it exceeds `maxBytes` so that an
+ * oversized body never fully materializes in memory.
+ */
+export async function readUpload(
+  source: Readable,
+  maxBytes: number = getSettings().MAX_UPLOAD_SIZE,
+): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    for await (const chunk of source) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array);
+      total += buf.length;
+      if (total > maxBytes) {
+        throw new UploadTooLargeError(
+          `Upload must be smaller than ${maxBytes / (1024 * 1024)} MB.`,
+        );
+      }
+      chunks.push(buf);
+    }
+  } finally {
+    source.destroy();
   }
-  return data;
+  return Buffer.concat(chunks, total);
+}
+
+export interface UploadedFile {
+  filename: string | undefined;
+  contentType: string | undefined;
+  data: Buffer;
+}
+
+export interface ParsedUpload {
+  fields: Map<string, string[]>;
+  files: Map<string, UploadedFile[]>;
+}
+
+/**
+ * Parse a multipart/form-data request by streaming the body through busboy,
+ * applying `readUpload`'s per-file size cap to each file part. The request
+ * body is never buffered in full: each file part is read incrementally and
+ * the parse is aborted as soon as a single part exceeds the size limit, so
+ * memory stays bounded regardless of upload size.
+ */
+export async function parseUpload(
+  request: NextRequest,
+  options: { maxFileSize?: number } = {},
+): Promise<ParsedUpload> {
+  const settings = getSettings();
+  const maxFileSize = options.maxFileSize ?? settings.MAX_UPLOAD_SIZE;
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("multipart/form-data")) {
+    throw new BadRequestError("Expected multipart/form-data");
+  }
+  if (!request.body) {
+    throw new BadRequestError("Request body is empty");
+  }
+
+  const body = Readable.fromWeb(request.body as unknown as NodeReadableStream);
+  const bb = Busboy({ headers: { "content-type": contentType } });
+  const fields = new Map<string, string[]>();
+  const files = new Map<string, UploadedFile[]>();
+  const fileJobs: Promise<void>[] = [];
+
+  return new Promise<ParsedUpload>((resolve, reject) => {
+    let settled = false;
+    const rejectOnce = (err: unknown) => {
+      if (settled) return;
+      settled = true;
+      try {
+        body.destroy();
+      } catch {
+        /* already closed */
+      }
+      try {
+        bb.destroy();
+      } catch {
+        /* already closed */
+      }
+      reject(err);
+    };
+
+    bb.on("field", (name, value) => {
+      const arr = fields.get(name) ?? [];
+      arr.push(value);
+      fields.set(name, arr);
+    });
+
+    bb.on("file", (name, stream, info) => {
+      const job = readUpload(stream, maxFileSize)
+        .then((data) => {
+          const arr = files.get(name) ?? [];
+          arr.push({ filename: info.filename, contentType: info.mimeType, data });
+          files.set(name, arr);
+        })
+        .catch((err) => {
+          rejectOnce(err);
+        });
+      fileJobs.push(job);
+    });
+
+    bb.on("close", () => {
+      Promise.all(fileJobs)
+        .then(() => {
+          if (settled) return;
+          settled = true;
+          resolve({ fields, files });
+        })
+        .catch(rejectOnce);
+    });
+    bb.on("error", rejectOnce);
+    body.on("error", rejectOnce);
+    body.pipe(bb);
+  });
 }
 
 export class UploadTooLargeError extends Error {
@@ -45,4 +156,7 @@ export class UploadTooLargeError extends Error {
 }
 export class UnprocessableImageError extends Error {
   status = 422;
+}
+export class BadRequestError extends Error {
+  status = 400;
 }

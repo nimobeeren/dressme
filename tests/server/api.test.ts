@@ -241,6 +241,29 @@ describe("api", () => {
       expect(persisted).toBeDefined();
       expect(persisted?.id).toBe(body.id);
     });
+
+    test("recovers from unique constraint violation when two requests race to create the same user", async () => {
+      // Simulate a race condition: another request has already inserted a user
+      // with the same auth0_user_id, but our findFirst ran before that insert
+      // was committed. The subsequent INSERT will fail with 23505, and
+      // getCurrentUserForPayload must recover by re-querying.
+      const [existingUser] = await db
+        .insert(schema.users)
+        .values({ auth0UserId: TEST_USER_ID })
+        .returning();
+
+      const findFirstSpy = vi.spyOn(db.query.users, "findFirst");
+      findFirstSpy.mockResolvedValueOnce(undefined);
+
+      const { GET } = await import("../../src/app/api/users/me/route");
+      const req = new NextRequest("http://localhost/api/users/me");
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.id).toBe(existingUser.id);
+
+      findFirstSpy.mockRestore();
+    });
   });
 
   describe("PUT /api/images/avatars/me", () => {

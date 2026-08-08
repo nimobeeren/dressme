@@ -110,7 +110,7 @@ async function seed() {
     );
   }
 
-  const userId = existing?.id;
+  let userId = existing?.id;
 
   // Only create user if they don't exist
   if (!existing) {
@@ -125,6 +125,7 @@ async function seed() {
 
     if (!user) throw new Error("Failed to create user");
     console.info(`Created user: ${user.id}`);
+    userId = user.id;
   } else if (userId) {
     // Update existing user's images
     await db

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { DrizzleQueryError, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { UnauthenticatedError } from "./auth";
 import { getVerifyToken } from "./services";
@@ -65,11 +65,11 @@ async function getCurrentUserForPayload(auth0UserId: string): Promise<UserRow> {
       selfieImageKey: newUser.selfieImageKey,
       avatarImageKey: newUser.avatarImageKey,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Another request could have created the user after the findFirst query but
     // before the insert query. In that case this error 23505 (PG_UNIQUE_VIOLATION)
     // will be thrown. We can safely ignore it and return the existing user.
-    if (error?.code === "23505") {
+    if (error instanceof DrizzleQueryError && (error.cause as any)?.code === "23505") {
       const user = await db.query.users.findFirst({
         where: eq(schema.users.auth0UserId, auth0UserId),
       });

@@ -1,12 +1,13 @@
+import "dotenv/config";
+import { eq } from "drizzle-orm";
+import { lookup } from "mime-types";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
 import { getDb, schema } from "../src/server/db";
 import { getBlobStorage } from "../src/server/services";
 import { getSettings } from "../src/server/settings";
-import { lookup } from "mime-types";
 
 const settings = getSettings();
 

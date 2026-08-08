@@ -8,6 +8,7 @@ import sharp from "sharp";
 import * as schema from "../../src/server/db/schema";
 import { setTestDb } from "../../src/server/db";
 import { setServices, resetServices } from "../../src/server/services";
+import type { AfterFn } from "../../src/server/services";
 import type { JwtPayload } from "../../src/server/auth";
 import type { BlobStorage } from "../../src/server/blob-storage";
 
@@ -116,9 +117,9 @@ let mockBlobStorage: MockBlobStorage;
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let pendingBgTasks: Promise<unknown>[] = [];
 
-function mockWaitUntil(p: Promise<unknown>) {
-  pendingBgTasks.push(p);
-}
+const mockAfter: AfterFn = (callback) => {
+  pendingBgTasks.push(Promise.resolve(callback()));
+};
 
 async function flushBackgroundTasks() {
   await Promise.all(pendingBgTasks);
@@ -133,7 +134,7 @@ function applyServiceOverrides() {
   setServices({
     blobStorage: mockBlobStorage,
     verifyToken: async (_token) => makeToken(),
-    waitUntil: mockWaitUntil,
+    after: mockAfter,
   });
 }
 
@@ -155,7 +156,7 @@ afterAll(() => {
 
 beforeEach(async () => {
   // Re-apply overrides before flushing so any background tasks scheduled by the
-  // previous test (via the mocked `waitUntil`) see the mock blob storage
+  // previous test (via the mocked `after`) see the mock blob storage
   // instead of constructing a real R2Storage.
   applyServiceOverrides();
   await flushBackgroundTasks();
@@ -223,7 +224,7 @@ describe("api", () => {
       setServices({
         blobStorage: mockBlobStorage,
         verifyToken: async () => ({ sub: newSub }),
-        waitUntil: mockWaitUntil,
+        after: mockAfter,
       });
 
       const { GET } = await import("../../src/app/api/users/me/route");

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/server/route-utils";
-import { getBlobStorage, getWaitUntil } from "@/server/services";
+import { getBlobStorage, getAfter } from "@/server/services";
 import { getSettings } from "@/server/settings";
 import { parseUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
 import { getDb, schema } from "@/server/db";
@@ -120,14 +120,12 @@ export async function POST(request: NextRequest) {
       wearables.push({ id: wearable.id, category, imageKey: key });
     }
 
-    const waitUntil = getWaitUntil();
+    const after = getAfter();
     for (const wearable of wearables) {
-      waitUntil(
-        (async () => {
-          const { generateWoaTask } = await import("@/server/background-tasks");
-          await generateWoaTask(wearable.id, user.id);
-        })(),
-      );
+      after(async () => {
+        const { generateWoaTask } = await import("@/server/background-tasks");
+        await generateWoaTask(wearable.id, user.id);
+      });
     }
 
     const result = await Promise.all(

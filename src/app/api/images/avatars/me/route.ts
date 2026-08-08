@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/server/route-utils";
-import { getBlobStorage, getWaitUntil } from "@/server/services";
+import { getBlobStorage, getAfter } from "@/server/services";
 import { getSettings } from "@/server/settings";
 import { parseUpload, safeOpenImage, compressToJpeg } from "@/server/image-utils";
 import { getDb, schema } from "@/server/db";
@@ -61,13 +61,11 @@ export async function PUT(request: NextRequest) {
       .set({ selfieImageKey: key })
       .where(eq(schema.users.id, user.id));
 
-    const waitUntil = getWaitUntil();
-    waitUntil(
-      (async () => {
-        const { generateAvatarTask } = await import("@/server/background-tasks");
-        await generateAvatarTask(user.id);
-      })(),
-    );
+    const after = getAfter();
+    after(async () => {
+      const { generateAvatarTask } = await import("@/server/background-tasks");
+      await generateAvatarTask(user.id);
+    });
 
     return new NextResponse(null, { status: 202 });
   });

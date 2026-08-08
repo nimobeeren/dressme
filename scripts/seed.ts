@@ -11,13 +11,6 @@ import { getSettings } from "../src/server/settings";
 
 const settings = getSettings();
 
-if (!settings.AUTH0_SEED_USER_ID) {
-  throw new Error(
-    "AUTH0_SEED_USER_ID is not set, but this is required to determine which user " +
-      "should own the data added during seeding.",
-  );
-}
-
 // Path to the repo root
 const ROOT_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -74,6 +67,14 @@ const WEARABLES: Record<string, WearableSeedData> = {
 };
 
 async function seed() {
+  const seedUserId = settings.AUTH0_SEED_USER_ID;
+  if (!seedUserId) {
+    throw new Error(
+      "AUTH0_SEED_USER_ID is not set, but this is required to determine which user " +
+        "should own the data added during seeding.",
+    );
+  }
+
   const db = getDb();
   const blobStorage = getBlobStorage();
 
@@ -101,7 +102,7 @@ async function seed() {
 
   // Check if user already exists
   const existing = await db.query.users.findFirst({
-    where: eq(schema.users.auth0UserId, settings.AUTH0_SEED_USER_ID),
+    where: eq(schema.users.auth0UserId, seedUserId),
   });
 
   if (existing) {
@@ -117,7 +118,7 @@ async function seed() {
     const [user] = await db
       .insert(schema.users)
       .values({
-        auth0UserId: settings.AUTH0_SEED_USER_ID,
+        auth0UserId: seedUserId,
         selfieImageKey: selfieKey,
         avatarImageKey: avatarKey,
       })

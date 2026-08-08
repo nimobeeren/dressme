@@ -104,11 +104,12 @@ export async function parseUpload(
     const rejectOnce = (err: unknown) => {
       if (settled) return;
       settled = true;
-      try {
-        body.destroy();
-      } catch {
-        /* already closed */
-      }
+      // Destroy busboy to stop parsing, but do NOT destroy `body` (the
+      // Readable.fromWeb wrapper). Destroying it calls reader.cancel() on the
+      // underlying web stream, which races with undici's internal enqueue in
+      // Node 24+ and throws "ReadableStream is already closed". Letting the
+      // pipe unpipe `body` naturally is safe — `body` drains or pauses, and
+      // GC reclaims it when the request goes out of scope.
       try {
         bb.destroy();
       } catch {

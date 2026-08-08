@@ -81,6 +81,8 @@ Client-side variables (with `NEXT_PUBLIC_` prefix) are bundled at build time and
 For local development, we use [MinIO](https://min.io/) as an S3-compatible object storage.
 In production, Cloudflare R2 is used. The S3 client auto-negotiates between them via the endpoint URL.
 
+You can access the MinIO console at `http://localhost:9101` with the credentials `minioadmin/minioadmin`.
+
 ## Additional Development Tasks
 
 ### Inspecting the Database
@@ -97,7 +99,22 @@ docker compose down -v
 
 ### Getting an Access Token
 
-When making API requests directly, pass a valid access token:
+When making API requests directly, you'll need to pass a valid access token. The client gets this token automatically from Auth0 after you log in, but you can also get one yourself:
+
+```bash
+curl -X POST 'https://$AUTH0_DOMAIN/oauth/token' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "client_id": "$AUTH0_CLIENT_ID",
+        "client_secret": "$AUTH0_CLIENT_SECRET",
+        "audience": "$AUTH0_API_AUDIENCE",
+        "grant_type": "client_credentials"
+    }'
+```
+
+(You can get these variables from the [Auth0 Dashboard](https://manage.auth0.com/), and you probably already have some in your `.env` file)
+
+You can then use this access token when making API requests, for example:
 
 ```bash
 curl -X GET 'http://localhost:3000/api/wearables' \

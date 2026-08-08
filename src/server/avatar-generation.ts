@@ -1,4 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ApiError } from "@google/genai";
+import pRetry from "p-retry";
 import { getSettings } from "./settings";
 
 async function getSharp() {
@@ -37,19 +38,33 @@ export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
     .jpeg()
     .toBuffer();
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.1-flash-image",
-    contents: [
-      { inlineData: { mimeType: "image/jpeg", data: downscaled.toString("base64") } },
-      PROMPT,
-    ],
-    config: {
-      imageConfig: {
-        aspectRatio: "3:4",
-        imageSize: "1K",
+  const response = await pRetry(
+    () =>
+      ai.models.generateContent({
+        model: "gemini-3.1-flash-image",
+        contents: [
+          { inlineData: { mimeType: "image/jpeg", data: downscaled.toString("base64") } },
+          PROMPT,
+        ],
+        config: {
+          imageConfig: {
+            aspectRatio: "3:4",
+            imageSize: "1K",
+          },
+        },
+      }),
+    {
+      retries: 3,
+      shouldRetry: ({ error }) =>
+        error instanceof TypeError ||
+        (error instanceof ApiError && [408, 429, 500, 502, 503, 504].includes(error.status)),
+      onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
+        console.info(
+          `generateAvatar attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
+        );
       },
     },
-  });
+  );
 
   if (!response.candidates) {
     throw new Error("Gemini returned no candidates");

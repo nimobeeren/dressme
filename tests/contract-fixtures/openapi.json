@@ -10,22 +10,6 @@
     }
   ],
   "paths": {
-    "/healthz": {
-      "get": {
-        "summary": "Health",
-        "operationId": "health",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
     "/users/me": {
       "get": {
         "summary": "Get Me",

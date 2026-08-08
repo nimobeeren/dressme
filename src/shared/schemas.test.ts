@@ -1,9 +1,8 @@
 import { describe, expect, test } from "vitest";
-import healthFixture from "../../tests/contract-fixtures/healthz.json";
 import outfitsFixture from "../../tests/contract-fixtures/outfits.json";
 import userFixture from "../../tests/contract-fixtures/users_me.json";
 import wearablesFixture from "../../tests/contract-fixtures/wearables.json";
-import { healthSchema, outfitSchema, userSchema, wearableSchema } from "./schemas";
+import { outfitSchema, userSchema, wearableSchema } from "./schemas";
 
 /**
  * The fixtures are real responses recorded from the FastAPI backend
@@ -11,10 +10,6 @@ import { healthSchema, outfitSchema, userSchema, wearableSchema } from "./schema
  * proves the schemas describe the wire format the frontend was built against.
  */
 describe("schemas", () => {
-  test("GET /healthz", () => {
-    expect(healthSchema.parse(healthFixture)).toEqual(healthFixture);
-  });
-
   test("GET /users/me", () => {
     expect(userSchema.parse(userFixture)).toEqual(userFixture);
   });

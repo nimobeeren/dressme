@@ -152,6 +152,59 @@ export async function parseUpload(
   });
 }
 
+/**
+ * Parse a `FormData` (as received by a server action) into the same shape as
+ * {@link parseUpload}, applying the same per-file size cap.
+ */
+export async function parseFormUpload(
+  formData: FormData,
+  options: { maxFileSize?: number } = {},
+): Promise<ParsedUpload> {
+  const settings = getSettings();
+  const maxFileSize = options.maxFileSize ?? settings.MAX_UPLOAD_SIZE;
+
+  const fields = new Map<string, string[]>();
+  const files = new Map<string, UploadedFile[]>();
+
+  for (const [name, value] of formData.entries()) {
+    if (typeof value === "string") {
+      const arr = fields.get(name) ?? [];
+      arr.push(value);
+      fields.set(name, arr);
+    } else {
+      if (value.size > maxFileSize) {
+        throw new UploadTooLargeError(
+          `Upload must be smaller than ${maxFileSize / (1024 * 1024)} MB.`,
+        );
+      }
+      const arr = files.get(name) ?? [];
+      arr.push({
+        filename: value.name,
+        contentType: value.type,
+        data: Buffer.from(await value.arrayBuffer()),
+      });
+      files.set(name, arr);
+    }
+  }
+
+  return { fields, files };
+}
+
+/**
+ * Reads the single `image` file field of a server action's `FormData`,
+ * rejecting invalid or oversized uploads, and returns it as compressed JPEG
+ * bytes.
+ */
+export async function readFormImageAsJpeg(formData: FormData): Promise<Buffer> {
+  const upload = await parseFormUpload(formData);
+  const image = upload.files.get("image")?.[0];
+  if (!image) {
+    throw new BadRequestError("Missing image file");
+  }
+  const img = await safeOpenImage(image.data);
+  return compressToJpeg(img);
+}
+
 export class UploadTooLargeError extends Error {
   status = 413;
 }

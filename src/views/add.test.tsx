@@ -1,11 +1,13 @@
-import { buildUser, buildWearable, renderApp } from "@/test/utils";
-import { http, HttpResponse } from "msw";
+import { AddClient } from "@/views/add";
+import { actionSpies } from "@/test/actions-mock";
+import { renderWithProviders } from "@/test/utils";
+import { mockRouter } from "@/test/mocks/next-navigation";
 import { userEvent } from "vitest/browser";
 import { describe, expect } from "vitest";
 import { test } from "@/test/test";
 
 async function renderAddPage() {
-  return renderApp({ initialPath: "/add" });
+  return renderWithProviders(<AddClient />);
 }
 
 /** A tiny File object to stand in for an uploaded image. */
@@ -16,8 +18,8 @@ function makeImageFile(name = "shirt.png") {
 }
 
 /**
- * Waits for the AddPage to finish loading (past the full-page spinner) and
- * returns the hidden file input inside the FileInputButton.
+ * Waits for the AddClient to render and returns the hidden file input inside
+ * the FileInputButton.
  */
 async function waitForFileInput(
   screen: Awaited<ReturnType<typeof renderAddPage>>,
@@ -25,40 +27,19 @@ async function waitForFileInput(
   await expect.element(screen.getByText(/let's add some clothes/i)).toBeVisible();
   const fileInput = screen.container.querySelector('input[type="file"]') as HTMLInputElement | null;
   if (!fileInput) {
-    throw new Error("File input not found in AddPage");
+    throw new Error("File input not found in AddClient");
   }
   return fileInput;
 }
 
 describe("add", () => {
-  test("redirects to home when user has no avatar", async ({ worker }) => {
-    worker.use(
-      http.get("*/me", () =>
-        HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: false })),
-      ),
-    );
-    const screen = await renderAddPage();
-    // The user is bounced back to home, where their avatar is still generating.
-    await expect.element(screen.getByText(/generating your avatar/i)).toBeVisible();
-  });
-
-  test("renders the page when user has an avatar", async ({ worker }) => {
-    worker.use(
-      http.get("*/me", () =>
-        HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: true })),
-      ),
-    );
+  test("renders the page when user has an avatar", async () => {
     const screen = await renderAddPage();
     await expect.element(screen.getByText(/let's add some clothes/i)).toBeVisible();
   });
 
-  test("submit button is disabled until a wearable is added", async ({ worker }) => {
-    worker.use(
-      http.get("*/me", () =>
-        HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: true })),
-      ),
-      http.post("*/wearables/classify", () => HttpResponse.json({ category: "t-shirt" })),
-    );
+  test("submit button is disabled until a wearable is added", async () => {
+    actionSpies.classifyWearable.mockResolvedValueOnce({ category: "t-shirt" });
     const screen = await renderAddPage();
     const doneButton = screen.getByRole("button", { name: /done/i });
     await expect.element(doneButton).toBeDisabled();
@@ -70,17 +51,14 @@ describe("add", () => {
     await expect.element(doneButton).toBeEnabled();
   });
 
-  test("classify endpoint auto-fills the category select", async ({ worker }) => {
-    worker.use(
-      http.get("*/me", () =>
-        HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: true })),
-      ),
-      http.post("*/wearables/classify", () => HttpResponse.json({ category: "pants" })),
-    );
+  test("classification auto-fills the category select", async () => {
+    actionSpies.classifyWearable.mockResolvedValueOnce({ category: "pants" });
     const screen = await renderAddPage();
 
     const fileInput = await waitForFileInput(screen);
     await userEvent.upload(fileInput, makeImageFile());
+
+    expect(actionSpies.classifyWearable).toHaveBeenCalledTimes(1);
 
     // The Select's trigger is rendered as a <button role="combobox" aria-label="Category">.
     // It shows the selected value's label as text content.
@@ -89,13 +67,8 @@ describe("add", () => {
       .toHaveTextContent(/pants/i);
   });
 
-  test("removing a card removes it from the form", async ({ worker }) => {
-    worker.use(
-      http.get("*/me", () =>
-        HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: true })),
-      ),
-      http.post("*/wearables/classify", () => HttpResponse.json({ category: "t-shirt" })),
-    );
+  test("removing a card removes it from the form", async () => {
+    actionSpies.classifyWearable.mockResolvedValueOnce({ category: "t-shirt" });
     const screen = await renderAddPage();
 
     const fileInput = await waitForFileInput(screen);
@@ -112,18 +85,8 @@ describe("add", () => {
       .not.toBeInTheDocument();
   });
 
-  test("successful submit creates wearables and navigates home with a toast", async ({
-    worker,
-  }) => {
-    worker.use(
-      http.get("*/me", () =>
-        HttpResponse.json(buildUser({ has_selfie_image: true, has_avatar_image: true })),
-      ),
-      http.post("*/wearables/classify", () => HttpResponse.json({ category: "t-shirt" })),
-      http.post("*/wearables", () =>
-        HttpResponse.json([buildWearable({ category: "t-shirt" })], { status: 201 }),
-      ),
-    );
+  test("successful submit creates wearables and navigates home with a toast", async () => {
+    actionSpies.classifyWearable.mockResolvedValueOnce({ category: "t-shirt" });
     const screen = await renderAddPage();
 
     const fileInput = await waitForFileInput(screen);
@@ -137,11 +100,31 @@ describe("add", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /done/i }));
 
-    // Submitting takes the user home (the outfit-preview prompt) and confirms
-    // the save with a toast — both only happen once the create request resolves.
-    await expect
-      .element(screen.getByText(/select a top and bottom to see your outfit preview/i))
-      .toBeVisible();
+    // Submitting sends the form data to the server action, navigates home and
+    // confirms the save with a toast.
     await expect.element(screen.getByText(/added item to your wardrobe/i)).toBeVisible();
+    expect(actionSpies.createWearables).toHaveBeenCalledTimes(1);
+    const formData = actionSpies.createWearables.mock.calls[0][0] as FormData;
+    expect(formData.getAll("category")).toEqual(["t-shirt"]);
+    expect(formData.getAll("image")).toHaveLength(1);
+    expect(mockRouter.push).toHaveBeenCalledWith("/");
+  });
+
+  test("failed submit shows a destructive toast and stays on the page", async () => {
+    actionSpies.classifyWearable.mockResolvedValueOnce({ category: "t-shirt" });
+    actionSpies.createWearables.mockRejectedValueOnce(new Error("No avatar for you"));
+    const screen = await renderAddPage();
+
+    const fileInput = await waitForFileInput(screen);
+    await userEvent.upload(fileInput, makeImageFile());
+
+    await expect
+      .element(screen.getByRole("combobox", { name: /category/i }))
+      .toHaveTextContent(/t-shirt/i);
+
+    await userEvent.click(screen.getByRole("button", { name: /done/i }));
+
+    await expect.element(screen.getByText(/computer says/i)).toBeVisible();
+    expect(mockRouter.push).not.toHaveBeenCalled();
   });
 });

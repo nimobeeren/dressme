@@ -1,58 +1,62 @@
-import { type Outfit, type Wearable } from "@/shared/schemas";
-import { AuthenticatedImage } from "@/components/authenticated-image";
-import { FullPageSpinner } from "@/components/full-page-spinner";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+"use client";
+
+import { type Outfit, type User, type Wearable } from "@/shared/schemas";
+import { refreshMe, uploadSelfie } from "@/server/actions/me";
+import { refreshWearables } from "@/server/actions/wearables";
+import { createOutfit, deleteOutfit } from "@/server/actions/outfits";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  useCreateOutfit,
-  useDeleteOutfit,
-  useMe,
-  useOutfits,
-  useUpdateAvatarImage,
-  useWearables,
-} from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import {
-  CircleAlertIcon,
-  HourglassIcon,
-  LoaderCircleIcon,
-  PlusIcon,
-  StarIcon,
-  UploadIcon,
-} from "lucide-react";
-import { useRef } from "react";
+import { HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon, UploadIcon } from "lucide-react";
+import { useEffect, useRef, useTransition } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
 import Link from "next/link";
 
-export function HomePage() {
-  const { isPending: meIsPending, error: meError } = useMe();
-  const { data: wearables, isPending: wearablesIsPending, error: wearablesError } = useWearables();
-  const { data: outfits, isPending: outfitsIsPending, error: outfitsError } = useOutfits();
+const WEARABLES_POLL_INTERVAL_MS = 5000;
+const AVATAR_POLL_INTERVAL_MS = 3000;
 
-  if (meIsPending || wearablesIsPending || outfitsIsPending) {
-    return <FullPageSpinner />;
-  }
+export interface HomeClientProps {
+  me: User;
+  wearables: Wearable[];
+  outfits: Outfit[];
+  /** True while any wearable's WOA image is still generating. Drives the poller. */
+  wearablesPending: boolean;
+  /** True while the avatar is still generating. Drives the poller. */
+  avatarPending: boolean;
+}
 
-  if (meError || wearablesError || outfitsError) {
-    return (
-      <Alert variant={"destructive"}>
-        <CircleAlertIcon className="h-4 w-4" />
-        <AlertTitle>Something went wrong</AlertTitle>
-        <AlertDescription>
-          {[meError, wearablesError, outfitsError]
-            .filter(Boolean)
-            .map((error) => error!.message)
-            .join("\n\n")}
-        </AlertDescription>
-      </Alert>
+export function HomeClient({
+  me,
+  wearables,
+  outfits,
+  wearablesPending,
+  avatarPending,
+}: HomeClientProps) {
+  const [, startTransition] = useTransition();
+
+  // The polling lifetime is driven purely by the pending props, which the
+  // server derives from the same query the refresh actions re-run. When a
+  // refresh lands a re-render with pending=false, the effect cleanup kills the
+  // interval.
+  useEffect(() => {
+    if (!wearablesPending) return;
+    const id = setInterval(
+      () => startTransition(() => void refreshWearables()),
+      WEARABLES_POLL_INTERVAL_MS,
     );
-  }
+    return () => clearInterval(id);
+  }, [wearablesPending, startTransition]);
 
-  return <Main wearables={wearables} outfits={outfits} />;
+  useEffect(() => {
+    if (!avatarPending) return;
+    const id = setInterval(() => startTransition(() => void refreshMe()), AVATAR_POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [avatarPending, startTransition]);
+
+  return <Main me={me} wearables={wearables} outfits={outfits} />;
 }
 
 type FormFieldValues = {
@@ -64,8 +68,7 @@ type FormFieldValues = {
  * Lets the user pick wearables and outfits and shows a generated image of the selected items on the
  * user's avatar.
  */
-function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[] }) {
-  const { data: me } = useMe();
+function Main({ me, wearables, outfits }: { me: User; wearables: Wearable[]; outfits: Outfit[] }) {
   const tops = wearables.filter((wearable) => wearable.body_part === "top");
   const bottoms = wearables.filter((wearable) => wearable.body_part === "bottom");
 
@@ -91,12 +94,13 @@ function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[]
     <Form {...form}>
       <form className="flex h-screen items-center justify-center gap-16">
         <Preview
+          me={me}
           activeTopId={activeTopId}
           activeBottomId={activeBottomId}
           activeOutfitId={activeOutfit?.id}
         />
         <Wardrobe
-          isDisabled={!me?.has_avatar_image}
+          isDisabled={!me.has_avatar_image}
           tops={tops}
           bottoms={bottoms}
           outfits={outfits}
@@ -109,49 +113,75 @@ function Main({ wearables, outfits }: { wearables: Wearable[]; outfits: Outfit[]
 
 /** Shows a generated image of the active wearables/outfit on the user's avatar. */
 function Preview({
+  me,
   activeTopId,
   activeBottomId,
   activeOutfitId,
 }: {
+  me: User;
   activeTopId: string | undefined;
   activeBottomId: string | undefined;
   activeOutfitId: string | undefined;
 }) {
-  const { data: me } = useMe();
-  const { mutate: createOutfit } = useCreateOutfit();
-  const { mutate: deleteOutfit } = useDeleteOutfit();
-  const { mutate: uploadSelfie, isPending: isUploading } = useUpdateAvatarImage();
+  const { toast } = useToast();
+  const [isFavoriting, startFavoriting] = useTransition();
+  const [isUploading, startUploading] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function toastError(error: unknown) {
+    toast({
+      title: "Oops, something went wrong!",
+      description: `Computer says: '${error instanceof Error ? error.message : String(error)}'`,
+      variant: "destructive",
+    });
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) {
-      uploadSelfie(file);
-    }
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("image", file);
+    startUploading(async () => {
+      try {
+        await uploadSelfie(formData);
+      } catch (error) {
+        toastError(error);
+      }
+    });
+  }
+
+  function toggleFavorite() {
+    startFavoriting(async () => {
+      try {
+        if (activeOutfitId) {
+          await deleteOutfit(activeOutfitId);
+        } else {
+          await createOutfit({ topId: activeTopId!, bottomId: activeBottomId! });
+        }
+      } catch (error) {
+        toastError(error);
+      }
+    });
   }
 
   return (
     <div className="relative h-[60vh] shrink-0">
-      {me?.has_avatar_image && (
+      {me.has_avatar_image && (
         <Button
           type="button"
           variant="ghost"
           size="icon"
           className="absolute right-4 top-4"
-          disabled={!activeTopId || !activeBottomId}
+          disabled={!activeTopId || !activeBottomId || isFavoriting}
           aria-label={activeOutfitId ? "Remove from favorites" : "Save as favorite"}
           aria-pressed={!!activeOutfitId}
-          onClick={() =>
-            activeOutfitId
-              ? deleteOutfit(activeOutfitId)
-              : createOutfit({ topId: activeTopId!, bottomId: activeBottomId! })
-          }
+          onClick={toggleFavorite}
         >
           <StarIcon className={cn("!size-6", activeOutfitId && "fill-current")} />
         </Button>
       )}
       <div className="aspect-3/4 h-full overflow-hidden rounded-2xl">
-        {!me?.has_selfie_image && (
+        {!me.has_selfie_image && (
           // Selfie upload
           <div className="flex h-full items-center justify-center bg-muted px-8">
             <div className="flex flex-col items-center gap-4">
@@ -176,7 +206,7 @@ function Preview({
             </div>
           </div>
         )}
-        {me?.has_selfie_image && !me?.has_avatar_image && (
+        {me.has_selfie_image && !me.has_avatar_image && (
           // Pending avatar generation
           <div className="flex h-full items-center justify-center bg-muted">
             <div className="flex flex-col items-center gap-4">
@@ -187,13 +217,14 @@ function Preview({
             </div>
           </div>
         )}
-        {me?.has_avatar_image && activeTopId && activeBottomId ? (
-          // Normal avatar/outfit preview
-          <AuthenticatedImage
-            src={`${process.env.NEXT_PUBLIC_API_BASE_URL}/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
+        {me.has_avatar_image && activeTopId && activeBottomId ? (
+          // Normal avatar/outfit preview. The browser sends the auth cookie
+          // with the request automatically.
+          <img
+            src={`/api/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
             className="h-full w-full object-cover"
           />
-        ) : me?.has_avatar_image ? (
+        ) : me.has_avatar_image ? (
           // Incomplete outfit
           <div className="flex h-full items-center justify-center px-8">
             <p className="text-center">Select a top and bottom to see your outfit preview.</p>

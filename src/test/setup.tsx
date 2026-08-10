@@ -1,6 +1,5 @@
-import { afterEach, beforeAll, vi } from "vitest";
-import React from "react";
-import { authSpies, getAuthState, resetAuthState } from "./auth-state";
+import { afterEach, beforeAll } from "vitest";
+import { actionSpies } from "./actions-mock";
 import { ensureWorkerStarted, worker } from "./worker";
 import { mockRouter, resetPathname } from "./mocks/next-navigation";
 
@@ -12,45 +11,8 @@ afterEach(() => {
   mockRouter.refresh.mockClear();
   mockRouter.prefetch.mockClear();
   resetPathname();
+  Object.values(actionSpies).forEach((spy) => spy.mockClear());
 });
-
-/**
- * Mock `@auth0/auth0-react` globally. Tests mutate auth state via
- * `setAuthState()` from `auth-state.ts`; the mock reads the current value
- * on every call.
- */
-vi.mock("@auth0/auth0-react", () => ({
-  Auth0Provider: ({ children }: { children: React.ReactNode }) => children,
-  useAuth0: () => {
-    const state = getAuthState();
-    return {
-      isAuthenticated: state.kind === "authenticated",
-      isLoading: state.kind === "loading",
-      user: state.kind === "authenticated" ? state.user : undefined,
-      getAccessTokenSilently: authSpies.getAccessTokenSilently,
-      loginWithRedirect: authSpies.loginWithRedirect,
-      logout: authSpies.logout,
-    };
-  },
-  withAuthenticationRequired: <P extends object>(Component: React.ComponentType<P>) => {
-    return function WithAuth(props: P) {
-      const state = getAuthState();
-      if (state.kind !== "authenticated") {
-        // Match Auth0's behavior: kick off a login redirect and render nothing.
-        void authSpies.loginWithRedirect();
-        return null;
-      }
-      return <Component {...props} />;
-    };
-  },
-}));
-
-// Wire the API client's token getter to our mocked Auth0 spy. The base URL is
-// forced to "" via `define` in vitest.config.ts so MSW can intercept
-// same-origin URLs.
-import { setTokenGetter } from "@/lib/api-client";
-
-setTokenGetter(async () => authSpies.getAccessTokenSilently());
 
 // Start MSW once for the whole test run (idempotent across files).
 beforeAll(async () => {
@@ -77,5 +39,4 @@ beforeAll(async () => {
 
 afterEach(() => {
   worker.resetHandlers();
-  resetAuthState();
 });

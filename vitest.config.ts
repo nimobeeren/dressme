@@ -23,14 +23,10 @@ export default defineConfig({
           },
         },
         plugins: [react(), testFixtureImages()],
-        // Force same-origin API URLs in tests so MSW can intercept with simple
-        // `/wearables`-style paths instead of `/api/wearables`.
-        define: {
-          "process.env.NEXT_PUBLIC_API_BASE_URL": JSON.stringify(""),
-        },
         resolve: {
           alias: {
             "@": path.resolve(__dirname, "./src"),
+            "server-only": path.resolve(__dirname, "./src/test/mocks/server-only.ts"),
             "next/link": path.resolve(__dirname, "./src/test/mocks/next-link"),
             "next/navigation": path.resolve(__dirname, "./src/test/mocks/next-navigation"),
           },
@@ -44,6 +40,7 @@ export default defineConfig({
           setupFiles: ["./tests/server/vitest.setup.ts"],
           alias: {
             "@": path.resolve(__dirname, "./src"),
+            "server-only": path.resolve(__dirname, "./src/test/mocks/server-only.ts"),
           },
         },
       },
@@ -66,7 +63,7 @@ export default defineConfig({
 /**
  * Serves static fixture images from `src/test/fixtures/images/` at URLs under
  * `/test-images/<bucket>/<filename>`. Fixtures reference real files so that
- * `AuthenticatedImage` and `<img>` tags resolve to actual bytes in browser tests.
+ * `<img>` tags resolve to actual bytes in browser tests.
  */
 function testFixtureImages(): Plugin {
   const root = path.resolve(__dirname, "src/test/fixtures/images");

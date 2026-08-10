@@ -84,7 +84,6 @@ pnpm build              # Production build
 
 All environment variables are sourced from `.env` (see `.env.example` for the template).
 Server-side variables (without `NEXT_PUBLIC_` prefix) are only available in route handlers and server code.
-Client-side variables (with `NEXT_PUBLIC_` prefix) are bundled at build time and available in the browser.
 
 ### Blob Storage (MinIO / R2)
 
@@ -107,29 +106,11 @@ psql postgresql://dressme:dressme@localhost:5432/local
 docker compose down -v
 ```
 
-### Getting an Access Token
+### Authentication
 
-When making API requests directly, you'll need to pass a valid access token. The client gets this token automatically from Auth0 after you log in, but you can also get one yourself:
+Authentication uses Auth0 with encrypted, httpOnly session cookies via [`@auth0/nextjs-auth0`](https://github.com/auth0/nextjs-auth0) (the app must be a Regular Web Application in the Auth0 dashboard). Login, callback and logout routes are mounted at `/auth/login`, `/auth/callback` and `/auth/logout`.
 
-```bash
-curl -X POST 'https://$AUTH0_DOMAIN/oauth/token' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "client_id": "$AUTH0_CLIENT_ID",
-        "client_secret": "$AUTH0_CLIENT_SECRET",
-        "audience": "$AUTH0_API_AUDIENCE",
-        "grant_type": "client_credentials"
-    }'
-```
-
-(You can get these variables from the [Auth0 Dashboard](https://manage.auth0.com/), and you probably already have some in your `.env` file)
-
-You can then use this access token when making API requests, for example:
-
-```bash
-curl -X GET 'http://localhost:3000/api/wearables' \
-    --header 'Authorization: Bearer $YOUR_ACCESS_TOKEN'
-```
+Pages and server actions read the session through the data access layer in `src/server/dal.ts`. The outfit preview image is served by `GET /api/images/outfit`, which authenticates via the same session cookie (sent automatically by the browser).
 
 ### Evals
 

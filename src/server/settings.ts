@@ -4,18 +4,16 @@ export const settingsSchema = z.object({
   MODE: z.enum(["development", "production"]).default("production"),
 
   // Auth0
-  /** Algorithms used to sign access tokens.
-   * Found in the Auth0 Dashboard → Applications → APIs → Settings → Access Token Settings. */
-  AUTH0_ALGORITHMS: z.string(),
-  /** Audience URL to prevent using a valid token against another API.
-   * Must match audience of one of the registered APIs in Auth0 Dashboard → Applications → APIs.
-   * Must match audience set by the client. */
-  AUTH0_API_AUDIENCE: z.string(),
   /** Custom domain assigned to the Auth0 application. */
   AUTH0_DOMAIN: z.string(),
-  /** Issuer URL of the Auth0 application.
-   * Typically equal to `https://<AUTH0_DOMAIN>/` (trailing slash is required). */
-  AUTH0_ISSUER: z.string(),
+  /** Client ID of the Auth0 application (must be a Regular Web Application). */
+  AUTH0_CLIENT_ID: z.string(),
+  /** Client secret of the Auth0 application. */
+  AUTH0_CLIENT_SECRET: z.string(),
+  /** Secret used to encrypt the session cookie. Generate with `openssl rand -hex 32`. */
+  AUTH0_SECRET: z.string(),
+  /** Base URL of the app (e.g. http://localhost:3000). Used by the Auth0 SDK for redirects. */
+  APP_BASE_URL: z.string(),
   /** Auth0 User ID of the user who should own the data added during database seeding.
    * You can find this ID in the database. */
   AUTH0_SEED_USER_ID: z.string().optional(),

@@ -114,7 +114,7 @@ Pages and server actions read the session through the data access layer in `src/
 
 ### Evals
 
-Evals measure the performance of AI components. To run the classification eval:
+Evals measure the performance of AI components. To run them:
 
 ```bash
 pnpm evals

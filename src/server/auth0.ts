@@ -11,7 +11,6 @@ export function getAuth0(): Auth0Client {
       clientId: settings.AUTH0_CLIENT_ID,
       clientSecret: settings.AUTH0_CLIENT_SECRET,
       secret: settings.AUTH0_SECRET,
-      appBaseUrl: process.env.VERCEL_URL,
     });
   }
   return _client;

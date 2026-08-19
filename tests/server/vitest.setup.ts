@@ -7,7 +7,6 @@ setSettings({
   AUTH0_CLIENT_ID: "test-client-id",
   AUTH0_CLIENT_SECRET: "test-client-secret",
   AUTH0_SECRET: "a".repeat(64),
-  APP_BASE_URL: "http://localhost:3000",
   DATABASE_URL: "postgres://test:test@localhost:5432/test",
   REPLICATE_API_TOKEN: "placeholder",
   GEMINI_API_KEY: "placeholder",

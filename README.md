@@ -126,9 +126,9 @@ Evals are defined in `tests/evals/` and use a `.eval.ts` extension.
 
 ## Deployment
 
-The app is automatically deployed to Vercel on every push.
+Deploy the app by pushing to a branch. The `main` branch is deployed to production and other branches are deployed to preview environments.
 
-To deploy manually:
+In rare situations, you may want to deploy manually:
 
 ```bash
 pnpm deploy

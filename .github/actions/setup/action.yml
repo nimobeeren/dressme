@@ -1,0 +1,23 @@
+name: Setup
+description: Check out the repository and install dependencies with pnpm
+
+inputs:
+  node-version:
+    description: Node.js version to use (should match .node-version file)
+    required: false
+    default: "24.15.0"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+
+    - uses: pnpm/action-setup@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - run: pnpm install --frozen-lockfile
+      shell: bash

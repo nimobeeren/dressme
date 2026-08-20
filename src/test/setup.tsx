@@ -1,7 +1,7 @@
 import { afterEach, beforeAll } from "vitest";
 import { actionSpies } from "./actions-mock";
 import { ensureWorkerStarted, worker } from "./worker";
-import { mockRouter, resetPathname } from "./mocks/next-navigation";
+import { mockRouter, redirect, resetPathname } from "./mocks/next-navigation";
 
 afterEach(() => {
   mockRouter.push.mockClear();
@@ -10,6 +10,7 @@ afterEach(() => {
   mockRouter.forward.mockClear();
   mockRouter.refresh.mockClear();
   mockRouter.prefetch.mockClear();
+  redirect.mockClear();
   resetPathname();
   Object.values(actionSpies).forEach((spy) => spy.mockClear());
 });

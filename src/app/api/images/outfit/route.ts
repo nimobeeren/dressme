@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(new Uint8Array(outfitImage), {
       headers: {
         "Content-Type": "image/jpeg",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "private, max-age=3600",
       },
     });
   });

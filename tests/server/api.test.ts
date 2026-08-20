@@ -1112,7 +1112,7 @@ describe("GET /api/images/outfit", () => {
     const res = await GET(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("image/jpeg");
-    expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
+    expect(res.headers.get("Cache-Control")).toBe("private, max-age=3600");
   });
 
   test("returns 404 for missing top", async () => {

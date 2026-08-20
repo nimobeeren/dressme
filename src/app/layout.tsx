@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Providers } from "@/components/providers";
+import { AlphaNotice } from "@/components/alpha-notice";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        {children}
+        <Toaster />
+        <AlphaNotice />
       </body>
     </html>
   );

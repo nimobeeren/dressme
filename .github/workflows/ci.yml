@@ -4,13 +4,34 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  check:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
 
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+
+  test-server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -25,29 +46,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24.18.0"
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm typecheck
-
-      - run: pnpm lint
-
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
       - run: pnpm test:server
         env:
           DATABASE_URL: postgresql://dressme:dressme@localhost:5432/local
 
+  test-browser:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
       - run: pnpm exec playwright install --with-deps chromium
-
       - run: pnpm test:browser
-
-      - run: pnpm build

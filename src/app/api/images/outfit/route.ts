@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { withAuth } from "@/server/route-utils";
+import { withCookieAuth } from "@/server/route-utils";
 import { getBlobStorage } from "@/server/services";
 import { getSettings } from "@/server/settings";
 import { getDb, schema } from "@/server/db";
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  return withAuth(request, async (user) => {
+  return withCookieAuth(async (user) => {
     if (!user.avatarImageKey) {
       return NextResponse.json({ detail: "User has no avatar image." }, { status: 404 });
     }
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(new Uint8Array(outfitImage), {
       headers: {
         "Content-Type": "image/jpeg",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "private, max-age=3600",
       },
     });
   });

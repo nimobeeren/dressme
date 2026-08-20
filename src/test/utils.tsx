@@ -1,13 +1,6 @@
 import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { Toaster } from "@/components/ui/toaster";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";
-import { AddPage } from "@/views/add";
-import { HomePage } from "@/views/home";
-import { setPathname, usePathname } from "./mocks/next-navigation";
-
-export { setAuthState } from "./auth-state";
-
 import { TEST_IMAGE_PREFIX } from "./constants";
 
 /** Build a URL that the Vite middleware will serve from fixtures on disk. */
@@ -18,40 +11,14 @@ export function fixtureImageUrl(
   return `${TEST_IMAGE_PREFIX}/${bucket}/${filename}`;
 }
 
-/** Renders a component inside the same providers the real app uses. */
+/** Renders a component together with the Toaster the real app mounts in the root layout. */
 export async function renderWithProviders(ui: React.ReactElement) {
-  // Fresh QueryClient per render — retries off so errors surface immediately.
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0, staleTime: 0 },
-      mutations: { retry: false },
-    },
-  });
-
   return await render(
-    <QueryClientProvider client={queryClient}>
+    <>
       {ui}
       <Toaster />
-    </QueryClientProvider>,
+    </>,
   );
-}
-
-/**
- * A minimal stand-in for Next.js file-based routing in tests: renders the page
- * that matches the current pathname reported by the mocked `next/navigation`.
- * Navigation via `router.push`/`router.replace` updates that pathname, so the
- * rendered content swaps just like a real route change.
- */
-export function TestRoutes() {
-  const pathname = usePathname();
-  if (pathname === "/add") return <AddPage />;
-  return <HomePage />;
-}
-
-/** Renders the app shell starting at a given route (default: home). */
-export async function renderApp({ initialPath = "/" }: { initialPath?: string } = {}) {
-  setPathname(initialPath);
-  return renderWithProviders(<TestRoutes />);
 }
 
 // ---------- Fixture builders ----------

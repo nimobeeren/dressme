@@ -1,5 +1,7 @@
+"use client";
+
 import type { Wearable } from "@/shared/schemas";
-import { FullPageSpinner } from "@/components/full-page-spinner";
+import { classifyWearable, createWearables } from "@/server/actions/wearables";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -19,11 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useClassifyWearable, useCreateWearables, useMe } from "@/hooks/api";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckIcon, CircleSlashIcon, LoaderCircleIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   Control,
   FieldPath,
@@ -75,13 +76,18 @@ const formSchema = z.object({
     .min(1),
 });
 
-/** Page for adding wearables. */
-export function AddPage() {
-  const { data: me, isPending: meIsPending } = useMe();
+/** Auto-classification state for one wearable card, keyed by field-array ID. */
+type Classification =
+  | { status: "pending" }
+  | { status: "done"; category: WearableCategory | null }
+  | { status: "error" };
+
+/** Page for adding wearables. Requires the user to have a generated avatar. */
+export function AddClient() {
   const router = useRouter();
   const { toast } = useToast();
-
-  const { mutate: createWearables, isPending } = useCreateWearables();
+  const [classifications, setClassifications] = useState<Record<string, Classification>>({});
+  const [isSubmitting, startSubmitting] = useTransition();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -97,50 +103,54 @@ export function AddPage() {
 
   const wearables = useWatch({ control: form.control, name: "wearables" });
 
-  useEffect(() => {
-    if (me && !me.has_avatar_image) {
-      router.replace("/");
+  async function classify(fieldId: string, file: File) {
+    setClassifications((prev) => ({ ...prev, [fieldId]: { status: "pending" } }));
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const { category } = await classifyWearable(formData);
+      setClassifications((prev) => ({ ...prev, [fieldId]: { status: "done", category } }));
+    } catch {
+      setClassifications((prev) => ({ ...prev, [fieldId]: { status: "error" } }));
     }
-  }, [me, router]);
-
-  if (meIsPending) {
-    return <FullPageSpinner />;
-  }
-
-  if (!me || !me.has_avatar_image) {
-    return null;
   }
 
   function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.preventDefault();
-    if (e.target.files) {
-      wearablesFieldArray.append(
-        Array.from(e.target.files).map((file) => ({
-          file,
-          preview: URL.createObjectURL(file),
-          category: undefined as unknown as WearableCategory,
-        })),
-      );
-    }
+    if (!e.target.files) return;
+    wearablesFieldArray.append(
+      Array.from(e.target.files).map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+        category: undefined as unknown as WearableCategory,
+      })),
+    );
   }
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
-    createWearables(
-      data.wearables.map(({ category, file }) => ({
-        category,
-        image: file,
-      })),
-      {
-        onSuccess: async () => {
-          router.push("/");
-          const cheers = ["Nice!", "Pretty!", "Cool!", "Oooh!", "Wow!"];
-          toast({
-            title: cheers[Math.floor(Math.random() * cheers.length)],
-            description: "Added item to your wardrobe.",
-          });
-        },
-      },
-    );
+  function onSubmit(data: z.infer<typeof formSchema>) {
+    const formData = new FormData();
+    for (const { category, file } of data.wearables) {
+      formData.append("category", category);
+      formData.append("image", file);
+    }
+
+    startSubmitting(async () => {
+      try {
+        await createWearables(formData);
+        router.push("/");
+        const cheers = ["Nice!", "Pretty!", "Cool!", "Oooh!", "Wow!"];
+        toast({
+          title: cheers[Math.floor(Math.random() * cheers.length)],
+          description: "Added item to your wardrobe.",
+        });
+      } catch (error) {
+        toast({
+          title: "Oops, something went wrong!",
+          description: `Computer says: '${error instanceof Error ? error.message : String(error)}'`,
+          variant: "destructive",
+        });
+      }
+    });
   }
 
   return (
@@ -160,7 +170,9 @@ export function AddPage() {
                   file={field.file}
                   previewSrc={field.preview}
                   control={form.control}
+                  classification={classifications[field.id]}
                   onRemove={() => wearablesFieldArray.remove(index)}
+                  onClassify={classify}
                 />
               ))}
               <FileInputButton onChange={onFileInputChange} />
@@ -171,7 +183,7 @@ export function AddPage() {
             <Button
               asChild
               type="button"
-              disabled={isPending}
+              disabled={isSubmitting}
               variant="outline"
               className="col-span-1"
             >
@@ -182,11 +194,11 @@ export function AddPage() {
             </Button>
             <Button
               type="submit"
-              disabled={isPending || wearables.length === 0}
+              disabled={isSubmitting || wearables.length === 0}
               className="col-span-1"
             >
               Done
-              {isPending ? <LoaderCircleIcon className="animate-spin" /> : <CheckIcon />}
+              {isSubmitting ? <LoaderCircleIcon className="animate-spin" /> : <CheckIcon />}
             </Button>
           </div>
         </form>
@@ -198,7 +210,7 @@ export function AddPage() {
 interface WearableAddCardProps<TFieldValues extends FieldValues> {
   /** Name of the form field (e.g. `wearables.0` or `wearables.1`). */
   name: string;
-  /** Stable field ID used as query key. */
+  /** Stable field ID used to key classification state. */
   fieldId: string;
   /** The image file to classify. */
   file: File;
@@ -206,8 +218,12 @@ interface WearableAddCardProps<TFieldValues extends FieldValues> {
   previewSrc: string;
   /** Form control. */
   control: Control<TFieldValues>;
+  /** Auto-classification state for this card. */
+  classification: Classification | undefined;
   /** Callback for when remove button is clicked. */
   onRemove: () => void;
+  /** Callback that starts auto-classification for this card. */
+  onClassify: (fieldId: string, file: File) => void;
 }
 
 /** A card representing a single wearable to be added. */
@@ -217,9 +233,15 @@ function WearableAddCard<TFieldValues extends FieldValues>({
   file,
   previewSrc,
   control,
+  classification,
   onRemove,
+  onClassify,
 }: WearableAddCardProps<TFieldValues>) {
-  const classifyQuery = useClassifyWearable(file, fieldId);
+  // Kick off classification once, on mount; the result arrives via props.
+  useEffect(() => {
+    onClassify(fieldId, file);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="group relative w-64">
@@ -228,8 +250,10 @@ function WearableAddCard<TFieldValues extends FieldValues>({
         <CategoryFormField
           control={control}
           name={`${name}.category` as FieldPath<TFieldValues>}
-          suggestion={classifyQuery.data?.category ?? undefined}
-          pending={classifyQuery.isPending}
+          suggestion={
+            classification?.status === "done" ? (classification.category ?? undefined) : undefined
+          }
+          pending={classification?.status === "pending"}
         />
       </Card>
       <Button

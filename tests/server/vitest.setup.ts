@@ -3,10 +3,10 @@ import { setSettings } from "../../src/server/settings";
 // Provide valid placeholder settings for all server tests
 setSettings({
   MODE: "development",
-  AUTH0_ALGORITHMS: "RS256",
-  AUTH0_API_AUDIENCE: "https://test.local",
   AUTH0_DOMAIN: "test.auth0.com",
-  AUTH0_ISSUER: "https://test.auth0.com/",
+  AUTH0_CLIENT_ID: "test-client-id",
+  AUTH0_CLIENT_SECRET: "test-client-secret",
+  AUTH0_SECRET: "a".repeat(64),
   DATABASE_URL: "postgres://test:test@localhost:5432/test",
   REPLICATE_API_TOKEN: "placeholder",
   GEMINI_API_KEY: "placeholder",

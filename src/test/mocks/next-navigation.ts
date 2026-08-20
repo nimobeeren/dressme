@@ -39,6 +39,11 @@ export const mockRouter = {
   prefetch: vi.fn(),
 };
 
+export const redirect = vi.fn((href: string) => {
+  currentPath = href;
+  emit();
+});
+
 export function useRouter() {
   return mockRouter;
 }

@@ -6,7 +6,7 @@ import { updateTag } from "next/cache";
 import { after } from "next/server";
 import { getCurrentUser } from "../auth";
 import { uploadBlob } from "../blob-storage";
-import { getDb, schema } from "../db";
+import { db, schema } from "../db";
 import { readFormImageAsJpeg } from "../image-utils";
 import { CACHE_TAGS, getMe } from "../queries";
 import { getSettings } from "../settings";
@@ -24,8 +24,6 @@ export async function uploadSelfie(formData: FormData): Promise<void> {
 
   const jpegData = await readFormImageAsJpeg(formData);
   const settings = getSettings();
-
-  const db = getDb();
 
   // Upload selfie to blob storage
   const key = `${randomUUID()}.jpg`;

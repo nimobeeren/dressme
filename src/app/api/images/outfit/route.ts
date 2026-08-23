@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { withCookieAuth } from "@/server/route-utils";
 import { downloadBlob } from "@/server/blob-storage";
 import { getSettings } from "@/server/settings";
-import { getDb, schema } from "@/server/db";
+import { db, schema } from "@/server/db";
 
 export const maxDuration = 300;
 export const runtime = "nodejs";
@@ -24,8 +24,6 @@ export async function GET(request: NextRequest) {
     }
 
     const settings = getSettings();
-
-    const db = getDb();
 
     // Get the top and bottom wearables to get their image keys
     const topWearable = await db.query.wearables.findFirst({

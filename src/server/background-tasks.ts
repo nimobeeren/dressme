@@ -2,12 +2,11 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { downloadBlob, uploadBlob } from "./blob-storage";
 import { getSettings } from "./settings";
-import { getDb, schema } from "./db";
+import { db, schema } from "./db";
 
 // TODO: add a test for this
 export async function generateAvatarTask(userId: string): Promise<void> {
   const settings = getSettings();
-  const db = getDb();
 
   try {
     const user = await db.query.users.findFirst({
@@ -40,7 +39,6 @@ export async function generateAvatarTask(userId: string): Promise<void> {
 // TODO: add a test for this
 export async function generateWoaTask(wearableId: string, userId: string): Promise<void> {
   const settings = getSettings();
-  const db = getDb();
 
   try {
     const user = await db.query.users.findFirst({

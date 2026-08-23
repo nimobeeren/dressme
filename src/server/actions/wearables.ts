@@ -6,7 +6,7 @@ import { updateTag } from "next/cache";
 import { after } from "next/server";
 import { getCurrentUser } from "../auth";
 import { uploadBlob } from "../blob-storage";
-import { getDb, schema } from "../db";
+import { db, schema } from "../db";
 import {
   compressToJpeg,
   parseFormUpload,
@@ -36,8 +36,6 @@ export async function createWearables(formData: FormData): Promise<void> {
   }
 
   const settings = getSettings();
-
-  const db = getDb();
 
   const wearables: Array<{ id: string; category: string; imageKey: string }> = [];
 

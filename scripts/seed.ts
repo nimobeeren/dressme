@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getDb, schema } from "../src/server/db";
+import { db, schema } from "../src/server/db";
 import { uploadBlob } from "../src/server/blob-storage";
 import { getSettings } from "../src/server/settings";
 
@@ -74,8 +74,6 @@ async function seed() {
         "should own the data added during seeding.",
     );
   }
-
-  const db = getDb();
 
   // Upload selfie image
   const selfiePath = path.join(ROOT_PATH, SELFIE_PATH);

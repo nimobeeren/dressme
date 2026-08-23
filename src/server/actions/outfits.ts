@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { getBodyPart } from "@/shared/wearable-categories";
 import { updateTag } from "next/cache";
 import { getCurrentUser } from "../auth";
-import { getDb, schema } from "../db";
+import { db, schema } from "../db";
 import { CACHE_TAGS } from "../queries";
 
 /**
@@ -13,7 +13,6 @@ import { CACHE_TAGS } from "../queries";
  */
 export async function createOutfit(params: { topId: string; bottomId: string }): Promise<void> {
   const user = await getCurrentUser();
-  const db = getDb();
 
   const topId = params.topId;
   const bottomId = params.bottomId;
@@ -65,7 +64,6 @@ export async function createOutfit(params: { topId: string; bottomId: string }):
  */
 export async function deleteOutfit(id: string): Promise<void> {
   const user = await getCurrentUser();
-  const db = getDb();
 
   // Check if the outfit exists and is owned by the current user
   const outfit = await db.query.outfits.findFirst({

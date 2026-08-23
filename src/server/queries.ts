@@ -4,7 +4,7 @@ import { getBodyPart, parseWearableCategory } from "@/shared/wearable-categories
 import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "./auth";
-import { getDb, schema } from "./db";
+import { db, schema } from "./db";
 import { getSignedBlobUrl } from "./blob-storage";
 import { getSettings } from "./settings";
 
@@ -44,7 +44,6 @@ async function getCompletedWearableImageKeys(
   avatarImageKey: string | null,
 ): Promise<Set<string>> {
   if (!avatarImageKey) return new Set();
-  const db = getDb();
   const woaImages = await db.query.wearableOnAvatarImages.findMany({
     where: eq(schema.wearableOnAvatarImages.userId, userId),
   });
@@ -65,7 +64,6 @@ export async function getMe(): Promise<User> {
 export async function getWearables(): Promise<Wearable[]> {
   const user = await getCurrentUser();
   const settings = getSettings();
-  const db = getDb();
 
   const userWearables = await db.query.wearables.findMany({
     where: eq(schema.wearables.userId, user.id),
@@ -79,7 +77,6 @@ export async function getWearables(): Promise<Wearable[]> {
 export async function getOutfits(): Promise<Outfit[]> {
   const user = await getCurrentUser();
   const settings = getSettings();
-  const db = getDb();
 
   const completedWearableImageKeys = await getCompletedWearableImageKeys(
     user.id,

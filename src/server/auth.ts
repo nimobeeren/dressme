@@ -21,7 +21,7 @@ import "server-only";
 import { DrizzleQueryError, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { getDb, schema } from "./db";
+import { db, schema } from "./db";
 
 export interface UserRow {
   id: string;
@@ -50,8 +50,6 @@ export async function getCurrentUser(): Promise<UserRow> {
 }
 
 async function getCurrentUserForAuth0UserId(auth0UserId: string): Promise<UserRow> {
-  const db = getDb();
-
   const existing = await db.query.users.findFirst({
     where: eq(schema.users.auth0UserId, auth0UserId),
   });

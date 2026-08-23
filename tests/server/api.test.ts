@@ -1,22 +1,22 @@
 import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
+import { db } from "../../src/server/db";
 import * as schema from "../../src/server/db/schema";
+
+type Db = typeof db;
 
 const TEST_USER_ID = "auth0|1";
 
-// Swap getDb for a PGlite-backed drizzle instance while keeping the real
-// schema re-export.
-vi.mock("../../src/server/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/server/db")>();
-  return {
-    ...actual,
-    getDb: vi.fn(),
-  };
+// Back the db module with an in-memory PGlite database
+vi.mock("../../src/server/db", async () => {
+  const { drizzle } = await import("drizzle-orm/pglite");
+  const { PGlite } = await import("@electric-sql/pglite");
+  const schema = await import("../../src/server/db/schema");
+  return { db: drizzle({ client: new PGlite(), schema }), schema };
 });
 
 // Mock the Auth0 SDK so auth.ts resolves the session from a test-controlled
@@ -96,8 +96,8 @@ vi.mock("../../src/server/blob-storage", () => ({
   getSignedBlobUrl: mockBlobStorage.getSignedUrl,
 }));
 
-async function setupSchema(db: ReturnType<typeof drizzle>) {
-  await db.$client.exec(`
+async function setupSchema(db: Db) {
+  await (db.$client as unknown as PGlite).exec(`
     CREATE TABLE IF NOT EXISTS "user" (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       auth0_user_id VARCHAR NOT NULL UNIQUE,
@@ -127,8 +127,6 @@ async function setupSchema(db: ReturnType<typeof drizzle>) {
   `);
 }
 
-let db: ReturnType<typeof drizzle<typeof schema>>;
-
 async function flushBackgroundTasks() {
   await Promise.all(pendingBgTasks);
   pendingBgTasks = [];
@@ -139,12 +137,7 @@ function setSessionUser(sub: string | null) {
 }
 
 beforeAll(async () => {
-  const pg = new PGlite();
-  db = drizzle({ client: pg, schema });
   await setupSchema(db);
-  // PGlite's drizzle driver is API-compatible with node-postgres at runtime
-  // but not nominally, hence the cast
-  vi.mocked(await import("../../src/server/db")).getDb.mockReturnValue(db as any);
 });
 
 beforeEach(async () => {
@@ -157,10 +150,11 @@ beforeEach(async () => {
   // can't satisfy downloads in another.
   mockBlobStorage.clear();
   // Truncate all tables between tests (order matters for FK constraints)
-  await db.$client.exec("DELETE FROM outfit");
-  await db.$client.exec("DELETE FROM wearableonavatarimage");
-  await db.$client.exec("DELETE FROM wearable");
-  await db.$client.exec('DELETE FROM "user"');
+  const client = db.$client as unknown as PGlite;
+  await client.exec("DELETE FROM outfit");
+  await client.exec("DELETE FROM wearableonavatarimage");
+  await client.exec("DELETE FROM wearable");
+  await client.exec('DELETE FROM "user"');
 });
 
 describe("queries", () => {

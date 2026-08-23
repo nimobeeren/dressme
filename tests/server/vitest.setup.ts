@@ -2,7 +2,6 @@ import { setSettings } from "../../src/server/settings";
 
 // Provide valid placeholder settings for all server tests
 setSettings({
-  MODE: "development",
   AUTH0_DOMAIN: "test.auth0.com",
   AUTH0_CLIENT_ID: "test-client-id",
   AUTH0_CLIENT_SECRET: "test-client-secret",

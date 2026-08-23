@@ -1,6 +1,7 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl as s3GetSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getSettings } from "./settings";
+import { isLocalUrl } from "./utils";
 
 let _client: S3Client | null = null;
 
@@ -51,9 +52,8 @@ export async function getSignedBlobUrl(
 ): Promise<string> {
   const settings = getSettings();
 
-  // In development, return a direct URL without signing
-  // because MinIO has anonymous access enabled
-  if (settings.MODE === "development") {
+  // Local MinIO has anonymous access enabled, so return a direct unsigned URL
+  if (isLocalUrl(settings.S3_ENDPOINT_URL)) {
     return `${settings.S3_ENDPOINT_URL}/${bucket}/${key}`;
   }
   return s3GetSignedUrl(getClient(), new GetObjectCommand({ Bucket: bucket, Key: key }), {

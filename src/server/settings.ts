@@ -1,8 +1,6 @@
 import { z } from "zod";
 
 export const settingsSchema = z.object({
-  MODE: z.enum(["development", "production"]).default("production"),
-
   // Auth0
   /** Custom domain assigned to the Auth0 application. */
   AUTH0_DOMAIN: z.string(),

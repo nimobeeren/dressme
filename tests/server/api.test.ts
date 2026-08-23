@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
+import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
 import { db } from "../../src/server/db";
 import * as schema from "../../src/server/db/schema";
-
-type Db = typeof db;
 
 const TEST_USER_ID = "auth0|1";
 
@@ -96,37 +96,6 @@ vi.mock("../../src/server/blob-storage", () => ({
   getSignedBlobUrl: mockBlobStorage.getSignedUrl,
 }));
 
-async function setupSchema(db: Db) {
-  await (db.$client as unknown as PGlite).exec(`
-    CREATE TABLE IF NOT EXISTS "user" (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      auth0_user_id VARCHAR NOT NULL UNIQUE,
-      selfie_image_key VARCHAR,
-      avatar_image_key VARCHAR
-    );
-    CREATE TABLE IF NOT EXISTS "wearable" (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES "user"(id),
-      category VARCHAR NOT NULL,
-      image_key VARCHAR NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS "wearableonavatarimage" (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES "user"(id),
-      avatar_image_key VARCHAR NOT NULL,
-      wearable_image_key VARCHAR NOT NULL,
-      image_key VARCHAR NOT NULL,
-      mask_image_key VARCHAR NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS "outfit" (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES "user"(id),
-      top_id UUID NOT NULL REFERENCES "wearable"(id),
-      bottom_id UUID NOT NULL REFERENCES "wearable"(id)
-    );
-  `);
-}
-
 async function flushBackgroundTasks() {
   await Promise.all(pendingBgTasks);
   pendingBgTasks = [];
@@ -137,7 +106,13 @@ function setSessionUser(sub: string | null) {
 }
 
 beforeAll(async () => {
-  await setupSchema(db);
+  // Apply the real migrations so tests run against the same schema as
+  // production.
+  // Cast needed: PGlite's drizzle driver is API-compatible with
+  // node-postgres at runtime but not nominally.
+  await migrate(db as any, {
+    migrationsFolder: join(import.meta.dirname, "..", "..", "drizzle"),
+  });
 });
 
 beforeEach(async () => {

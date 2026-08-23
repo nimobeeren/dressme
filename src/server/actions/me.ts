@@ -3,11 +3,12 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
+import { after } from "next/server";
 import { getCurrentUser } from "../auth";
+import { getBlobStorage } from "../blob-storage";
 import { getDb, schema } from "../db";
 import { readFormImageAsJpeg } from "../image-utils";
 import { CACHE_TAGS, getMe } from "../queries";
-import { getAfter, getBlobStorage } from "../services";
 import { getSettings } from "../settings";
 
 /**
@@ -33,7 +34,6 @@ export async function uploadSelfie(formData: FormData): Promise<void> {
   // Update user and trigger avatar generation
   await db.update(schema.users).set({ selfieImageKey: key }).where(eq(schema.users.id, user.id));
 
-  const after = getAfter();
   after(async () => {
     const { generateAvatarTask } = await import("../background-tasks");
     await generateAvatarTask(user.id);

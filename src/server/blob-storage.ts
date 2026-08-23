@@ -1,6 +1,6 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { getSettings } from "../settings";
+import { getSettings } from "./settings";
 
 let _client: S3Client | null = null;
 
@@ -31,6 +31,12 @@ export interface BlobStorage {
   ): Promise<void>;
   download(bucket: string, key: string): Promise<Buffer>;
   getSignedUrl(bucket: string, key: string, expiresIn?: number): Promise<string>;
+}
+
+let _blobStorage: BlobStorage | undefined;
+export function getBlobStorage(): BlobStorage {
+  if (!_blobStorage) _blobStorage = new R2Storage();
+  return _blobStorage;
 }
 
 export class R2Storage implements BlobStorage {

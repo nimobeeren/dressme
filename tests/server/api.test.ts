@@ -2,13 +2,12 @@ import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { eq } from "drizzle-orm";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
 import * as schema from "../../src/server/db/schema";
 import { setTestDb } from "../../src/server/db";
-import { setServices, resetServices } from "../../src/server/services";
-import type { AfterFn, BlobStorage } from "../../src/server/services";
+import type { BlobStorage } from "../../src/server/blob-storage";
 
 const TEST_USER_ID = "auth0|1";
 
@@ -30,21 +29,44 @@ vi.mock("next/cache", () => ({
   updateTag: vi.fn(),
 }));
 
+// Track background tasks scheduled via next/server's after() so tests can
+// flush them deterministically.
+let pendingBgTasks: Promise<unknown>[] = [];
+
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: (callback: () => void | Promise<void>) => {
+      pendingBgTasks.push(Promise.resolve(callback()));
+    },
+  };
+});
+
 // Mock avatar generation to avoid real API calls
-vi.mock("../../src/server/services/avatar-generation", () => ({
+vi.mock("../../src/server/avatar-generation", () => ({
   generateAvatar: vi.fn().mockResolvedValue(Buffer.from([0xff, 0xd8, 0xff])),
 }));
 
 // Mock WOA generation to avoid real API calls
-vi.mock("../../src/server/services/woa-generation", () => ({
+vi.mock("../../src/server/woa-generation", () => ({
   generateWoaImage: vi.fn().mockResolvedValue(Buffer.from("fake_woa")),
   generateMask: vi.fn().mockResolvedValue(Buffer.from("fake_mask")),
 }));
 
 // Mock wearable classification to avoid real API calls
-vi.mock("../../src/server/services/wearable-classification", () => ({
+vi.mock("../../src/server/wearable-classification", () => ({
   classifyWearableImage: vi.fn().mockResolvedValue("t-shirt"),
 }));
+
+// Swap the lazy singleton for an in-memory implementation
+vi.mock("../../src/server/blob-storage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/server/blob-storage")>();
+  return {
+    ...actual,
+    getBlobStorage: () => mockBlobStorage,
+  };
+});
 
 class MockBlobStorage implements BlobStorage {
   private _data = new Map<string, Buffer>();
@@ -101,11 +123,6 @@ async function setupSchema(db: ReturnType<typeof drizzle>) {
 
 let mockBlobStorage: MockBlobStorage;
 let db: ReturnType<typeof drizzle<typeof schema>>;
-let pendingBgTasks: Promise<unknown>[] = [];
-
-const mockAfter: AfterFn = (callback) => {
-  pendingBgTasks.push(Promise.resolve(callback()));
-};
 
 async function flushBackgroundTasks() {
   await Promise.all(pendingBgTasks);
@@ -116,13 +133,6 @@ function setSessionUser(sub: string | null) {
   auth0Mocks.getSession.mockImplementation(async () => (sub ? { user: { sub } } : null));
 }
 
-function applyServiceOverrides() {
-  setServices({
-    blobStorage: mockBlobStorage,
-    after: mockAfter,
-  });
-}
-
 beforeAll(async () => {
   const pg = new PGlite();
   db = drizzle({ client: pg, schema });
@@ -130,12 +140,9 @@ beforeAll(async () => {
   setTestDb(db);
 
   mockBlobStorage = new MockBlobStorage();
-
-  applyServiceOverrides();
 });
 
 afterAll(() => {
-  resetServices();
   setTestDb(null as any);
 });
 
@@ -143,10 +150,6 @@ beforeEach(async () => {
   setSessionUser(TEST_USER_ID);
   vi.mocked(await import("next/cache")).updateTag.mockClear();
 
-  // Re-apply overrides before flushing so any background tasks scheduled by the
-  // previous test (via the mocked `after`) see the mock blob storage
-  // instead of constructing a real R2Storage.
-  applyServiceOverrides();
   await flushBackgroundTasks();
   pendingBgTasks = [];
   // Reset the in-memory blob store between tests. Upstream uses a per-test
@@ -158,10 +161,6 @@ beforeEach(async () => {
   await db.$client.exec("DELETE FROM wearableonavatarimage");
   await db.$client.exec("DELETE FROM wearable");
   await db.$client.exec('DELETE FROM "user"');
-});
-
-afterEach(() => {
-  resetServices();
 });
 
 describe("queries", () => {
@@ -793,8 +792,7 @@ describe("actions", () => {
 
     test("rethrows with a friendly message when classification fails", async () => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
-      const { classifyWearableImage } =
-        await import("../../src/server/services/wearable-classification");
+      const { classifyWearableImage } = await import("../../src/server/wearable-classification");
       vi.mocked(classifyWearableImage).mockRejectedValueOnce(new Error("Gemini is down"));
 
       const { classifyWearable } = await import("@/server/actions/wearables");

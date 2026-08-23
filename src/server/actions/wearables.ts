@@ -3,7 +3,9 @@
 import { randomUUID } from "node:crypto";
 import type { ClassifyResponse } from "@/shared/schemas";
 import { updateTag } from "next/cache";
+import { after } from "next/server";
 import { getCurrentUser } from "../auth";
+import { getBlobStorage } from "../blob-storage";
 import { getDb, schema } from "../db";
 import {
   compressToJpeg,
@@ -12,7 +14,6 @@ import {
   safeOpenImage,
 } from "../image-utils";
 import { CACHE_TAGS, getWearables } from "../queries";
-import { getAfter, getBlobStorage } from "../services";
 import { getSettings } from "../settings";
 
 /**
@@ -67,7 +68,6 @@ export async function createWearables(formData: FormData): Promise<void> {
 
   // Create WearableOnAvatar (WOA) images
   // Do this after DB commit to ensure the wearables exist
-  const after = getAfter();
   for (const wearable of wearables) {
     after(async () => {
       const { generateWoaTask } = await import("../background-tasks");
@@ -88,7 +88,7 @@ export async function classifyWearable(formData: FormData): Promise<ClassifyResp
   const jpegData = await readFormImageAsJpeg(formData);
 
   try {
-    const { classifyWearableImage } = await import("../services/wearable-classification");
+    const { classifyWearableImage } = await import("../wearable-classification");
     const category = await classifyWearableImage(jpegData);
     return { category };
   } catch (error) {

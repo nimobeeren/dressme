@@ -1,6 +1,6 @@
 import pRetry from "p-retry";
 import Replicate from "replicate";
-import { getSettings } from "../settings";
+import { getSettings } from "./settings";
 import {
   CATEGORY_BODY_PARTS,
   parseWearableCategory,
@@ -21,6 +21,15 @@ const WEARABLE_DESCRIPTIONS: Record<WearableCategory, string> = {
   shorts: "shorts",
   skirt: "skirt",
 };
+
+export interface WoaGenerator {
+  generateImage(params: {
+    avatarImage: Buffer;
+    wearableImage: Buffer;
+    category: string;
+  }): Promise<Buffer>;
+  generateMask(params: { woaImage: Buffer; category: string }): Promise<Buffer>;
+}
 
 async function downloadUrl(url: string): Promise<Buffer> {
   const response = await fetch(url);

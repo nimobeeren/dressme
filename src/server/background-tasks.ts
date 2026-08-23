@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { getBlobStorage } from "./services";
+import { getBlobStorage } from "./blob-storage";
 import { getSettings } from "./settings";
 import { getDb, schema } from "./db";
 
@@ -21,7 +21,7 @@ export async function generateAvatarTask(userId: string): Promise<void> {
 
     const selfieData = await blobStorage.download(settings.SELFIES_BUCKET, user.selfieImageKey);
 
-    const { generateAvatar } = await import("./services/avatar-generation");
+    const { generateAvatar } = await import("./avatar-generation");
     const avatarData = await generateAvatar(selfieData);
 
     const avatarKey = `${randomUUID()}.jpg`;
@@ -67,7 +67,7 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
       user.avatarImageKey,
     );
 
-    const { generateWoaImage, generateMask } = await import("./services/woa-generation");
+    const { generateWoaImage, generateMask } = await import("./woa-generation");
 
     // Generate an image of the avatar wearing the wearable
     const woaImageData = await generateWoaImage({

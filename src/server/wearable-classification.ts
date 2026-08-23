@@ -1,11 +1,15 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
-import { getSettings } from "../settings";
+import { getSettings } from "./settings";
 import { WEARABLE_CATEGORIES, type WearableCategory } from "@/shared/wearable-categories";
 import { classifyResponseSchema } from "@/shared/schemas";
 
 async function getSharp() {
   return (await import("sharp")).default;
+}
+
+export interface WearableClassifier {
+  classify(imageData: Buffer): Promise<string | null>;
 }
 
 /**

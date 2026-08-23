@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDb, schema } from "../src/server/db";
-import { getBlobStorage } from "../src/server/services";
+import { getBlobStorage } from "../src/server/blob-storage";
 import { getSettings } from "../src/server/settings";
 
 const settings = getSettings();

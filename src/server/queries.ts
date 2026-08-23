@@ -5,7 +5,7 @@ import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "./auth";
 import { getDb, schema } from "./db";
-import { getBlobStorage } from "./services";
+import { getBlobStorage } from "./blob-storage";
 import { getSettings } from "./settings";
 
 /**

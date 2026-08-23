@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { withCookieAuth } from "@/server/route-utils";
-import { getBlobStorage } from "@/server/services";
+import { getBlobStorage } from "@/server/blob-storage";
 import { getSettings } from "@/server/settings";
 import { getDb, schema } from "@/server/db";
 

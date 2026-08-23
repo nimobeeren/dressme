@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, test } from "vitest";
-import { classifyWearableImage } from "../../src/server/services/wearable-classification";
+import { classifyWearableImage } from "../../src/server/wearable-classification";
 
 const WEARABLES_DIR = join(import.meta.dirname, "..", "..", "images", "wearables");
 

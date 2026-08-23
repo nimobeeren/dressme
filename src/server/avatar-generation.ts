@@ -1,9 +1,13 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
-import { getSettings } from "../settings";
+import { getSettings } from "./settings";
 
 async function getSharp() {
   return (await import("sharp")).default;
+}
+
+export interface AvatarGenerator {
+  generate(selfieImageData: Buffer): Promise<Buffer>;
 }
 
 const PROMPT = `style the person as a sims 3 character

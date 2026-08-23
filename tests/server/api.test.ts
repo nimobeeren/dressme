@@ -7,7 +7,6 @@ import { NextRequest } from "next/server";
 import sharp from "sharp";
 import * as schema from "../../src/server/db/schema";
 import { setTestDb } from "../../src/server/db";
-import type { BlobStorage } from "../../src/server/blob-storage";
 
 const TEST_USER_ID = "auth0|1";
 
@@ -59,36 +58,34 @@ vi.mock("../../src/server/wearable-classification", () => ({
   classifyWearableImage: vi.fn().mockResolvedValue("t-shirt"),
 }));
 
-// Swap the lazy singleton for an in-memory implementation
-vi.mock("../../src/server/blob-storage", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/server/blob-storage")>();
+// In-memory blob store backing the mocked blob-storage module
+const { mockBlobStorage } = vi.hoisted(() => {
+  const data = new Map<string, Buffer>();
   return {
-    ...actual,
-    getBlobStorage: () => mockBlobStorage,
+    mockBlobStorage: {
+      async upload(bucket: string, key: string, d: Buffer | Uint8Array, _contentType: string) {
+        data.set(`${bucket}/${key}`, Buffer.from(d));
+      },
+      async download(bucket: string, key: string): Promise<Buffer> {
+        const d = data.get(`${bucket}/${key}`);
+        if (!d) throw new Error(`No data for ${bucket}/${key}`);
+        return d;
+      },
+      async getSignedUrl(bucket: string, key: string, _expiresIn?: number) {
+        return `https://signed-url/${bucket}/${key}`;
+      },
+      clear() {
+        data.clear();
+      },
+    },
   };
 });
 
-class MockBlobStorage implements BlobStorage {
-  private _data = new Map<string, Buffer>();
-
-  async upload(bucket: string, key: string, data: Buffer | Uint8Array, _contentType: string) {
-    this._data.set(`${bucket}/${key}`, Buffer.from(data));
-  }
-
-  async download(bucket: string, key: string): Promise<Buffer> {
-    const d = this._data.get(`${bucket}/${key}`);
-    if (!d) throw new Error(`No data for ${bucket}/${key}`);
-    return d;
-  }
-
-  async getSignedUrl(bucket: string, key: string, _expiresIn?: number) {
-    return `https://signed-url/${bucket}/${key}`;
-  }
-
-  clear() {
-    this._data.clear();
-  }
-}
+vi.mock("../../src/server/blob-storage", () => ({
+  uploadBlob: mockBlobStorage.upload,
+  downloadBlob: mockBlobStorage.download,
+  getSignedBlobUrl: mockBlobStorage.getSignedUrl,
+}));
 
 async function setupSchema(db: ReturnType<typeof drizzle>) {
   await db.$client.exec(`
@@ -121,7 +118,6 @@ async function setupSchema(db: ReturnType<typeof drizzle>) {
   `);
 }
 
-let mockBlobStorage: MockBlobStorage;
 let db: ReturnType<typeof drizzle<typeof schema>>;
 
 async function flushBackgroundTasks() {
@@ -138,8 +134,6 @@ beforeAll(async () => {
   db = drizzle({ client: pg, schema });
   await setupSchema(db);
   setTestDb(db);
-
-  mockBlobStorage = new MockBlobStorage();
 });
 
 afterAll(() => {
@@ -152,9 +146,8 @@ beforeEach(async () => {
 
   await flushBackgroundTasks();
   pendingBgTasks = [];
-  // Reset the in-memory blob store between tests. Upstream uses a per-test
-  // MockBlobStorage fixture; here we reuse one instance but clear its data so
-  // uploads from one test can't satisfy downloads in another.
+  // Reset the in-memory blob store between tests so uploads from one test
+  // can't satisfy downloads in another.
   mockBlobStorage.clear();
   // Truncate all tables between tests (order matters for FK constraints)
   await db.$client.exec("DELETE FROM outfit");

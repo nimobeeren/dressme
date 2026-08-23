@@ -5,7 +5,7 @@ import type { ClassifyResponse } from "@/shared/schemas";
 import { updateTag } from "next/cache";
 import { after } from "next/server";
 import { getCurrentUser } from "../auth";
-import { getBlobStorage } from "../blob-storage";
+import { uploadBlob } from "../blob-storage";
 import { getDb, schema } from "../db";
 import {
   compressToJpeg,
@@ -36,7 +36,7 @@ export async function createWearables(formData: FormData): Promise<void> {
   }
 
   const settings = getSettings();
-  const blobStorage = getBlobStorage();
+
   const db = getDb();
 
   const wearables: Array<{ id: string; category: string; imageKey: string }> = [];
@@ -48,7 +48,7 @@ export async function createWearables(formData: FormData): Promise<void> {
     const jpegData = await compressToJpeg(await safeOpenImage(image.data));
 
     const key = `${randomUUID()}.jpg`;
-    await blobStorage.upload(settings.WEARABLES_BUCKET, key, jpegData, "image/jpeg");
+    await uploadBlob(settings.WEARABLES_BUCKET, key, jpegData, "image/jpeg");
 
     const [wearable] = await db
       .insert(schema.wearables)

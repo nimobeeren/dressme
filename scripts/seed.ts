@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDb, schema } from "../src/server/db";
-import { getBlobStorage } from "../src/server/blob-storage";
+import { uploadBlob } from "../src/server/blob-storage";
 import { getSettings } from "../src/server/settings";
 
 const settings = getSettings();
@@ -76,13 +76,12 @@ async function seed() {
   }
 
   const db = getDb();
-  const blobStorage = getBlobStorage();
 
   // Upload selfie image
   const selfiePath = path.join(ROOT_PATH, SELFIE_PATH);
   const selfieData = fs.readFileSync(selfiePath);
   const selfieKey = `${randomUUID()}.jpg`;
-  await blobStorage.upload(
+  await uploadBlob(
     settings.SELFIES_BUCKET,
     selfieKey,
     selfieData,
@@ -93,7 +92,7 @@ async function seed() {
   const avatarPath = path.join(ROOT_PATH, AVATAR_PATH);
   const avatarData = fs.readFileSync(avatarPath);
   const avatarKey = `${randomUUID()}.jpg`;
-  await blobStorage.upload(
+  await uploadBlob(
     settings.AVATARS_BUCKET,
     avatarKey,
     avatarData,
@@ -145,7 +144,7 @@ async function seed() {
     const imageData = fs.readFileSync(imagePath);
     const ext = path.extname(imagePath);
     const imageKey = `${randomUUID()}${ext}`;
-    await blobStorage.upload(
+    await uploadBlob(
       settings.WEARABLES_BUCKET,
       imageKey,
       imageData,
@@ -169,14 +168,14 @@ async function seed() {
     if (fs.existsSync(woaPath)) {
       const woaData = fs.readFileSync(woaPath);
       const woaKey = `${randomUUID()}.jpg`;
-      await blobStorage.upload(settings.WOA_BUCKET, woaKey, woaData, "image/jpeg");
+      await uploadBlob(settings.WOA_BUCKET, woaKey, woaData, "image/jpeg");
 
       // Upload mask image
       const maskPath = path.join(ROOT_PATH, "images", "masks", "human_4", "post", `${name}.jpg`);
       if (fs.existsSync(maskPath)) {
         const maskData = fs.readFileSync(maskPath);
         const maskKey = `${randomUUID()}.jpg`;
-        await blobStorage.upload(settings.WOA_BUCKET, maskKey, maskData, "image/jpeg");
+        await uploadBlob(settings.WOA_BUCKET, maskKey, maskData, "image/jpeg");
 
         // Add WearableOnAvatarImage
         await db.insert(schema.wearableOnAvatarImages).values({

@@ -1,5 +1,5 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getSignedUrl as s3GetSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getSettings } from "./settings";
 
 let _client: S3Client | null = null;
@@ -22,56 +22,41 @@ function getClient(): S3Client {
   return _client;
 }
 
-export interface BlobStorage {
-  upload(
-    bucket: string,
-    key: string,
-    data: Buffer | Uint8Array,
-    contentType: string,
-  ): Promise<void>;
-  download(bucket: string, key: string): Promise<Buffer>;
-  getSignedUrl(bucket: string, key: string, expiresIn?: number): Promise<string>;
+export async function uploadBlob(
+  bucket: string,
+  key: string,
+  data: Buffer | Uint8Array,
+  contentType: string,
+): Promise<void> {
+  await getClient().send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: Buffer.from(data),
+      ContentType: contentType,
+    }),
+  );
 }
 
-let _blobStorage: BlobStorage | undefined;
-export function getBlobStorage(): BlobStorage {
-  if (!_blobStorage) _blobStorage = new R2Storage();
-  return _blobStorage;
+export async function downloadBlob(bucket: string, key: string): Promise<Buffer> {
+  const response = await getClient().send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  const bytes = await response.Body!.transformToByteArray();
+  return Buffer.from(bytes);
 }
 
-export class R2Storage implements BlobStorage {
-  async upload(
-    bucket: string,
-    key: string,
-    data: Buffer | Uint8Array,
-    contentType: string,
-  ): Promise<void> {
-    await getClient().send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: Buffer.from(data),
-        ContentType: contentType,
-      }),
-    );
-  }
+export async function getSignedBlobUrl(
+  bucket: string,
+  key: string,
+  expiresIn = 3600,
+): Promise<string> {
+  const settings = getSettings();
 
-  async download(bucket: string, key: string): Promise<Buffer> {
-    const response = await getClient().send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-    const bytes = await response.Body!.transformToByteArray();
-    return Buffer.from(bytes);
+  // In development, return a direct URL without signing
+  // because MinIO has anonymous access enabled
+  if (settings.MODE === "development") {
+    return `${settings.S3_ENDPOINT_URL}/${bucket}/${key}`;
   }
-
-  async getSignedUrl(bucket: string, key: string, expiresIn = 3600): Promise<string> {
-    const settings = getSettings();
-
-    // In development, return a direct URL without signing
-    // because MinIO has anonymous access enabled
-    if (settings.MODE === "development") {
-      return `${settings.S3_ENDPOINT_URL}/${bucket}/${key}`;
-    }
-    return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: bucket, Key: key }), {
-      expiresIn,
-    });
-  }
+  return s3GetSignedUrl(getClient(), new GetObjectCommand({ Bucket: bucket, Key: key }), {
+    expiresIn,
+  });
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { withCookieAuth } from "@/server/route-utils";
-import { getBlobStorage } from "@/server/blob-storage";
+import { downloadBlob } from "@/server/blob-storage";
 import { getSettings } from "@/server/settings";
 import { getDb, schema } from "@/server/db";
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const settings = getSettings();
-    const blobStorage = getBlobStorage();
+
     const db = getDb();
 
     // Get the top and bottom wearables to get their image keys
@@ -70,14 +70,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Download images from blob storage
-    const avatarData = await blobStorage.download(settings.AVATARS_BUCKET, user.avatarImageKey);
-    const topData = await blobStorage.download(settings.WOA_BUCKET, topOnAvatar.imageKey);
-    const bottomData = await blobStorage.download(settings.WOA_BUCKET, bottomOnAvatar.imageKey);
-    const topMaskData = await blobStorage.download(settings.WOA_BUCKET, topOnAvatar.maskImageKey);
-    const bottomMaskData = await blobStorage.download(
-      settings.WOA_BUCKET,
-      bottomOnAvatar.maskImageKey,
-    );
+    const avatarData = await downloadBlob(settings.AVATARS_BUCKET, user.avatarImageKey);
+    const topData = await downloadBlob(settings.WOA_BUCKET, topOnAvatar.imageKey);
+    const bottomData = await downloadBlob(settings.WOA_BUCKET, bottomOnAvatar.imageKey);
+    const topMaskData = await downloadBlob(settings.WOA_BUCKET, topOnAvatar.maskImageKey);
+    const bottomMaskData = await downloadBlob(settings.WOA_BUCKET, bottomOnAvatar.maskImageKey);
 
     const { combineWearables } = await import("@/server/combining");
     const outfitImage = await combineWearables(

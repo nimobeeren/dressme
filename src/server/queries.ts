@@ -5,7 +5,7 @@ import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "./auth";
 import { getDb, schema } from "./db";
-import { getBlobStorage } from "./blob-storage";
+import { getSignedBlobUrl } from "./blob-storage";
 import { getSettings } from "./settings";
 
 /**
@@ -24,19 +24,18 @@ export const CACHE_TAGS = {
 function toWearable(
   w: { id: string; category: string; imageKey: string },
   completedKeys: ReadonlySet<string>,
-  blobStorage: ReturnType<typeof getBlobStorage>,
   settings: ReturnType<typeof getSettings>,
 ): Promise<Wearable> {
   const category = parseWearableCategory(w.category);
-  return blobStorage
-    .getSignedUrl(settings.WEARABLES_BUCKET, w.imageKey)
-    .then((wearable_image_url): Wearable => ({
+  return getSignedBlobUrl(settings.WEARABLES_BUCKET, w.imageKey).then(
+    (wearable_image_url): Wearable => ({
       id: w.id,
       category,
       body_part: getBodyPart(category),
       wearable_image_url,
       generation_status: completedKeys.has(w.imageKey) ? "success" : "pending",
-    }));
+    }),
+  );
 }
 
 /** Wearable image keys that have a WOA image for the user's current avatar. */
@@ -66,7 +65,6 @@ export async function getMe(): Promise<User> {
 export async function getWearables(): Promise<Wearable[]> {
   const user = await getCurrentUser();
   const settings = getSettings();
-  const blobStorage = getBlobStorage();
   const db = getDb();
 
   const userWearables = await db.query.wearables.findMany({
@@ -75,13 +73,12 @@ export async function getWearables(): Promise<Wearable[]> {
 
   const completedKeys = await getCompletedWearableImageKeys(user.id, user.avatarImageKey);
 
-  return Promise.all(userWearables.map((w) => toWearable(w, completedKeys, blobStorage, settings)));
+  return Promise.all(userWearables.map((w) => toWearable(w, completedKeys, settings)));
 }
 
 export async function getOutfits(): Promise<Outfit[]> {
   const user = await getCurrentUser();
   const settings = getSettings();
-  const blobStorage = getBlobStorage();
   const db = getDb();
 
   const completedWearableImageKeys = await getCompletedWearableImageKeys(
@@ -101,8 +98,8 @@ export async function getOutfits(): Promise<Outfit[]> {
   return Promise.all(
     outfits.map(async (outfit): Promise<Outfit> => {
       const [top, bottom] = await Promise.all([
-        toWearable(outfit.top!, completedWearableImageKeys, blobStorage, settings),
-        toWearable(outfit.bottom!, completedWearableImageKeys, blobStorage, settings),
+        toWearable(outfit.top!, completedWearableImageKeys, settings),
+        toWearable(outfit.bottom!, completedWearableImageKeys, settings),
       ]);
       return { id: outfit.id, top, bottom };
     }),

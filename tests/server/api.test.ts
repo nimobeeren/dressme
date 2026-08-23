@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test as baseTest, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
 import { db } from "../../src/server/db";
@@ -105,28 +105,46 @@ function setSessionUser(sub: string | null) {
   auth0Mocks.getSession.mockImplementation(async () => (sub ? { user: { sub } } : null));
 }
 
-beforeAll(async () => {
-  // Apply the real migrations so tests run against the same schema as
-  // production.
-  // Cast needed: PGlite's drizzle driver is API-compatible with
-  // node-postgres at runtime but not nominally.
-  await migrate(db as any, {
-    migrationsFolder: join(import.meta.dirname, "..", "..", "drizzle"),
+// The PGlite client behind the mocked db module, migrated once per file.
+// Cast needed: PGlite's drizzle driver is API-compatible with node-postgres at
+// runtime but not nominally.
+const test = baseTest
+  // eslint-disable-next-line no-empty-pattern -- vitest requires the destructured context signature
+  .extend("db", { scope: "file" }, async ({}, { onCleanup }) => {
+    const client = db.$client as unknown as PGlite;
+    await migrate(db as any, {
+      migrationsFolder: join(import.meta.dirname, "..", "..", "drizzle"),
+    });
+    onCleanup(() => client.close());
+    return client;
   });
+
+// Every query PGlite handles runs on this single connection, so a transaction
+// opened here captures all of the test's writes (including background-task
+// writes) and rolling back gives the next test an empty database. This must be
+// raw BEGIN/ROLLBACK rather than db.transaction(): the latter holds PGlite's
+// exclusive execution lock for the whole callback, which would deadlock against
+// production-code queries issued through the module-level db.
+test.aroundEach(async (runTest, { db: client }) => {
+  await client.exec("BEGIN");
+  try {
+    await runTest();
+  } finally {
+    // Flush leftover background tasks before rolling back so their writes land
+    // inside the transaction and are discarded with everything else.
+    await flushBackgroundTasks();
+    pendingBgTasks = [];
+    await client.exec("ROLLBACK");
+  }
 });
 
 beforeEach(async () => {
   setSessionUser(TEST_USER_ID);
   vi.mocked(await import("next/cache")).updateTag.mockClear();
 
-  await flushBackgroundTasks();
-  pendingBgTasks = [];
   // Reset the in-memory blob store between tests so uploads from one test
   // can't satisfy downloads in another.
   mockBlobStorage.clear();
-  await (db.$client as unknown as PGlite).exec(
-    'TRUNCATE outfit, wearableonavatarimage, wearable, "user" CASCADE',
-  );
 });
 
 describe("queries", () => {

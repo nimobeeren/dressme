@@ -2,13 +2,22 @@ import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
 import * as schema from "../../src/server/db/schema";
-import { setTestDb } from "../../src/server/db";
 
 const TEST_USER_ID = "auth0|1";
+
+// Swap getDb for a PGlite-backed drizzle instance while keeping the real
+// schema re-export.
+vi.mock("../../src/server/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/server/db")>();
+  return {
+    ...actual,
+    getDb: vi.fn(),
+  };
+});
 
 // Mock the Auth0 SDK so auth.ts resolves the session from a test-controlled
 // value instead of the real session cookie.
@@ -133,11 +142,9 @@ beforeAll(async () => {
   const pg = new PGlite();
   db = drizzle({ client: pg, schema });
   await setupSchema(db);
-  setTestDb(db);
-});
-
-afterAll(() => {
-  setTestDb(null as any);
+  // PGlite's drizzle driver is API-compatible with node-postgres at runtime
+  // but not nominally, hence the cast
+  vi.mocked(await import("../../src/server/db")).getDb.mockReturnValue(db as any);
 });
 
 beforeEach(async () => {

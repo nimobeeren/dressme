@@ -1,6 +1,8 @@
 import { after as nextAfter } from "next/server";
 import { R2Storage, type BlobStorage } from "./blob-storage";
 
+export type { BlobStorage } from "./blob-storage";
+
 export interface AvatarGenerator {
   generate(selfieImageData: Buffer): Promise<Buffer>;
 }

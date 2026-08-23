@@ -88,7 +88,7 @@ export async function classifyWearable(formData: FormData): Promise<ClassifyResp
   const jpegData = await readFormImageAsJpeg(formData);
 
   try {
-    const { classifyWearableImage } = await import("../wearable-classification");
+    const { classifyWearableImage } = await import("../services/wearable-classification");
     const category = await classifyWearableImage(jpegData);
     return { category };
   } catch (error) {

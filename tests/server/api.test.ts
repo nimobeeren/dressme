@@ -8,8 +8,7 @@ import sharp from "sharp";
 import * as schema from "../../src/server/db/schema";
 import { setTestDb } from "../../src/server/db";
 import { setServices, resetServices } from "../../src/server/services";
-import type { AfterFn } from "../../src/server/services";
-import type { BlobStorage } from "../../src/server/blob-storage";
+import type { AfterFn, BlobStorage } from "../../src/server/services";
 
 const TEST_USER_ID = "auth0|1";
 
@@ -32,18 +31,18 @@ vi.mock("next/cache", () => ({
 }));
 
 // Mock avatar generation to avoid real API calls
-vi.mock("../../src/server/avatar-generation", () => ({
+vi.mock("../../src/server/services/avatar-generation", () => ({
   generateAvatar: vi.fn().mockResolvedValue(Buffer.from([0xff, 0xd8, 0xff])),
 }));
 
 // Mock WOA generation to avoid real API calls
-vi.mock("../../src/server/woa-generation", () => ({
+vi.mock("../../src/server/services/woa-generation", () => ({
   generateWoaImage: vi.fn().mockResolvedValue(Buffer.from("fake_woa")),
   generateMask: vi.fn().mockResolvedValue(Buffer.from("fake_mask")),
 }));
 
 // Mock wearable classification to avoid real API calls
-vi.mock("../../src/server/wearable-classification", () => ({
+vi.mock("../../src/server/services/wearable-classification", () => ({
   classifyWearableImage: vi.fn().mockResolvedValue("t-shirt"),
 }));
 
@@ -794,7 +793,8 @@ describe("actions", () => {
 
     test("rethrows with a friendly message when classification fails", async () => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
-      const { classifyWearableImage } = await import("../../src/server/wearable-classification");
+      const { classifyWearableImage } =
+        await import("../../src/server/services/wearable-classification");
       vi.mocked(classifyWearableImage).mockRejectedValueOnce(new Error("Gemini is down"));
 
       const { classifyWearable } = await import("@/server/actions/wearables");

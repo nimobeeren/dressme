@@ -1,6 +1,6 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
-import { getSettings } from "./settings";
+import { getSettings } from "../settings";
 
 async function getSharp() {
   return (await import("sharp")).default;

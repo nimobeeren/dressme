@@ -1,6 +1,6 @@
 import pRetry from "p-retry";
 import Replicate from "replicate";
-import { getSettings } from "./settings";
+import { getSettings } from "../settings";
 import {
   CATEGORY_BODY_PARTS,
   parseWearableCategory,

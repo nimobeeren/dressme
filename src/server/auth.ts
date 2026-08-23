@@ -1,4 +1,10 @@
+import "server-only";
+
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { cache } from "react";
+import { db, schema } from "./db";
 import { getSettings } from "./settings";
 
 let _client: Auth0Client | null = null;
@@ -15,13 +21,6 @@ export function getAuth0(): Auth0Client {
   }
   return _client;
 }
-
-import "server-only";
-
-import { DrizzleQueryError, eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { cache } from "react";
-import { db, schema } from "./db";
 
 export interface UserRow {
   id: string;
@@ -56,30 +55,14 @@ async function getCurrentUserForAuth0UserId(auth0UserId: string): Promise<UserRo
 
   if (existing) return existing;
 
-  try {
-    const [newUser] = await db.insert(schema.users).values({ auth0UserId }).returning();
+  // Another request could have created the user after the findFirst query but
+  // before this write. The upsert atomically resolves the race by returning
+  // the existing row instead of failing on the unique constraint.
+  const [existing2] = await db
+    .insert(schema.users)
+    .values({ auth0UserId })
+    .onConflictDoUpdate({ target: schema.users.auth0UserId, set: { auth0UserId } })
+    .returning();
 
-    if (!newUser) {
-      throw new Error("Failed to create user");
-    }
-
-    return {
-      id: newUser.id,
-      auth0UserId: newUser.auth0UserId,
-      selfieImageKey: newUser.selfieImageKey,
-      avatarImageKey: newUser.avatarImageKey,
-    };
-  } catch (error: unknown) {
-    // Another request could have created the user after the findFirst query but
-    // before the insert query. In that case this error 23505 (PG_UNIQUE_VIOLATION)
-    // will be thrown. We can safely ignore it and return the existing user.
-    if (error instanceof DrizzleQueryError && (error.cause as any)?.code === "23505") {
-      const user = await db.query.users.findFirst({
-        where: eq(schema.users.auth0UserId, auth0UserId),
-      });
-      if (!user) throw new Error("User disappeared after race condition");
-      return user;
-    }
-    throw error;
-  }
+  return existing2;
 }

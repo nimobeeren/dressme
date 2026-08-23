@@ -124,12 +124,9 @@ beforeEach(async () => {
   // Reset the in-memory blob store between tests so uploads from one test
   // can't satisfy downloads in another.
   mockBlobStorage.clear();
-  // Truncate all tables between tests (order matters for FK constraints)
-  const client = db.$client as unknown as PGlite;
-  await client.exec("DELETE FROM outfit");
-  await client.exec("DELETE FROM wearableonavatarimage");
-  await client.exec("DELETE FROM wearable");
-  await client.exec('DELETE FROM "user"');
+  await (db.$client as unknown as PGlite).exec(
+    'TRUNCATE outfit, wearableonavatarimage, wearable, "user" CASCADE',
+  );
 });
 
 describe("queries", () => {
@@ -189,11 +186,10 @@ describe("queries", () => {
       expect(persisted?.id).toBe(me.id);
     });
 
-    test("recovers from unique constraint violation when two requests race to create the same user", async () => {
+    test("returns the existing user when another request creates it after the initial lookup", async () => {
       // Simulate a race condition: another request has already inserted a user
       // with the same auth0_user_id, but our findFirst ran before that insert
-      // was committed. The subsequent INSERT will fail with 23505, and
-      // getCurrentUserForAuth0UserId must recover by re-querying.
+      // was committed. In that case we must still return the existing user.
       const [existingUser] = await db
         .insert(schema.users)
         .values({ auth0UserId: TEST_USER_ID })

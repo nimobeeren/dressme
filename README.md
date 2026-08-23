@@ -56,7 +56,7 @@ The app will be available at `http://localhost:3000`.
 To ensure the database schema is up to date, run the migrations:
 
 ```bash
-pnpm migrate
+pnpm db:migrate
 ```
 
 ### Seeding Test Data
@@ -64,7 +64,7 @@ pnpm migrate
 Insert some test data into the database:
 
 ```bash
-pnpm seed
+pnpm db:seed
 ```
 
 This creates a user with a selfie, avatar, and a full set of wearables with pre-generated WOA images.

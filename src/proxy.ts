@@ -1,4 +1,4 @@
-import { getAuth0 } from "@/server/auth0";
+import { getAuth0 } from "@/server/auth";
 
 /**
  * Mounts the Auth0 SDK's authentication routes (`/auth/login`, `/auth/callback`,

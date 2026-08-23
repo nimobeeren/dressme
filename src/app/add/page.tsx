@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getAuth0 } from "@/server/auth0";
+import { getAuth0 } from "@/server/auth";
 import { getMe } from "@/server/queries";
 import { AddClient } from "@/views/add";
 

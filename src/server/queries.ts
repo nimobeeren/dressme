@@ -3,7 +3,7 @@ import "server-only";
 import { getBodyPart, parseWearableCategory } from "@/shared/wearable-categories";
 import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { eq } from "drizzle-orm";
-import { getCurrentUser } from "./dal";
+import { getCurrentUser } from "./auth";
 import { getDb, schema } from "./db";
 import { getBlobStorage } from "./services";
 import { getSettings } from "./settings";

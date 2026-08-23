@@ -13,14 +13,16 @@ import type { BlobStorage } from "../../src/server/blob-storage";
 
 const TEST_USER_ID = "auth0|1";
 
-// Mock the Auth0 client so the DAL resolves the session from a test-controlled
+// Mock the Auth0 SDK so auth.ts resolves the session from a test-controlled
 // value instead of the real session cookie.
 const auth0Mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
 }));
 
-vi.mock("@/server/auth0", () => ({
-  getAuth0: () => ({ getSession: auth0Mocks.getSession }),
+vi.mock("@auth0/nextjs-auth0/server", () => ({
+  Auth0Client: class {
+    getSession = auth0Mocks.getSession;
+  },
 }));
 
 // Server actions call `updateTag` to re-render the current route; outside a
@@ -242,7 +244,7 @@ describe("queries", () => {
 
     test("getCurrentUser redirects when unauthenticated", async () => {
       setSessionUser(null);
-      const { getCurrentUser } = await import("../../src/server/dal");
+      const { getCurrentUser } = await import("../../src/server/auth");
       await expect(getCurrentUser()).rejects.toMatchObject({
         digest: expect.stringContaining("NEXT_REDIRECT"),
       });

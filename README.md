@@ -110,7 +110,7 @@ docker compose down -v
 
 Authentication uses Auth0 with encrypted, httpOnly session cookies via [`@auth0/nextjs-auth0`](https://github.com/auth0/nextjs-auth0) (the app must be a Regular Web Application in the Auth0 dashboard). Login, callback and logout routes are mounted at `/auth/login`, `/auth/callback` and `/auth/logout`.
 
-Pages and server actions read the session through the data access layer in `src/server/dal.ts`. The outfit preview image is served by `GET /api/images/outfit`, which authenticates via the same session cookie (sent automatically by the browser).
+Pages and server actions read the session through the auth layer in `src/server/auth.ts`. The outfit preview image is served by `GET /api/images/outfit`, which authenticates via the same session cookie (sent automatically by the browser).
 
 ### Evals
 

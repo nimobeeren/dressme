@@ -1,4 +1,4 @@
-import { getAuth0 } from "@/server/auth0";
+import { getAuth0 } from "@/server/auth";
 import { getMe, getOutfits, getWearables } from "@/server/queries";
 import { HomeClient } from "@/views/home";
 

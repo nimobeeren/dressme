@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
-import { getCurrentUser } from "../dal";
+import { getCurrentUser } from "../auth";
 import { getDb, schema } from "../db";
 import { readFormImageAsJpeg } from "../image-utils";
 import { CACHE_TAGS, getMe } from "../queries";

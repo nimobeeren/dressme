@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { getBodyPart } from "@/shared/wearable-categories";
 import { updateTag } from "next/cache";
-import { getCurrentUser } from "../dal";
+import { getCurrentUser } from "../auth";
 import { getDb, schema } from "../db";
 import { CACHE_TAGS } from "../queries";
 

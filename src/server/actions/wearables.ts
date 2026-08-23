@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import type { ClassifyResponse } from "@/shared/schemas";
 import { updateTag } from "next/cache";
-import { getCurrentUser } from "../dal";
+import { getCurrentUser } from "../auth";
 import { getDb, schema } from "../db";
 import {
   compressToJpeg,

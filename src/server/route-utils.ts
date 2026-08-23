@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserMaybe, type UserRow } from "./dal";
+import { getCurrentUserMaybe, type UserRow } from "./auth";
 
-export type { UserRow } from "./dal";
+export type { UserRow } from "./auth";
 
 /** Calls the handler if the user is authenticated (via the session cookie), or returns an error response. */
 export async function withCookieAuth(

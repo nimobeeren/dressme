@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
+import { drizzle, type PgliteDatabase } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { describe, expect, test as baseTest, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
-import { db } from "../../src/server/db";
 import * as schema from "../../src/server/db/schema";
+
+type TestDb = PgliteDatabase<typeof schema>;
 
 const TEST_USER_ID = "auth0|1";
 
@@ -105,19 +107,20 @@ function setSessionUser(sub: string | null) {
   auth0Mocks.getSession.mockImplementation(async () => (sub ? { user: { sub } } : null));
 }
 
-// The PGlite client behind the mocked db module, migrated once per file.
-// Cast needed: PGlite's drizzle driver is API-compatible with node-postgres at
-// runtime but not nominally.
 const test = baseTest
   // eslint-disable-next-line no-empty-pattern -- vitest requires the destructured context signature
-  .extend("db", { scope: "file" }, async ({}, { onCleanup }) => {
+  .extend("dbClient", { scope: "file" }, async ({}, { onCleanup }) => {
+    const { db } = await import("../../src/server/db");
+    // Cast needed: PGlite's drizzle driver is API-compatible with node-postgres at
+    // runtime but not nominally.
     const client = db.$client as unknown as PGlite;
     await migrate(db as any, {
       migrationsFolder: join(import.meta.dirname, "..", "..", "drizzle"),
     });
     onCleanup(() => client.close());
     return client;
-  });
+  })
+  .extend("db", async ({ dbClient }) => drizzle(dbClient, { schema }));
 
 // Every query PGlite handles runs on this single connection, so a transaction
 // opened here captures all of the test's writes (including background-task
@@ -125,8 +128,8 @@ const test = baseTest
 // raw BEGIN/ROLLBACK rather than db.transaction(): the latter holds PGlite's
 // exclusive execution lock for the whole callback, which would deadlock against
 // production-code queries issued through the module-level db.
-test.aroundEach(async (runTest, { db: client }) => {
-  await client.exec("BEGIN");
+test.aroundEach(async (runTest, { dbClient }) => {
+  await dbClient.exec("BEGIN");
   try {
     await runTest();
   } finally {
@@ -134,7 +137,7 @@ test.aroundEach(async (runTest, { db: client }) => {
     // inside the transaction and are discarded with everything else.
     await flushBackgroundTasks();
     pendingBgTasks = [];
-    await client.exec("ROLLBACK");
+    await dbClient.exec("ROLLBACK");
   }
 });
 
@@ -149,7 +152,7 @@ beforeEach(async () => {
 
 describe("queries", () => {
   describe("getMe", () => {
-    test("returns user info for existing user", async () => {
+    test("returns user info for existing user", async ({ db }) => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -168,7 +171,7 @@ describe("queries", () => {
       });
     });
 
-    test("returns user info without avatar", async () => {
+    test("returns user info without avatar", async ({ db }) => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -185,7 +188,7 @@ describe("queries", () => {
       });
     });
 
-    test("auto-creates and persists a new user on first request", async () => {
+    test("auto-creates and persists a new user on first request", async ({ db }) => {
       // No user row exists for TEST_USER_ID yet — authenticate as a brand-new
       // auth0 sub so the DAL must create one. Verify the row is committed
       // (visible to a separate query afterwards).
@@ -204,7 +207,9 @@ describe("queries", () => {
       expect(persisted?.id).toBe(me.id);
     });
 
-    test("returns the existing user when another request creates it after the initial lookup", async () => {
+    test("returns the existing user when another request creates it after the initial lookup", async ({
+      db,
+    }) => {
       // Simulate a race condition: another request has already inserted a user
       // with the same auth0_user_id, but our findFirst ran before that insert
       // was committed. In that case we must still return the existing user.
@@ -213,7 +218,10 @@ describe("queries", () => {
         .values({ auth0UserId: TEST_USER_ID })
         .returning();
 
-      const findFirstSpy = vi.spyOn(db.query.users, "findFirst");
+      // The spy must target the db instance that production code resolves, not
+      // the fixture-built wrapper over the same client.
+      const { db: prodDb } = await import("../../src/server/db");
+      const findFirstSpy = vi.spyOn(prodDb.query.users, "findFirst");
       findFirstSpy.mockResolvedValueOnce(undefined);
 
       const { getMe } = await import("../../src/server/queries");
@@ -233,7 +241,9 @@ describe("queries", () => {
   });
 
   describe("getWearables", () => {
-    test("returns only the current user's wearables with signed URLs and pending status when no WOA images exist", async () => {
+    test("returns only the current user's wearables with signed URLs and pending status when no WOA images exist", async ({
+      db,
+    }) => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -293,7 +303,9 @@ describe("queries", () => {
       ]);
     });
 
-    test("reports success for wearables with a WOA image matching the current avatar, and pending for the rest", async () => {
+    test("reports success for wearables with a WOA image matching the current avatar, and pending for the rest", async ({
+      db,
+    }) => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -348,7 +360,7 @@ describe("queries", () => {
       ]);
     });
 
-    test("returns signed URLs and pending status when the user has no avatar", async () => {
+    test("returns signed URLs and pending status when the user has no avatar", async ({ db }) => {
       const [user] = await db
         .insert(schema.users)
         .values({ auth0UserId: TEST_USER_ID })
@@ -403,7 +415,7 @@ describe("queries", () => {
   });
 
   describe("getOutfits", () => {
-    test("returns outfits with generation status", async () => {
+    test("returns outfits with generation status", async ({ db }) => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -461,7 +473,7 @@ describe("queries", () => {
       expect(outfits[0].bottom.wearable_image_url).toContain("signed-url");
     });
 
-    test("returns an empty array when user has no outfits", async () => {
+    test("returns an empty array when user has no outfits", async ({ db }) => {
       await db
         .insert(schema.users)
         .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
@@ -482,7 +494,7 @@ describe("actions", () => {
       return formData;
     }
 
-    test("creates selfie, triggers avatar generation and revalidates 'me'", async () => {
+    test("creates selfie, triggers avatar generation and revalidates 'me'", async ({ db }) => {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -524,7 +536,7 @@ describe("actions", () => {
       expect(avatarData.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
     });
 
-    test("rejects when user already has selfie", async () => {
+    test("rejects when user already has selfie", async ({ db }) => {
       await db
         .insert(schema.users)
         .values({
@@ -539,7 +551,7 @@ describe("actions", () => {
       ).rejects.toThrow("It's currently not possible to replace an existing avatar image.");
     });
 
-    test("rejects invalid image", async () => {
+    test("rejects invalid image", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { uploadSelfie } = await import("@/server/actions/me");
       await expect(
@@ -549,7 +561,7 @@ describe("actions", () => {
       ).rejects.toThrow("Could not read the uploaded file as an image.");
     });
 
-    test("rejects a decompression-bomb image", async () => {
+    test("rejects a decompression-bomb image", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { uploadSelfie } = await import("@/server/actions/me");
       await expect(
@@ -559,7 +571,7 @@ describe("actions", () => {
       ).rejects.toThrow("Could not read the uploaded file as an image.");
     });
 
-    test("rejects an oversized upload", async () => {
+    test("rejects an oversized upload", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { uploadSelfie } = await import("@/server/actions/me");
       await expect(
@@ -567,7 +579,7 @@ describe("actions", () => {
       ).rejects.toThrow("Upload must be smaller than 10 MB.");
     });
 
-    test("rejects when missing the image file", async () => {
+    test("rejects when missing the image file", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { uploadSelfie } = await import("@/server/actions/me");
       await expect(uploadSelfie(new FormData())).rejects.toThrow("Missing image file");
@@ -575,7 +587,7 @@ describe("actions", () => {
   });
 
   describe("createWearables", () => {
-    async function createUserWithAvatar() {
+    async function createUserWithAvatar(db: TestDb) {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -602,8 +614,10 @@ describe("actions", () => {
       return formData;
     }
 
-    test("creates wearables, schedules WOA generation and revalidates 'wearables'", async () => {
-      const user = await createUserWithAvatar();
+    test("creates wearables, schedules WOA generation and revalidates 'wearables'", async ({
+      db,
+    }) => {
+      const user = await createUserWithAvatar(db);
 
       const { createWearables } = await import("@/server/actions/wearables");
       const { updateTag } = await import("next/cache");
@@ -647,8 +661,8 @@ describe("actions", () => {
       expect(woaImages).toHaveLength(2);
     });
 
-    test("rejects when category and image counts don't match", async () => {
-      await createUserWithAvatar();
+    test("rejects when category and image counts don't match", async ({ db }) => {
+      await createUserWithAvatar(db);
       const { createWearables } = await import("@/server/actions/wearables");
       const formData = new FormData();
       formData.append(
@@ -667,7 +681,7 @@ describe("actions", () => {
       );
     });
 
-    test("rejects when user has no avatar", async () => {
+    test("rejects when user has no avatar", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { createWearables } = await import("@/server/actions/wearables");
       await expect(
@@ -684,7 +698,7 @@ describe("actions", () => {
       ).rejects.toThrow("Avatar generation must be completed before adding wearables.");
     });
 
-    test("rejects when avatar is still generating (selfie but no avatar)", async () => {
+    test("rejects when avatar is still generating (selfie but no avatar)", async ({ db }) => {
       await db
         .insert(schema.users)
         .values({ auth0UserId: TEST_USER_ID, selfieImageKey: "selfie.jpg" });
@@ -703,8 +717,8 @@ describe("actions", () => {
       ).rejects.toThrow("Avatar generation must be completed before adding wearables.");
     });
 
-    test("rejects an oversized upload", async () => {
-      await createUserWithAvatar();
+    test("rejects an oversized upload", async ({ db }) => {
+      await createUserWithAvatar(db);
       const { createWearables } = await import("@/server/actions/wearables");
       await expect(
         createWearables(
@@ -720,8 +734,8 @@ describe("actions", () => {
       ).rejects.toThrow("Upload must be smaller than 10 MB.");
     });
 
-    test("rejects a decompression-bomb image", async () => {
-      await createUserWithAvatar();
+    test("rejects a decompression-bomb image", async ({ db }) => {
+      await createUserWithAvatar(db);
       const { createWearables } = await import("@/server/actions/wearables");
       await expect(
         createWearables(
@@ -737,8 +751,8 @@ describe("actions", () => {
       ).rejects.toThrow("Could not read the uploaded file as an image.");
     });
 
-    test("rejects an invalid image", async () => {
-      await createUserWithAvatar();
+    test("rejects an invalid image", async ({ db }) => {
+      await createUserWithAvatar(db);
       const { createWearables } = await import("@/server/actions/wearables");
       await expect(
         createWearables(
@@ -766,14 +780,14 @@ describe("actions", () => {
       return formData;
     }
 
-    test("returns the classified category", async () => {
+    test("returns the classified category", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { classifyWearable } = await import("@/server/actions/wearables");
       const result = await classifyWearable(makeClassifyFormData(await makeValidJpeg()));
       expect(result).toEqual({ category: "t-shirt" });
     });
 
-    test("rethrows with a friendly message when classification fails", async () => {
+    test("rethrows with a friendly message when classification fails", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { classifyWearableImage } = await import("../../src/server/wearable-classification");
       vi.mocked(classifyWearableImage).mockRejectedValueOnce(new Error("Gemini is down"));
@@ -786,7 +800,7 @@ describe("actions", () => {
   });
 
   describe("createOutfit", () => {
-    async function createOutfitFixtures() {
+    async function createOutfitFixtures(db: TestDb) {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -813,8 +827,8 @@ describe("actions", () => {
       return { user, top, bottom };
     }
 
-    test("creates the outfit and revalidates 'outfits'", async () => {
-      const { user, top, bottom } = await createOutfitFixtures();
+    test("creates the outfit and revalidates 'outfits'", async ({ db }) => {
+      const { user, top, bottom } = await createOutfitFixtures(db);
       const { createOutfit } = await import("@/server/actions/outfits");
       const { updateTag } = await import("next/cache");
 
@@ -827,8 +841,8 @@ describe("actions", () => {
       expect(outfits).toHaveLength(1);
     });
 
-    test("rejects a non-existent top", async () => {
-      const { bottom } = await createOutfitFixtures();
+    test("rejects a non-existent top", async ({ db }) => {
+      const { bottom } = await createOutfitFixtures(db);
       const { createOutfit } = await import("@/server/actions/outfits");
       const topId = randomUUID();
       await expect(createOutfit({ topId, bottomId: bottom.id })).rejects.toThrow(
@@ -836,8 +850,8 @@ describe("actions", () => {
       );
     });
 
-    test("rejects a non-existent bottom", async () => {
-      const { top } = await createOutfitFixtures();
+    test("rejects a non-existent bottom", async ({ db }) => {
+      const { top } = await createOutfitFixtures(db);
       const { createOutfit } = await import("@/server/actions/outfits");
       const bottomId = randomUUID();
       await expect(createOutfit({ topId: top.id, bottomId })).rejects.toThrow(
@@ -845,8 +859,8 @@ describe("actions", () => {
       );
     });
 
-    test("does not duplicate the exact outfit when it already exists", async () => {
-      const { user, top, bottom } = await createOutfitFixtures();
+    test("does not duplicate the exact outfit when it already exists", async ({ db }) => {
+      const { user, top, bottom } = await createOutfitFixtures(db);
       await db.insert(schema.outfits).values({
         userId: user.id,
         topId: top.id,
@@ -863,8 +877,8 @@ describe("actions", () => {
       expect(outfits).toHaveLength(1);
     });
 
-    test("rejects when top has the wrong body part", async () => {
-      const { bottom } = await createOutfitFixtures();
+    test("rejects when top has the wrong body part", async ({ db }) => {
+      const { bottom } = await createOutfitFixtures(db);
       const { createOutfit } = await import("@/server/actions/outfits");
       // Use the (pants) bottom as the top — its body_part is "bottom".
       await expect(createOutfit({ topId: bottom.id, bottomId: bottom.id })).rejects.toThrow(
@@ -872,8 +886,8 @@ describe("actions", () => {
       );
     });
 
-    test("rejects when bottom has the wrong body part", async () => {
-      const { top } = await createOutfitFixtures();
+    test("rejects when bottom has the wrong body part", async ({ db }) => {
+      const { top } = await createOutfitFixtures(db);
       const { createOutfit } = await import("@/server/actions/outfits");
       // Use the (t-shirt) top as the bottom — its body_part is "top".
       await expect(createOutfit({ topId: top.id, bottomId: top.id })).rejects.toThrow(
@@ -881,8 +895,8 @@ describe("actions", () => {
       );
     });
 
-    test("rejects when the bottom wearable belongs to another user", async () => {
-      const { user, top } = await createOutfitFixtures();
+    test("rejects when the bottom wearable belongs to another user", async ({ db }) => {
+      const { user, top } = await createOutfitFixtures(db);
       const [otherUser] = await db
         .insert(schema.users)
         .values({ auth0UserId: "auth0|2", avatarImageKey: "avatar2.jpg" })
@@ -910,7 +924,7 @@ describe("actions", () => {
   });
 
   describe("deleteOutfit", () => {
-    async function createDeleteFixtures() {
+    async function createDeleteFixtures(db: TestDb) {
       const [user] = await db
         .insert(schema.users)
         .values({
@@ -945,8 +959,8 @@ describe("actions", () => {
       return { user, outfit };
     }
 
-    test("deletes the outfit and revalidates 'outfits'", async () => {
-      const { outfit } = await createDeleteFixtures();
+    test("deletes the outfit and revalidates 'outfits'", async ({ db }) => {
+      const { outfit } = await createDeleteFixtures(db);
       const { deleteOutfit } = await import("@/server/actions/outfits");
       const { updateTag } = await import("next/cache");
 
@@ -964,7 +978,7 @@ describe("actions", () => {
       await expect(deleteOutfit(randomUUID())).rejects.toThrow("Outfit not found.");
     });
 
-    test("rejects when the outfit belongs to another user", async () => {
+    test("rejects when the outfit belongs to another user", async ({ db }) => {
       // Create an outfit as a different user.
       const [otherUser] = await db
         .insert(schema.users)
@@ -1008,7 +1022,7 @@ describe("actions", () => {
   });
 
   describe("refresh actions", () => {
-    test("refreshMe re-runs getMe and revalidates 'me'", async () => {
+    test("refreshMe re-runs getMe and revalidates 'me'", async ({ db }) => {
       await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
       const { refreshMe } = await import("@/server/actions/me");
       const { updateTag } = await import("next/cache");
@@ -1017,7 +1031,7 @@ describe("actions", () => {
       expect(updateTag).toHaveBeenCalledWith("me");
     });
 
-    test("refreshWearables re-runs getWearables and revalidates 'wearables'", async () => {
+    test("refreshWearables re-runs getWearables and revalidates 'wearables'", async ({ db }) => {
       await db
         .insert(schema.users)
         .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" });
@@ -1039,7 +1053,7 @@ describe("GET /api/images/outfit", () => {
     expect(res.status).toBe(401);
   });
 
-  test("returns 200 with JPEG image", async () => {
+  test("returns 200 with JPEG image", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)
       .values({
@@ -1098,7 +1112,7 @@ describe("GET /api/images/outfit", () => {
     expect(res.headers.get("Cache-Control")).toBe("private, max-age=3600");
   });
 
-  test("returns 404 for missing top", async () => {
+  test("returns 404 for missing top", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)
       .values({
@@ -1126,7 +1140,7 @@ describe("GET /api/images/outfit", () => {
     expect(body.detail).toContain(missingId);
   });
 
-  test("returns 404 when the top WOA image is missing", async () => {
+  test("returns 404 when the top WOA image is missing", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)
       .values({

@@ -4,7 +4,7 @@ import { renderWithProviders } from "@/test/utils";
 import { mockRouter } from "@/test/mocks/next-navigation";
 import { userEvent } from "vitest/browser";
 import { describe, expect } from "vitest";
-import { test } from "@/test/test";
+import { test } from "@/test/test-extend";
 
 async function renderAddPage() {
   return renderWithProviders(<AddClient />);

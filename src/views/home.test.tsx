@@ -3,7 +3,7 @@ import { actionSpies } from "@/test/actions-mock";
 import { buildOutfit, buildUser, buildWearable, renderWithProviders } from "@/test/utils";
 import { userEvent } from "vitest/browser";
 import { afterEach, describe, expect, vi } from "vitest";
-import { test } from "@/test/test";
+import { test } from "@/test/test-extend";
 
 interface HomeRenderOptions {
   me?: ReturnType<typeof buildUser>;

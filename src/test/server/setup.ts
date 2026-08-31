@@ -1,6 +1,7 @@
-import { setSettings } from "../../src/server/settings";
+import "./mocks";
+import { setSettings } from "@/server/settings";
 
-// Provide valid placeholder settings for all server tests
+// Provide valid placeholder settings for all server tests.
 setSettings({
   AUTH0_DOMAIN: "test.auth0.com",
   AUTH0_CLIENT_ID: "test-client-id",
@@ -12,7 +13,7 @@ setSettings({
   S3_ACCESS_KEY_ID: "placeholder",
   S3_SECRET_ACCESS_KEY: "placeholder",
   S3_ENDPOINT_URL: "http://localhost:9100",
-  MAX_UPLOAD_SIZE: 10 * 1024 * 1024, // 10 MB — default, large enough for test images
+  MAX_UPLOAD_SIZE: 10 * 1024 * 1024,
   MAX_IMAGE_PIXELS: 50_000_000,
   SELFIES_BUCKET: "dressme-selfies",
   AVATARS_BUCKET: "dressme-avatars",

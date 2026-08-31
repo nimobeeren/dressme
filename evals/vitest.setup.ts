@@ -1,12 +1,11 @@
 import "dotenv/config";
-import { setSettings } from "../../src/server/settings";
+import { setSettings } from "@/server/settings";
 
 const geminiKey = process.env.GEMINI_API_KEY;
 if (!geminiKey) {
   throw new Error("GEMINI_API_KEY is required for evals. Set it in your .env file or environment.");
 }
 
-// Provide all required settings (only GEMINI_API_KEY matters for classification)
 setSettings({
   AUTH0_DOMAIN: "test.auth0.com",
   AUTH0_CLIENT_ID: "test-client-id",

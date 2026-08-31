@@ -13,6 +13,7 @@ export default defineConfig({
         test: {
           name: "browser",
           include: ["src/**/*.test.{ts,tsx}"],
+          exclude: ["src/**/*.server.test.{ts,tsx}"],
           setupFiles: ["./src/test/setup.tsx"],
           browser: {
             enabled: true,
@@ -35,9 +36,9 @@ export default defineConfig({
       {
         test: {
           name: "server",
-          include: ["tests/server/**/*.test.ts"],
+          include: ["src/**/*.server.test.ts"],
           environment: "node",
-          setupFiles: ["./tests/server/vitest.setup.ts"],
+          setupFiles: ["./src/test/server/setup.ts"],
           alias: {
             "@": path.resolve(__dirname, "./src"),
             "server-only": path.resolve(__dirname, "./src/test/mocks/server-only.ts"),
@@ -47,9 +48,9 @@ export default defineConfig({
       {
         test: {
           name: "evals",
-          include: ["tests/evals/**/*.eval.ts"],
+          include: ["evals/**/*.eval.ts"],
           environment: "node",
-          setupFiles: ["./tests/evals/vitest.setup.ts"],
+          setupFiles: ["./evals/vitest.setup.ts"],
           alias: {
             "@": path.resolve(__dirname, "./src"),
           },

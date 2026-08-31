@@ -1,12 +1,10 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, test } from "vitest";
-import { classifyWearableImage } from "../../src/server/wearable-classification";
+import { classifyWearableImage } from "../src/server/wearable-classification";
 
-const WEARABLES_DIR = join(import.meta.dirname, "..", "..", "images", "wearables");
+const WEARABLES_DIR = join(import.meta.dirname, "..", "images", "wearables");
 
-// Additional times each case runs after the first (0 = single pass). Passed
-// directly to vitest's `repeats` option.
 const repeats = Number(process.env.EVAL_REPEATS ?? 0);
 if (!Number.isInteger(repeats) || repeats < 0) {
   throw new Error(
@@ -47,16 +45,12 @@ describe("wearable-classification", () => {
     expect(cases.length).toBeGreaterThan(0);
   });
 
-  // `concurrent: true` lets cases run in parallel up to vitest's
-  // `--maxConcurrency` limit (override via CLI flag).
   test.each(cases)(
     "classifies $relPath as $expected",
     { timeout: 30000, repeats, concurrent: true },
     async ({ expected, path, relPath }) => {
       const imageData = readFileSync(path);
       const predicted = await classifyWearableImage(imageData);
-      // Eval doesn't assert correctness (accuracy varies by model),
-      // it just logs the result for manual inspection
       const correct = predicted === expected;
       const status = correct ? "✓" : "✗";
       console.log(`${expected.padEnd(12)} ${String(predicted).padEnd(12)} ${status} ${relPath}`);

@@ -100,6 +100,27 @@ describe("createWearables", () => {
     );
   });
 
+  test("rejects invalid categories before persisting anything", async ({ db }) => {
+    const user = await createUserWithAvatar(db);
+
+    await expect(
+      createWearables(
+        makeWearablesFormData([
+          {
+            buffer: await makeValidJpeg(),
+            name: "test.webp",
+            type: "image/webp",
+            category: "not-a-category",
+          },
+        ]),
+      ),
+    ).rejects.toThrow();
+
+    await expect(
+      db.query.wearables.findMany({ where: eq(schema.wearables.userId, user.id) }),
+    ).resolves.toEqual([]);
+  });
+
   test("rejects when user has no avatar", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
     await expect(
@@ -202,6 +223,16 @@ describe("classifyWearable", () => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
     const { classifyWearableImage } = await import("../wearable-classification");
     vi.mocked(classifyWearableImage).mockRejectedValueOnce(new Error("Gemini is down"));
+
+    await expect(classifyWearable(makeClassifyFormData(await makeValidJpeg()))).rejects.toThrow(
+      "Wearable classification failed",
+    );
+  });
+
+  test("rejects an invalid classifier category", async ({ db }) => {
+    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    const { classifyWearableImage } = await import("../wearable-classification");
+    vi.mocked(classifyWearableImage).mockResolvedValueOnce("not-a-category" as never);
 
     await expect(classifyWearable(makeClassifyFormData(await makeValidJpeg()))).rejects.toThrow(
       "Wearable classification failed",

@@ -1,9 +1,10 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import type { ClassifyResponse } from "@/shared/schemas";
+import { wearableCategorySchema, type ClassifyResponse } from "@/shared/schemas";
+import type { WearableCategory } from "@/shared/wearable-categories";
 import { updateTag } from "next/cache";
 import { after } from "next/server";
+import { randomUUID } from "node:crypto";
 import { getCurrentUser } from "../auth";
 import { uploadBlob } from "../blob-storage";
 import { db, schema } from "../db";
@@ -20,6 +21,7 @@ import { getSettings } from "../settings";
  * Adds wearables from `category`/`image` form field pairs and schedules WOA
  * generation for each.
  */
+// TODO: return structured error response instead of throwing (see: https://nextjs.org/docs/app/getting-started/error-handling#server-functions)
 export async function createWearables(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
 
@@ -35,12 +37,13 @@ export async function createWearables(formData: FormData): Promise<void> {
     throw new Error("The category and image fields should occur the same number of times.");
   }
 
+  const validCategories = categories.map((category) => wearableCategorySchema.parse(category));
   const settings = getSettings();
 
-  const wearables: Array<{ id: string; category: string; imageKey: string }> = [];
+  const wearables: Array<{ id: string; category: WearableCategory; imageKey: string }> = [];
 
-  for (let i = 0; i < categories.length; i++) {
-    const category = categories[i];
+  for (let i = 0; i < validCategories.length; i++) {
+    const category = validCategories[i];
     const image = images[i];
 
     const jpegData = await compressToJpeg(await safeOpenImage(image.data));
@@ -86,7 +89,7 @@ export async function classifyWearable(formData: FormData): Promise<ClassifyResp
 
   try {
     const { classifyWearableImage } = await import("../wearable-classification");
-    const category = await classifyWearableImage(jpegData);
+    const category = wearableCategorySchema.nullable().parse(await classifyWearableImage(jpegData));
     return { category };
   } catch (error) {
     console.error("Wearable classification failed:", error);

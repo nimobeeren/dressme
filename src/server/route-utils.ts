@@ -17,6 +17,6 @@ export async function withCookieAuth(
     return handler(user);
   } catch (error) {
     console.error("withCookieAuth error:", error);
-    return NextResponse.json({ detail: String(error) }, { status: 500 });
+    return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }

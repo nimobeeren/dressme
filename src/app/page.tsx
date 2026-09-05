@@ -21,6 +21,5 @@ export default getAuth0().withPageAuthRequired(async function Page() {
   );
 });
 
-// The actions invoked from this page (uploadSelfie) do image
-// decoding/compression; give them the same headroom the deleted API route had.
+// Image-processing server actions need extra execution time.
 export const maxDuration = 300;

@@ -18,7 +18,7 @@ import { getSettings } from "../settings";
 
 /**
  * Adds wearables from `category`/`image` form field pairs and schedules WOA
- * generation for each. Replaces POST /api/wearables.
+ * generation for each.
  */
 export async function createWearables(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
@@ -64,8 +64,7 @@ export async function createWearables(formData: FormData): Promise<void> {
     wearables.push({ id: wearable.id, category, imageKey: key });
   }
 
-  // Create WearableOnAvatar (WOA) images
-  // Do this after DB commit to ensure the wearables exist
+  // Schedule generation after the DB commit so the wearables exist.
   for (const wearable of wearables) {
     after(async () => {
       const { generateWoaTask } = await import("../background-tasks");
@@ -78,7 +77,7 @@ export async function createWearables(formData: FormData): Promise<void> {
 
 /**
  * Classifies a wearable image into a category suggestion. A pure read — no
- * revalidation. Replaces POST /api/wearables/classify.
+ * revalidation.
  */
 export async function classifyWearable(formData: FormData): Promise<ClassifyResponse> {
   await getCurrentUser();

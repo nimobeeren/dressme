@@ -8,8 +8,7 @@ import { db, schema } from "../db";
 import { CACHE_TAGS } from "../queries";
 
 /**
- * Favorites the outfit made up of the given top and bottom. Replaces
- * POST /api/outfits.
+ * Favorites the outfit made up of the given top and bottom.
  */
 export async function createOutfit(params: { topId: string; bottomId: string }): Promise<void> {
   const user = await getCurrentUser();
@@ -49,7 +48,6 @@ export async function createOutfit(params: { topId: string; bottomId: string }):
     return;
   }
 
-  // Create the outfit
   await db.insert(schema.outfits).values({
     userId: user.id,
     topId,
@@ -59,9 +57,7 @@ export async function createOutfit(params: { topId: string; bottomId: string }):
   updateTag(CACHE_TAGS.outfits);
 }
 
-/**
- * Unfavorites an outfit. Replaces DELETE /api/outfits.
- */
+/** Unfavorites an outfit. */
 export async function deleteOutfit(id: string): Promise<void> {
   const user = await getCurrentUser();
 
@@ -74,7 +70,6 @@ export async function deleteOutfit(id: string): Promise<void> {
     throw new Error("Outfit not found.");
   }
 
-  // Delete the outfit
   await db.delete(schema.outfits).where(eq(schema.outfits.id, id));
 
   updateTag(CACHE_TAGS.outfits);

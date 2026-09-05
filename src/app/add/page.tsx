@@ -16,7 +16,5 @@ export default getAuth0().withPageAuthRequired(
   { returnTo: "/add" },
 );
 
-// The actions invoked from this page (createWearables, classifyWearable) do
-// image decoding/compression; give them the same headroom the deleted API
-// routes had.
+// Image-processing server actions need extra execution time.
 export const maxDuration = 300;

@@ -13,7 +13,6 @@ import { getSettings } from "../settings";
 
 /**
  * Uploads the user's selfie (one-time) and kicks off avatar generation.
- * Replaces PUT /api/images/avatars/me.
  */
 export async function uploadSelfie(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
@@ -25,11 +24,9 @@ export async function uploadSelfie(formData: FormData): Promise<void> {
   const jpegData = await readFormImageAsJpeg(formData);
   const settings = getSettings();
 
-  // Upload selfie to blob storage
   const key = `${randomUUID()}.jpg`;
   await uploadBlob(settings.SELFIES_BUCKET, key, jpegData, "image/jpeg");
 
-  // Update user and trigger avatar generation
   await db.update(schema.users).set({ selfieImageKey: key }).where(eq(schema.users.id, user.id));
 
   after(async () => {

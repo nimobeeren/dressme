@@ -6,7 +6,7 @@ import * as schema from "./schema";
 
 const url = getSettings().DATABASE_URL;
 
-// Use node-postgress for local DB in development since neon-http only supports
+// Use node-postgres for local DB in development since neon-http only supports
 // Neon instances
 export const db = isLocalUrl(url)
   ? drizzleNodePostgres(url, { schema })

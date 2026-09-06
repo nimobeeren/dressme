@@ -31,37 +31,23 @@ export async function compressToJpeg(img: Sharp, quality = 75): Promise<Buffer> 
 }
 
 /**
- * Reads all files uploaded under `name` in a server action's `FormData`,
- * enforcing the per-file size cap, and returns their bytes.
- */
-export async function readFormFiles(formData: FormData, name: string): Promise<Buffer[]> {
-  const maxFileSize = getSettings().MAX_UPLOAD_SIZE;
-
-  const buffers: Buffer[] = [];
-  for (const value of formData.getAll(name)) {
-    if (typeof value === "string") {
-      throw new BadRequestError(`Expected a file for field "${name}".`);
-    }
-    if (value.size > maxFileSize) {
-      throw new UploadTooLargeError(
-        `Upload must be smaller than ${maxFileSize / (1024 * 1024)} MB.`,
-      );
-    }
-    buffers.push(Buffer.from(await value.arrayBuffer()));
-  }
-  return buffers;
-}
-
-/**
  * Reads the single file uploaded under `name` in a server action's `FormData`,
  * enforcing the per-file size cap.
  */
 export async function readFormFile(formData: FormData, name: string): Promise<Buffer> {
-  const [buffer] = await readFormFiles(formData, name);
-  if (!buffer) {
+  const maxFileSize = getSettings().MAX_UPLOAD_SIZE;
+
+  const value = formData.get(name);
+  if (value === null) {
     throw new BadRequestError(`Missing file for field "${name}".`);
   }
-  return buffer;
+  if (typeof value === "string") {
+    throw new BadRequestError(`Expected a file for field "${name}".`);
+  }
+  if (value.size > maxFileSize) {
+    throw new UploadTooLargeError(`Upload must be smaller than ${maxFileSize / (1024 * 1024)} MB.`);
+  }
+  return Buffer.from(await value.arrayBuffer());
 }
 
 /**

@@ -100,8 +100,8 @@ test("successful submit creates wearables and navigates home with a toast", asyn
   // Submitting sends the form data to the server action, navigates home and
   // confirms the save with a toast.
   await expect.element(screen.getByText(/added item to your wardrobe/i)).toBeVisible();
-  expect(actionSpies.createWearables).toHaveBeenCalledTimes(1);
-  const formData = actionSpies.createWearables.mock.calls[0][0] as FormData;
+  expect(actionSpies.createWearable).toHaveBeenCalledTimes(1);
+  const formData = actionSpies.createWearable.mock.calls[0][0] as FormData;
   expect(formData.getAll("category")).toEqual(["t-shirt"]);
   expect(formData.getAll("image")).toHaveLength(1);
   expect(mockRouter.push).toHaveBeenCalledWith("/");
@@ -109,7 +109,7 @@ test("successful submit creates wearables and navigates home with a toast", asyn
 
 test("failed submit shows a destructive toast and stays on the page", async () => {
   actionSpies.classifyWearable.mockResolvedValueOnce({ category: "t-shirt" });
-  actionSpies.createWearables.mockRejectedValueOnce(new Error("No avatar for you"));
+  actionSpies.createWearable.mockRejectedValueOnce(new Error("No avatar for you"));
   const screen = await renderAddPage();
 
   const fileInput = await waitForFileInput(screen);

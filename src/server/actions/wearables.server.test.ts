@@ -12,7 +12,7 @@ import {
   type TestDb,
   test,
 } from "@/test/server";
-import { classifyWearable, createWearables, refreshWearables } from "./wearables";
+import { classifyWearable, createWearable, refreshWearables } from "./wearables";
 
 async function createUserWithAvatar(db: TestDb) {
   const [user] = await db
@@ -23,43 +23,44 @@ async function createUserWithAvatar(db: TestDb) {
   return user;
 }
 
-function makeWearablesFormData(
-  entries: Array<{ buffer: Buffer; name: string; type: string; category: string }>,
-) {
+function makeWearableFormData(entry: {
+  buffer: Buffer;
+  name: string;
+  type: string;
+  category: string;
+}) {
   const formData = new FormData();
-  for (const entry of entries) {
-    formData.append(
-      "image",
-      new Blob([new Uint8Array(entry.buffer)], { type: entry.type }),
-      entry.name,
-    );
-    formData.append("category", entry.category);
-  }
+  formData.append(
+    "image",
+    new Blob([new Uint8Array(entry.buffer)], { type: entry.type }),
+    entry.name,
+  );
+  formData.append("category", entry.category);
   return formData;
 }
 
-describe("createWearables", () => {
+describe("createWearable", () => {
   test("creates wearables, schedules WOA generation and revalidates 'wearables'", async ({
     db,
   }) => {
     const user = await createUserWithAvatar(db);
     const { updateTag } = await import("next/cache");
 
-    await createWearables(
-      makeWearablesFormData([
-        {
-          buffer: await makeValidJpeg(),
-          name: "test1.webp",
-          type: "image/webp",
-          category: "t-shirt",
-        },
-        {
-          buffer: await makeValidJpeg2(),
-          name: "test2.webp",
-          type: "image/webp",
-          category: "pants",
-        },
-      ]),
+    await createWearable(
+      makeWearableFormData({
+        buffer: await makeValidJpeg(),
+        name: "test1.webp",
+        type: "image/webp",
+        category: "t-shirt",
+      }),
+    );
+    await createWearable(
+      makeWearableFormData({
+        buffer: await makeValidJpeg2(),
+        name: "test2.webp",
+        type: "image/webp",
+        category: "pants",
+      }),
     );
     expect(updateTag).toHaveBeenCalledWith("wearables");
 
@@ -80,39 +81,17 @@ describe("createWearables", () => {
     expect(woaImages).toHaveLength(2);
   });
 
-  test("returns an error when category and image counts don't match", async ({ db }) => {
-    await createUserWithAvatar(db);
-    const formData = new FormData();
-    formData.append(
-      "image",
-      new Blob([await makeValidJpeg()], { type: "image/webp" }),
-      "test1.webp",
-    );
-    formData.append(
-      "image",
-      new Blob([await makeValidJpeg()], { type: "image/webp" }),
-      "test2.webp",
-    );
-    formData.append("category", "t-shirt");
-
-    expect(await createWearables(formData)).toEqual({
-      error: "The category and image fields should occur the same number of times.",
-    });
-  });
-
   test("returns an error for invalid categories before persisting anything", async ({ db }) => {
     const user = await createUserWithAvatar(db);
 
     expect(
-      await createWearables(
-        makeWearablesFormData([
-          {
-            buffer: await makeValidJpeg(),
-            name: "test.webp",
-            type: "image/webp",
-            category: "not-a-category",
-          },
-        ]),
+      await createWearable(
+        makeWearableFormData({
+          buffer: await makeValidJpeg(),
+          name: "test.webp",
+          type: "image/webp",
+          category: "not-a-category",
+        }),
       ),
     ).toEqual({ error: "Invalid category." });
 
@@ -124,15 +103,13 @@ describe("createWearables", () => {
   test("returns an error when user has no avatar", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
     expect(
-      await createWearables(
-        makeWearablesFormData([
-          {
-            buffer: await makeValidJpeg(),
-            name: "test.webp",
-            type: "image/webp",
-            category: "t-shirt",
-          },
-        ]),
+      await createWearable(
+        makeWearableFormData({
+          buffer: await makeValidJpeg(),
+          name: "test.webp",
+          type: "image/webp",
+          category: "t-shirt",
+        }),
       ),
     ).toEqual({ error: "Avatar generation must be completed before adding wearables." });
   });
@@ -145,15 +122,13 @@ describe("createWearables", () => {
       selfieImageKey: "selfie.jpg",
     });
     expect(
-      await createWearables(
-        makeWearablesFormData([
-          {
-            buffer: await makeValidJpeg(),
-            name: "test.webp",
-            type: "image/webp",
-            category: "t-shirt",
-          },
-        ]),
+      await createWearable(
+        makeWearableFormData({
+          buffer: await makeValidJpeg(),
+          name: "test.webp",
+          type: "image/webp",
+          category: "t-shirt",
+        }),
       ),
     ).toEqual({ error: "Avatar generation must be completed before adding wearables." });
   });
@@ -161,15 +136,13 @@ describe("createWearables", () => {
   test("returns an error for an oversized upload", async ({ db }) => {
     await createUserWithAvatar(db);
     expect(
-      await createWearables(
-        makeWearablesFormData([
-          {
-            buffer: makeOversizedUpload(),
-            name: "huge.jpg",
-            type: "image/jpeg",
-            category: "t-shirt",
-          },
-        ]),
+      await createWearable(
+        makeWearableFormData({
+          buffer: makeOversizedUpload(),
+          name: "huge.jpg",
+          type: "image/jpeg",
+          category: "t-shirt",
+        }),
       ),
     ).toEqual({ error: "Upload must be smaller than 10 MB." });
   });
@@ -177,15 +150,13 @@ describe("createWearables", () => {
   test("returns an error for a decompression-bomb image", async ({ db }) => {
     await createUserWithAvatar(db);
     expect(
-      await createWearables(
-        makeWearablesFormData([
-          {
-            buffer: await makeDecompressionBomb(),
-            name: "bomb.png",
-            type: "image/png",
-            category: "t-shirt",
-          },
-        ]),
+      await createWearable(
+        makeWearableFormData({
+          buffer: await makeDecompressionBomb(),
+          name: "bomb.png",
+          type: "image/png",
+          category: "t-shirt",
+        }),
       ),
     ).toEqual({ error: "Could not read the uploaded file as an image." });
   });
@@ -193,15 +164,13 @@ describe("createWearables", () => {
   test("returns an error for an invalid image", async ({ db }) => {
     await createUserWithAvatar(db);
     expect(
-      await createWearables(
-        makeWearablesFormData([
-          {
-            buffer: Buffer.from("this is not an image"),
-            name: "not_an_image.txt",
-            type: "text/plain",
-            category: "t-shirt",
-          },
-        ]),
+      await createWearable(
+        makeWearableFormData({
+          buffer: Buffer.from("this is not an image"),
+          name: "not_an_image.txt",
+          type: "text/plain",
+          category: "t-shirt",
+        }),
       ),
     ).toEqual({ error: "Could not read the uploaded file as an image." });
   });

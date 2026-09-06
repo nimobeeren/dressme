@@ -9,7 +9,7 @@ import { vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   uploadSelfie: vi.fn(async (_formData: FormData) => ({})),
   refreshMe: vi.fn(async () => {}),
-  createWearables: vi.fn(async (_formData: FormData) => ({})),
+  createWearable: vi.fn(async (_formData: FormData) => ({})),
   classifyWearable: vi.fn(async (_formData: FormData): Promise<{ category: string | null }> => ({
     category: null,
   })),
@@ -24,7 +24,7 @@ vi.mock("@/server/actions/me", () => ({
 }));
 
 vi.mock("@/server/actions/wearables", () => ({
-  createWearables: mocks.createWearables,
+  createWearable: mocks.createWearable,
   classifyWearable: mocks.classifyWearable,
   refreshWearables: mocks.refreshWearables,
 }));

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Wearable } from "@/shared/schemas";
-import { classifyWearable, createWearables } from "@/server/actions/wearables";
+import { classifyWearable, createWearable } from "@/server/actions/wearables";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -147,7 +147,7 @@ export function AddClient() {
         setUploadProgress({ done: index, total: data.wearables.length });
 
         try {
-          const { error } = await createWearables(formData);
+          const { error } = await createWearable(formData);
           if (error) {
             toast({
               title: "Oops, something went wrong!",

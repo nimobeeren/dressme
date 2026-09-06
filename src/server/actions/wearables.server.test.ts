@@ -80,7 +80,7 @@ describe("createWearables", () => {
     expect(woaImages).toHaveLength(2);
   });
 
-  test("rejects when category and image counts don't match", async ({ db }) => {
+  test("returns an error when category and image counts don't match", async ({ db }) => {
     await createUserWithAvatar(db);
     const formData = new FormData();
     formData.append(
@@ -95,16 +95,16 @@ describe("createWearables", () => {
     );
     formData.append("category", "t-shirt");
 
-    await expect(createWearables(formData)).rejects.toThrow(
-      "The category and image fields should occur the same number of times.",
-    );
+    expect(await createWearables(formData)).toEqual({
+      error: "The category and image fields should occur the same number of times.",
+    });
   });
 
-  test("rejects invalid categories before persisting anything", async ({ db }) => {
+  test("returns an error for invalid categories before persisting anything", async ({ db }) => {
     const user = await createUserWithAvatar(db);
 
-    await expect(
-      createWearables(
+    expect(
+      await createWearables(
         makeWearablesFormData([
           {
             buffer: await makeValidJpeg(),
@@ -114,17 +114,17 @@ describe("createWearables", () => {
           },
         ]),
       ),
-    ).rejects.toThrow();
+    ).toEqual({ error: "Invalid category." });
 
     await expect(
       db.query.wearables.findMany({ where: eq(schema.wearables.userId, user.id) }),
     ).resolves.toEqual([]);
   });
 
-  test("rejects when user has no avatar", async ({ db }) => {
+  test("returns an error when user has no avatar", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
-    await expect(
-      createWearables(
+    expect(
+      await createWearables(
         makeWearablesFormData([
           {
             buffer: await makeValidJpeg(),
@@ -134,16 +134,18 @@ describe("createWearables", () => {
           },
         ]),
       ),
-    ).rejects.toThrow("Avatar generation must be completed before adding wearables.");
+    ).toEqual({ error: "Avatar generation must be completed before adding wearables." });
   });
 
-  test("rejects when avatar is still generating (selfie but no avatar)", async ({ db }) => {
+  test("returns an error when avatar is still generating (selfie but no avatar)", async ({
+    db,
+  }) => {
     await db.insert(schema.users).values({
       auth0UserId: TEST_USER_ID,
       selfieImageKey: "selfie.jpg",
     });
-    await expect(
-      createWearables(
+    expect(
+      await createWearables(
         makeWearablesFormData([
           {
             buffer: await makeValidJpeg(),
@@ -153,13 +155,13 @@ describe("createWearables", () => {
           },
         ]),
       ),
-    ).rejects.toThrow("Avatar generation must be completed before adding wearables.");
+    ).toEqual({ error: "Avatar generation must be completed before adding wearables." });
   });
 
-  test("rejects an oversized upload", async ({ db }) => {
+  test("returns an error for an oversized upload", async ({ db }) => {
     await createUserWithAvatar(db);
-    await expect(
-      createWearables(
+    expect(
+      await createWearables(
         makeWearablesFormData([
           {
             buffer: makeOversizedUpload(),
@@ -169,13 +171,13 @@ describe("createWearables", () => {
           },
         ]),
       ),
-    ).rejects.toThrow("Upload must be smaller than 10 MB.");
+    ).toEqual({ error: "Upload must be smaller than 10 MB." });
   });
 
-  test("rejects a decompression-bomb image", async ({ db }) => {
+  test("returns an error for a decompression-bomb image", async ({ db }) => {
     await createUserWithAvatar(db);
-    await expect(
-      createWearables(
+    expect(
+      await createWearables(
         makeWearablesFormData([
           {
             buffer: await makeDecompressionBomb(),
@@ -185,13 +187,13 @@ describe("createWearables", () => {
           },
         ]),
       ),
-    ).rejects.toThrow("Could not read the uploaded file as an image.");
+    ).toEqual({ error: "Could not read the uploaded file as an image." });
   });
 
-  test("rejects an invalid image", async ({ db }) => {
+  test("returns an error for an invalid image", async ({ db }) => {
     await createUserWithAvatar(db);
-    await expect(
-      createWearables(
+    expect(
+      await createWearables(
         makeWearablesFormData([
           {
             buffer: Buffer.from("this is not an image"),
@@ -201,7 +203,7 @@ describe("createWearables", () => {
           },
         ]),
       ),
-    ).rejects.toThrow("Could not read the uploaded file as an image.");
+    ).toEqual({ error: "Could not read the uploaded file as an image." });
   });
 });
 
@@ -219,24 +221,26 @@ describe("classifyWearable", () => {
     });
   });
 
-  test("rethrows with a friendly message when classification fails", async ({ db }) => {
+  test("returns a friendly error when classification fails", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
     const { classifyWearableImage } = await import("../wearable-classification");
     vi.mocked(classifyWearableImage).mockRejectedValueOnce(new Error("Gemini is down"));
 
-    await expect(classifyWearable(makeClassifyFormData(await makeValidJpeg()))).rejects.toThrow(
-      "Wearable classification failed",
-    );
+    await expect(classifyWearable(makeClassifyFormData(await makeValidJpeg()))).resolves.toEqual({
+      category: null,
+      error: "Wearable classification failed",
+    });
   });
 
-  test("rejects an invalid classifier category", async ({ db }) => {
+  test("returns an error for an invalid classifier category", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
     const { classifyWearableImage } = await import("../wearable-classification");
     vi.mocked(classifyWearableImage).mockResolvedValueOnce("not-a-category" as never);
 
-    await expect(classifyWearable(makeClassifyFormData(await makeValidJpeg()))).rejects.toThrow(
-      "Wearable classification failed",
-    );
+    await expect(classifyWearable(makeClassifyFormData(await makeValidJpeg()))).resolves.toEqual({
+      category: null,
+      error: "Wearable classification failed",
+    });
   });
 });
 

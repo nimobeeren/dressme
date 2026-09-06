@@ -7,21 +7,31 @@ import { after } from "next/server";
 import { getCurrentUser } from "../auth";
 import { uploadBlob } from "../blob-storage";
 import { db, schema } from "../db";
-import { readFormImageAsJpeg } from "../image-utils";
+import { readFormImageAsJpeg, isExpectedUploadError } from "../image-utils";
 import { CACHE_TAGS, getMe } from "../queries";
 import { getSettings } from "../settings";
 
 /**
  * Uploads the user's selfie (one-time) and kicks off avatar generation.
+ * Returns the user-facing error, if any.
  */
-export async function uploadSelfie(formData: FormData): Promise<void> {
+export async function uploadSelfie(formData: FormData): Promise<{ error?: string }> {
   const user = await getCurrentUser();
 
   if (user.selfieImageKey !== null) {
-    throw new Error("It's currently not possible to replace an existing avatar image.");
+    return { error: "It's currently not possible to replace an existing avatar image." };
   }
 
-  const jpegData = await readFormImageAsJpeg(formData);
+  let jpegData: Buffer;
+  try {
+    jpegData = await readFormImageAsJpeg(formData);
+  } catch (error) {
+    if (isExpectedUploadError(error)) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
   const settings = getSettings();
 
   const key = `${randomUUID()}.jpg`;
@@ -35,6 +45,7 @@ export async function uploadSelfie(formData: FormData): Promise<void> {
   });
 
   updateTag(CACHE_TAGS.me);
+  return {};
 }
 
 /**

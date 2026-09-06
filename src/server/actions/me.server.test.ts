@@ -41,43 +41,49 @@ describe("uploadSelfie", () => {
     expect(avatarData.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
   });
 
-  test("rejects when user already has selfie", async ({ db }) => {
+  test("returns an error when user already has selfie", async ({ db }) => {
     await db.insert(schema.users).values({
       auth0UserId: TEST_USER_ID,
       selfieImageKey: "existing.jpg",
     });
 
-    await expect(
-      uploadSelfie(await makeSelfieFormData(await makeValidJpeg(), "avatar.webp", "image/webp")),
-    ).rejects.toThrow("It's currently not possible to replace an existing avatar image.");
+    expect(
+      await uploadSelfie(
+        await makeSelfieFormData(await makeValidJpeg(), "avatar.webp", "image/webp"),
+      ),
+    ).toEqual({ error: "It's currently not possible to replace an existing avatar image." });
   });
 
-  test("rejects invalid image", async ({ db }) => {
+  test("returns an error for an invalid image", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
-    await expect(
-      uploadSelfie(await makeSelfieFormData(Buffer.from("not an image"), "bad.txt", "text/plain")),
-    ).rejects.toThrow("Could not read the uploaded file as an image.");
+    expect(
+      await uploadSelfie(
+        await makeSelfieFormData(Buffer.from("not an image"), "bad.txt", "text/plain"),
+      ),
+    ).toEqual({ error: "Could not read the uploaded file as an image." });
   });
 
-  test("rejects a decompression-bomb image", async ({ db }) => {
+  test("returns an error for a decompression-bomb image", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
-    await expect(
-      uploadSelfie(
+    expect(
+      await uploadSelfie(
         await makeSelfieFormData(await makeDecompressionBomb(), "bomb.png", "image/png"),
       ),
-    ).rejects.toThrow("Could not read the uploaded file as an image.");
+    ).toEqual({ error: "Could not read the uploaded file as an image." });
   });
 
-  test("rejects an oversized upload", async ({ db }) => {
+  test("returns an error for an oversized upload", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
-    await expect(
-      uploadSelfie(await makeSelfieFormData(makeOversizedUpload(), "huge.jpg", "image/jpeg")),
-    ).rejects.toThrow("Upload must be smaller than 10 MB.");
+    expect(
+      await uploadSelfie(await makeSelfieFormData(makeOversizedUpload(), "huge.jpg", "image/jpeg")),
+    ).toEqual({ error: "Upload must be smaller than 10 MB." });
   });
 
-  test("rejects when missing the image file", async ({ db }) => {
+  test("returns an error when missing the image file", async ({ db }) => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
-    await expect(uploadSelfie(new FormData())).rejects.toThrow("Missing image file");
+    expect(await uploadSelfie(new FormData())).toEqual({
+      error: 'Missing file for field "image".',
+    });
   });
 });
 

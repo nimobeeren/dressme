@@ -7,9 +7,9 @@ import { vi } from "vitest";
  * the component with fresh props.
  */
 const mocks = vi.hoisted(() => ({
-  uploadSelfie: vi.fn(async (_formData: FormData) => {}),
+  uploadSelfie: vi.fn(async (_formData: FormData) => ({})),
   refreshMe: vi.fn(async () => {}),
-  createWearables: vi.fn(async (_formData: FormData) => {}),
+  createWearables: vi.fn(async (_formData: FormData) => ({})),
   classifyWearable: vi.fn(async (_formData: FormData): Promise<{ category: string | null }> => ({
     category: null,
   })),

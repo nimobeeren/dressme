@@ -33,5 +33,6 @@ export type Outfit = z.infer<typeof outfitSchema>;
 
 export const classifyResponseSchema = z.object({
   category: wearableCategorySchema.nullable(),
+  error: z.string().optional(),
 });
 export type ClassifyResponse = z.infer<typeof classifyResponseSchema>;

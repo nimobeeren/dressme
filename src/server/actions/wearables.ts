@@ -8,58 +8,76 @@ import { randomUUID } from "node:crypto";
 import { getCurrentUser } from "../auth";
 import { uploadBlob } from "../blob-storage";
 import { db, schema } from "../db";
-import { compressToJpeg, parseUpload, readFormImageAsJpeg, safeOpenImage } from "../image-utils";
+import {
+  compressToJpeg,
+  isExpectedUploadError,
+  readFormFiles,
+  readFormImageAsJpeg,
+  safeOpenImage,
+} from "../image-utils";
 import { CACHE_TAGS, getWearables } from "../queries";
 import { getSettings } from "../settings";
 
 /**
  * Adds wearables from `category`/`image` form field pairs and schedules WOA
- * generation for each.
+ * generation for each. Returns the user-facing error, if any.
  */
-// TODO: return structured error response instead of throwing (see: https://nextjs.org/docs/app/getting-started/error-handling#server-functions)
-export async function createWearables(formData: FormData): Promise<void> {
+export async function createWearables(formData: FormData): Promise<{ error?: string }> {
   const user = await getCurrentUser();
 
   if (!user.avatarImageKey) {
-    throw new Error("Avatar generation must be completed before adding wearables.");
+    return { error: "Avatar generation must be completed before adding wearables." };
   }
 
-  const upload = await parseUpload(formData);
-  const categories = upload.fields.get("category") ?? [];
-  const images = upload.files.get("image") ?? [];
-
-  if (categories.length !== images.length) {
-    throw new Error("The category and image fields should occur the same number of times.");
-  }
-
-  const validCategories = categories.map((category) => wearableCategorySchema.parse(category));
   const settings = getSettings();
-
   const wearables: Array<{ id: string; category: WearableCategory; imageKey: string }> = [];
 
-  for (let i = 0; i < validCategories.length; i++) {
-    const category = validCategories[i];
-    const image = images[i];
+  try {
+    const images = await readFormFiles(formData, "image");
+    const categories = formData.getAll("category");
 
-    const jpegData = await compressToJpeg(await safeOpenImage(image.data));
-
-    const key = `${randomUUID()}.jpg`;
-    await uploadBlob(settings.WEARABLES_BUCKET, key, jpegData, "image/jpeg");
-
-    const [wearable] = await db
-      .insert(schema.wearables)
-      .values({
-        userId: user.id,
-        category,
-        imageKey: key,
-      })
-      .returning();
-
-    if (!wearable) {
-      throw new Error("Failed to create wearable");
+    if (categories.length !== images.length) {
+      return { error: "The category and image fields should occur the same number of times." };
     }
 
-    wearables.push({ id: wearable.id, category, imageKey: key });
+    const validCategories: WearableCategory[] = [];
+    for (const category of categories) {
+      const parsed = wearableCategorySchema.safeParse(category);
+      if (!parsed.success) {
+        return { error: "Invalid category." };
+      }
+      validCategories.push(parsed.data);
+    }
+
+    for (let i = 0; i < validCategories.length; i++) {
+      const category = validCategories[i];
+      const image = images[i];
+
+      const jpegData = await compressToJpeg(await safeOpenImage(image));
+
+      const key = `${randomUUID()}.jpg`;
+      await uploadBlob(settings.WEARABLES_BUCKET, key, jpegData, "image/jpeg");
+
+      const [wearable] = await db
+        .insert(schema.wearables)
+        .values({
+          userId: user.id,
+          category,
+          imageKey: key,
+        })
+        .returning();
+
+      if (!wearable) {
+        throw new Error("Failed to create wearable");
+      }
+
+      wearables.push({ id: wearable.id, category, imageKey: key });
+    }
+  } catch (error) {
+    if (isExpectedUploadError(error)) {
+      return { error: error.message };
+    }
+    throw error;
   }
 
   // Schedule generation after the DB commit so the wearables exist.
@@ -71,16 +89,25 @@ export async function createWearables(formData: FormData): Promise<void> {
   }
 
   updateTag(CACHE_TAGS.wearables);
+  return {};
 }
 
 /**
  * Classifies a wearable image into a category suggestion. A pure read — no
- * revalidation.
+ * revalidation. Returns the user-facing error, if any.
  */
 export async function classifyWearable(formData: FormData): Promise<ClassifyResponse> {
   await getCurrentUser();
 
-  const jpegData = await readFormImageAsJpeg(formData);
+  let jpegData: Buffer;
+  try {
+    jpegData = await readFormImageAsJpeg(formData);
+  } catch (error) {
+    if (isExpectedUploadError(error)) {
+      return { category: null, error: error.message };
+    }
+    throw error;
+  }
 
   try {
     const { classifyWearableImage } = await import("../wearable-classification");
@@ -88,7 +115,7 @@ export async function classifyWearable(formData: FormData): Promise<ClassifyResp
     return { category };
   } catch (error) {
     console.error("Wearable classification failed:", error);
-    throw new Error("Wearable classification failed");
+    return { category: null, error: "Wearable classification failed" };
   }
 }
 

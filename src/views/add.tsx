@@ -108,8 +108,12 @@ export function AddClient() {
     try {
       const formData = new FormData();
       formData.append("image", file);
-      const { category } = await classifyWearable(formData);
-      setClassifications((prev) => ({ ...prev, [fieldId]: { status: "done", category } }));
+      const { category, error } = await classifyWearable(formData);
+      setClassifications((prev) =>
+        error
+          ? { ...prev, [fieldId]: { status: "error" } }
+          : { ...prev, [fieldId]: { status: "done", category } },
+      );
     } catch {
       setClassifications((prev) => ({ ...prev, [fieldId]: { status: "error" } }));
     }
@@ -136,7 +140,15 @@ export function AddClient() {
 
     startSubmitting(async () => {
       try {
-        await createWearables(formData);
+        const { error } = await createWearables(formData);
+        if (error) {
+          toast({
+            title: "Oops, something went wrong!",
+            description: `Computer says: '${error}'`,
+            variant: "destructive",
+          });
+          return;
+        }
         router.push("/");
         const cheers = ["Nice!", "Pretty!", "Cool!", "Oooh!", "Wow!"];
         toast({

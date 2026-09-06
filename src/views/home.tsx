@@ -143,7 +143,10 @@ function Preview({
     formData.append("image", file);
     startUploading(async () => {
       try {
-        await uploadSelfie(formData);
+        const { error } = await uploadSelfie(formData);
+        if (error) {
+          toastError(new Error(error));
+        }
       } catch (error) {
         toastError(error);
       }

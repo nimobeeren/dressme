@@ -49,6 +49,20 @@ describe("createOutfit", () => {
     );
   });
 
+  test("rejects an invalid top id", async ({ db }) => {
+    const { bottom } = await createOutfitFixtures(db);
+    await expect(createOutfit({ topId: "not-a-uuid", bottomId: bottom.id })).rejects.toThrow(
+      "Invalid top wearable id.",
+    );
+  });
+
+  test("rejects an invalid bottom id", async ({ db }) => {
+    const { top } = await createOutfitFixtures(db);
+    await expect(createOutfit({ topId: top.id, bottomId: "not-a-uuid" })).rejects.toThrow(
+      "Invalid bottom wearable id.",
+    );
+  });
+
   test("does not duplicate the exact outfit when it already exists", async ({ db }) => {
     const { user, top, bottom } = await createOutfitFixtures(db);
     await db.insert(schema.outfits).values({
@@ -135,6 +149,10 @@ describe("deleteOutfit", () => {
 
   test("rejects a non-existent id", async () => {
     await expect(deleteOutfit(randomUUID())).rejects.toThrow("Outfit not found.");
+  });
+
+  test("rejects an invalid id", async () => {
+    await expect(deleteOutfit("not-a-uuid")).rejects.toThrow("Invalid outfit id.");
   });
 
   test("rejects when the outfit belongs to another user", async ({ db }) => {

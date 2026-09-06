@@ -19,6 +19,18 @@ describe("GET", () => {
     expect(res.status).toBe(401);
   });
 
+  test("returns 400 when a wearable id is not a UUID", async ({ db }) => {
+    await db
+      .insert(schema.users)
+      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" });
+
+    const req = new NextRequest(
+      "http://localhost/api/images/outfit?top_id=not-a-uuid&bottom_id=also-not-a-uuid",
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+  });
+
   test("returns 200 with JPEG image", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)

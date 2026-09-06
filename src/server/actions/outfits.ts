@@ -1,6 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { uuidSchema } from "@/shared/schemas";
 import { getBodyPart } from "@/shared/wearable-categories";
 import { updateTag } from "next/cache";
 import { getCurrentUser } from "../auth";
@@ -15,6 +16,13 @@ export async function createOutfit(params: { topId: string; bottomId: string }):
 
   const topId = params.topId;
   const bottomId = params.bottomId;
+
+  if (!uuidSchema.safeParse(topId).success) {
+    throw new Error("Invalid top wearable id.");
+  }
+  if (!uuidSchema.safeParse(bottomId).success) {
+    throw new Error("Invalid bottom wearable id.");
+  }
 
   // Ensure that the top and bottom wearables exist AND belong to the current user
   const top = await db.query.wearables.findFirst({
@@ -60,6 +68,10 @@ export async function createOutfit(params: { topId: string; bottomId: string }):
 /** Unfavorites an outfit. */
 export async function deleteOutfit(id: string): Promise<void> {
   const user = await getCurrentUser();
+
+  if (!uuidSchema.safeParse(id).success) {
+    throw new Error("Invalid outfit id.");
+  }
 
   // Check if the outfit exists and is owned by the current user
   const outfit = await db.query.outfits.findFirst({

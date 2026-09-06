@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { BODY_PARTS, WEARABLE_CATEGORIES } from "./wearable-categories";
 
+export const uuidSchema = z.string().uuid();
 export const wearableCategorySchema = z.enum(WEARABLE_CATEGORIES);
 
 export const userSchema = z.object({

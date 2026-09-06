@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { uuidSchema } from "@/shared/schemas";
 import { withCookieAuth } from "@/server/route-utils";
 import { downloadBlob } from "@/server/blob-storage";
 import { getSettings } from "@/server/settings";
@@ -21,6 +22,13 @@ export async function GET(request: NextRequest) {
 
     if (!topId || !bottomId) {
       return NextResponse.json({ detail: "Missing top_id or bottom_id" }, { status: 400 });
+    }
+
+    if (!uuidSchema.safeParse(topId).success || !uuidSchema.safeParse(bottomId).success) {
+      return NextResponse.json(
+        { detail: "top_id and bottom_id must be valid UUIDs" },
+        { status: 400 },
+      );
     }
 
     const settings = getSettings();

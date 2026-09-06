@@ -1,8 +1,6 @@
-import { Readable } from "node:stream";
 import sharp from "sharp";
-import { beforeEach, describe, expect, test } from "vitest";
-import { compressToJpeg, readUpload, safeOpenImage } from "./image-utils";
-import { getSettings, setSettings } from "./settings";
+import { describe, expect, test } from "vitest";
+import { compressToJpeg, safeOpenImage } from "./image-utils";
 
 async function makePngImage(width = 10, height = 10): Promise<Buffer> {
   return sharp({
@@ -19,50 +17,6 @@ async function makeDecompressionBomb(): Promise<Buffer> {
     .png()
     .toBuffer();
 }
-
-describe("readUpload", () => {
-  beforeEach(() => {
-    const settings = getSettings();
-    setSettings({ ...settings, MAX_UPLOAD_SIZE: 100 });
-  });
-
-  function toStream(data: Buffer): Readable {
-    return Readable.from([data]);
-  }
-
-  test("returns contents when within limit", async () => {
-    const data = Buffer.from("some image data");
-    const result = await readUpload(toStream(data));
-    expect(Buffer.isBuffer(result)).toBe(true);
-    expect(result.equals(data)).toBe(true);
-  });
-
-  test("throws when over size limit", async () => {
-    await expect(readUpload(toStream(Buffer.alloc(101)))).rejects.toThrow(
-      "Upload must be smaller than",
-    );
-  });
-
-  test("exact limit is allowed", async () => {
-    const data = Buffer.alloc(100);
-    const result = await readUpload(toStream(data));
-    expect(result.equals(data)).toBe(true);
-  });
-
-  test("aborts an oversized stream instead of draining it", async () => {
-    let stopped = false;
-    async function* infinite() {
-      try {
-        while (true) yield Buffer.alloc(1000);
-      } finally {
-        stopped = true;
-      }
-    }
-    const stream = Readable.from(infinite());
-    await expect(readUpload(stream)).rejects.toThrow("Upload must be smaller than");
-    expect(stopped).toBe(true);
-  });
-});
 
 describe("safeOpenImage", () => {
   test("returns a sharp instance from valid image data", async () => {

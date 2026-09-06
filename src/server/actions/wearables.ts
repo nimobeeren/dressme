@@ -8,12 +8,7 @@ import { randomUUID } from "node:crypto";
 import { getCurrentUser } from "../auth";
 import { uploadBlob } from "../blob-storage";
 import { db, schema } from "../db";
-import {
-  compressToJpeg,
-  parseFormUpload,
-  readFormImageAsJpeg,
-  safeOpenImage,
-} from "../image-utils";
+import { compressToJpeg, parseUpload, readFormImageAsJpeg, safeOpenImage } from "../image-utils";
 import { CACHE_TAGS, getWearables } from "../queries";
 import { getSettings } from "../settings";
 
@@ -29,7 +24,7 @@ export async function createWearables(formData: FormData): Promise<void> {
     throw new Error("Avatar generation must be completed before adding wearables.");
   }
 
-  const upload = await parseFormUpload(formData);
+  const upload = await parseUpload(formData);
   const categories = upload.fields.get("category") ?? [];
   const images = upload.files.get("image") ?? [];
 

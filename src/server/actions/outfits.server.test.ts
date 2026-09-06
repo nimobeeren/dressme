@@ -65,10 +65,24 @@ describe("createOutfit", () => {
 
   test("does not duplicate the exact outfit when it already exists", async ({ db }) => {
     const { user, top, bottom } = await createOutfitFixtures(db);
+    const [otherTop] = await db
+      .insert(schema.wearables)
+      .values({ userId: user.id, category: "blouse", imageKey: "other-top.jpg" })
+      .returning();
+    const [otherBottom] = await db
+      .insert(schema.wearables)
+      .values({ userId: user.id, category: "skirt", imageKey: "other-bottom.jpg" })
+      .returning();
+
     await db.insert(schema.outfits).values({
       userId: user.id,
       topId: top.id,
       bottomId: bottom.id,
+    });
+    await db.insert(schema.outfits).values({
+      userId: user.id,
+      topId: otherTop.id,
+      bottomId: otherBottom.id,
     });
 
     await createOutfit({ topId: top.id, bottomId: bottom.id });
@@ -76,7 +90,7 @@ describe("createOutfit", () => {
     const outfits = await db.query.outfits.findMany({
       where: eq(schema.outfits.userId, user.id),
     });
-    expect(outfits).toHaveLength(1);
+    expect(outfits).toHaveLength(2);
   });
 
   test("rejects when top has the wrong body part", async ({ db }) => {

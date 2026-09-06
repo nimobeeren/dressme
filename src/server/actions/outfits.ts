@@ -47,20 +47,16 @@ export async function createOutfit(params: { topId: string; bottomId: string }):
     throw new Error('Bottom wearable must have "body_part": "bottom".');
   }
 
-  // Check if the outfit already exists
-  const existing = await db.query.outfits.findFirst({
-    where: eq(schema.outfits.userId, user.id),
-  });
-
-  if (existing?.topId === topId && existing?.bottomId === bottomId) {
-    return;
-  }
-
-  await db.insert(schema.outfits).values({
-    userId: user.id,
-    topId,
-    bottomId,
-  });
+  await db
+    .insert(schema.outfits)
+    .values({
+      userId: user.id,
+      topId,
+      bottomId,
+    })
+    .onConflictDoNothing({
+      target: [schema.outfits.userId, schema.outfits.topId, schema.outfits.bottomId],
+    });
 
   updateTag(CACHE_TAGS.outfits);
 }

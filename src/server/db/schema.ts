@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, pgTable, uuid, varchar } from "drizzle-orm/pg-core";
+import { index, pgTable, unique, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const users = pgTable("user", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -67,7 +67,10 @@ export const outfits = pgTable(
       .notNull()
       .references(() => wearables.id),
   },
-  (table) => [index("outfit_user_id_idx").on(table.userId)],
+  (table) => [
+    index("outfit_user_id_idx").on(table.userId),
+    unique("outfit_user_top_bottom_unique").on(table.userId, table.topId, table.bottomId),
+  ],
 );
 
 export const outfitsRelations = relations(outfits, ({ one }) => ({

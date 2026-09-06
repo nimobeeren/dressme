@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp"],
   experimental: {
     serverActions: {
-      // Wearable/selfie uploads are posted as server action bodies; match the
-      // MAX_UPLOAD_SIZE server-side cap (10 MB).
+      // Uploads are posted via server actions, one image per request; match
+      // the MAX_UPLOAD_SIZE server-side cap.
       bodySizeLimit: "10mb",
     },
   },

@@ -88,6 +88,9 @@ export function AddClient() {
   const { toast } = useToast();
   const [classifications, setClassifications] = useState<Record<string, Classification>>({});
   const [isSubmitting, startSubmitting] = useTransition();
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -132,36 +135,44 @@ export function AddClient() {
   }
 
   function onSubmit(data: z.infer<typeof formSchema>) {
-    const formData = new FormData();
-    for (const { category, file } of data.wearables) {
-      formData.append("category", category);
-      formData.append("image", file);
-    }
-
+    // Each wearable is submitted in its own request so the per-image upload
+    // limit is enforced independently of the batch size; a single combined
+    // request would be rejected by the server action body size limit.
     startSubmitting(async () => {
-      try {
-        const { error } = await createWearables(formData);
-        if (error) {
+      for (const [index, { category, file }] of data.wearables.entries()) {
+        const formData = new FormData();
+        formData.append("category", category);
+        formData.append("image", file);
+
+        setUploadProgress({ done: index, total: data.wearables.length });
+
+        try {
+          const { error } = await createWearables(formData);
+          if (error) {
+            toast({
+              title: "Oops, something went wrong!",
+              description: `Computer says: '${error}'`,
+              variant: "destructive",
+            });
+            return;
+          }
+        } catch (error) {
           toast({
             title: "Oops, something went wrong!",
-            description: `Computer says: '${error}'`,
+            description: `Computer says: '${error instanceof Error ? error.message : String(error)}'`,
             variant: "destructive",
           });
           return;
         }
-        router.push("/");
-        const cheers = ["Nice!", "Pretty!", "Cool!", "Oooh!", "Wow!"];
-        toast({
-          title: cheers[Math.floor(Math.random() * cheers.length)],
-          description: "Added item to your wardrobe.",
-        });
-      } catch (error) {
-        toast({
-          title: "Oops, something went wrong!",
-          description: `Computer says: '${error instanceof Error ? error.message : String(error)}'`,
-          variant: "destructive",
-        });
       }
+
+      router.push("/");
+      const cheers = ["Nice!", "Pretty!", "Cool!", "Oooh!", "Wow!"];
+      const items = data.wearables.length === 1 ? "item" : `${data.wearables.length} items`;
+      toast({
+        title: cheers[Math.floor(Math.random() * cheers.length)],
+        description: `Added ${items} to your wardrobe.`,
+      });
     });
   }
 
@@ -210,7 +221,15 @@ export function AddClient() {
               className="col-span-1"
             >
               Done
-              {isSubmitting ? <LoaderCircleIcon className="animate-spin" /> : <CheckIcon />}
+              {isSubmitting &&
+                (uploadProgress ? (
+                  <span>
+                    Adding {uploadProgress.done + 1} of {uploadProgress.total}
+                  </span>
+                ) : (
+                  <LoaderCircleIcon className="animate-spin" />
+                ))}
+              {!isSubmitting && <CheckIcon />}
             </Button>
           </div>
         </form>

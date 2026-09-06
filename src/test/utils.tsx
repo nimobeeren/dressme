@@ -1,10 +1,6 @@
-import type { Outfit, User, Wearable } from "@/api";
+import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { Toaster } from "@/components/ui/toaster";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";
-
-export { setAuthState } from "./auth-state";
-
 import { TEST_IMAGE_PREFIX } from "./constants";
 
 /** Build a URL that the Vite middleware will serve from fixtures on disk. */
@@ -15,21 +11,13 @@ export function fixtureImageUrl(
   return `${TEST_IMAGE_PREFIX}/${bucket}/${filename}`;
 }
 
-/** Renders a component inside the same providers the real app uses. */
+/** Renders a component together with the Toaster the real app mounts in the root layout. */
 export async function renderWithProviders(ui: React.ReactElement) {
-  // Fresh QueryClient per render — retries off so errors surface immediately.
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0, staleTime: 0 },
-      mutations: { retry: false },
-    },
-  });
-
   return await render(
-    <QueryClientProvider client={queryClient}>
+    <>
       {ui}
       <Toaster />
-    </QueryClientProvider>,
+    </>,
   );
 }
 

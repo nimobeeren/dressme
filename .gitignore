@@ -6,12 +6,10 @@ pnpm-debug.log*
 node_modules
 
 # Build files
-.wrangler/
 dist
 dist-ssr
 *.local
 *.tsbuildinfo
-.wrangler
 
 # Environment variables and local files
 .env*
@@ -36,3 +34,8 @@ test-results
 
 # Misc
 .DS_Store
+
+# next.js
+.next/
+next-env.d.ts
+.vercel

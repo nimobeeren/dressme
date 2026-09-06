@@ -1,3 +1,17 @@
+allowBuilds:
+  "@google/genai": true
+  browser-tabs-lock: true
+  esbuild: true
+  msw: true
+  protobufjs: true
+  sharp: true
+  workerd: true
+pmOnFail: error
 onlyBuiltDependencies:
+  - "@google/genai"
+  - browser-tabs-lock
   - esbuild
+  - msw
+  - protobufjs
+  - sharp
   - workerd

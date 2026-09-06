@@ -1,0 +1,321 @@
+{
+  "id": "49684dcb-aa91-48b3-b867-ac477f4d02e0",
+  "prevId": "76a93e8e-a2cb-4bf7-a847-5c8ba6f7a6a4",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.outfit": {
+      "name": "outfit",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "top_id": {
+          "name": "top_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bottom_id": {
+          "name": "bottom_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "outfit_user_id_idx": {
+          "name": "outfit_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "outfit_user_id_user_id_fk": {
+          "name": "outfit_user_id_user_id_fk",
+          "tableFrom": "outfit",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "outfit_top_id_wearable_id_fk": {
+          "name": "outfit_top_id_wearable_id_fk",
+          "tableFrom": "outfit",
+          "tableTo": "wearable",
+          "columnsFrom": ["top_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "outfit_bottom_id_wearable_id_fk": {
+          "name": "outfit_bottom_id_wearable_id_fk",
+          "tableFrom": "outfit",
+          "tableTo": "wearable",
+          "columnsFrom": ["bottom_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "outfit_user_top_bottom_unique": {
+          "name": "outfit_user_top_bottom_unique",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "top_id", "bottom_id"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user": {
+      "name": "user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "auth0_user_id": {
+          "name": "auth0_user_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "selfie_image_key": {
+          "name": "selfie_image_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avatar_image_key": {
+          "name": "avatar_image_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_auth0_user_id_unique": {
+          "name": "user_auth0_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["auth0_user_id"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wearableonavatarimage": {
+      "name": "wearableonavatarimage",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avatar_image_key": {
+          "name": "avatar_image_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wearable_image_key": {
+          "name": "wearable_image_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "image_key": {
+          "name": "image_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mask_image_key": {
+          "name": "mask_image_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "woa_user_id_idx": {
+          "name": "woa_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "woa_avatar_image_key_idx": {
+          "name": "woa_avatar_image_key_idx",
+          "columns": [
+            {
+              "expression": "avatar_image_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "woa_wearable_image_key_idx": {
+          "name": "woa_wearable_image_key_idx",
+          "columns": [
+            {
+              "expression": "wearable_image_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wearableonavatarimage_user_id_user_id_fk": {
+          "name": "wearableonavatarimage_user_id_user_id_fk",
+          "tableFrom": "wearableonavatarimage",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wearable": {
+      "name": "wearable",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "image_key": {
+          "name": "image_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "wearable_user_id_idx": {
+          "name": "wearable_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wearable_user_id_user_id_fk": {
+          "name": "wearable_user_id_user_id_fk",
+          "tableFrom": "wearable",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -1,0 +1,84 @@
+"use server";
+
+import { eq } from "drizzle-orm";
+import { uuidSchema } from "@/shared/schemas";
+import { getBodyPart } from "@/shared/wearable-categories";
+import { updateTag } from "next/cache";
+import { getCurrentUser } from "../auth";
+import { db, schema } from "../db";
+import { CACHE_TAGS } from "../queries";
+
+/**
+ * Favorites the outfit made up of the given top and bottom.
+ */
+export async function createOutfit(params: { topId: string; bottomId: string }): Promise<void> {
+  const user = await getCurrentUser();
+
+  const topId = params.topId;
+  const bottomId = params.bottomId;
+
+  if (!uuidSchema.safeParse(topId).success) {
+    throw new Error("Invalid top wearable id.");
+  }
+  if (!uuidSchema.safeParse(bottomId).success) {
+    throw new Error("Invalid bottom wearable id.");
+  }
+
+  // Ensure that the top and bottom wearables exist AND belong to the current user
+  const top = await db.query.wearables.findFirst({
+    where: eq(schema.wearables.id, topId),
+  });
+
+  if (!top || top.userId !== user.id) {
+    throw new Error(`Top wearable with ID '${topId}' not found or not owned by user.`);
+  }
+  if (getBodyPart(top.category) !== "top") {
+    throw new Error('Top wearable must have "body_part": "top".');
+  }
+
+  const bottom = await db.query.wearables.findFirst({
+    where: eq(schema.wearables.id, bottomId),
+  });
+
+  if (!bottom || bottom.userId !== user.id) {
+    throw new Error(`Bottom wearable with ID '${bottomId}' not found or not owned by user.`);
+  }
+  if (getBodyPart(bottom.category) !== "bottom") {
+    throw new Error('Bottom wearable must have "body_part": "bottom".');
+  }
+
+  await db
+    .insert(schema.outfits)
+    .values({
+      userId: user.id,
+      topId,
+      bottomId,
+    })
+    .onConflictDoNothing({
+      target: [schema.outfits.userId, schema.outfits.topId, schema.outfits.bottomId],
+    });
+
+  updateTag(CACHE_TAGS.outfits);
+}
+
+/** Unfavorites an outfit. */
+export async function deleteOutfit(id: string): Promise<void> {
+  const user = await getCurrentUser();
+
+  if (!uuidSchema.safeParse(id).success) {
+    throw new Error("Invalid outfit id.");
+  }
+
+  // Check if the outfit exists and is owned by the current user
+  const outfit = await db.query.outfits.findFirst({
+    where: eq(schema.outfits.id, id),
+  });
+
+  if (!outfit || outfit.userId !== user.id) {
+    throw new Error("Outfit not found.");
+  }
+
+  await db.delete(schema.outfits).where(eq(schema.outfits.id, id));
+
+  updateTag(CACHE_TAGS.outfits);
+}

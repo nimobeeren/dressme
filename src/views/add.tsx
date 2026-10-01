@@ -351,7 +351,7 @@ function CategoryFormField<TFieldValues extends FieldValues>({
       name={name}
       render={({ field }) => (
         <FormItem>
-          <Select onValueChange={field.onChange} value={field.value || suggestion}>
+          <Select onValueChange={field.onChange} value={field.value || suggestion || ""}>
             <FormControl>
               <SelectTrigger
                 aria-label="Category"

@@ -6,8 +6,9 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       // Uploads are posted via server actions, one image per request; match
-      // the MAX_UPLOAD_SIZE server-side cap.
-      bodySizeLimit: "10mb",
+      // the MAX_UPLOAD_SIZE default in src/server/settings.ts. Must also stay
+      // below Vercel's 4.5 MB request-body limit.
+      bodySizeLimit: "4mb",
     },
   },
 };

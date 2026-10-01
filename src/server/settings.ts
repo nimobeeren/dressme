@@ -34,8 +34,9 @@ export const settingsSchema = z.object({
   S3_ENDPOINT_URL: z.string(),
 
   // Image upload limits
-  /** Maximum upload file size in bytes (default 10 MB). */
-  MAX_UPLOAD_SIZE: z.coerce.number().default(10 * 1024 * 1024),
+  /** Maximum upload file size in bytes (default 4 MB, below Vercel's 4.5 MB
+   * request-body limit for server actions). */
+  MAX_UPLOAD_SIZE: z.coerce.number().default(4 * 1024 * 1024),
   /** Maximum decoded image size in pixels to prevent decompression bombs (~8000x6000). */
   MAX_IMAGE_PIXELS: z.coerce.number().default(50_000_000),
 

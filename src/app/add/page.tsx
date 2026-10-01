@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuth0 } from "@/server/auth";
 import { getMe } from "@/server/queries";
+import { getSettings } from "@/server/settings";
 import { AddClient } from "@/views/add";
 
 export default getAuth0().withPageAuthRequired(
@@ -11,7 +12,7 @@ export default getAuth0().withPageAuthRequired(
       redirect("/");
     }
 
-    return <AddClient />;
+    return <AddClient maxUploadSize={getSettings().MAX_UPLOAD_SIZE} />;
   },
   { returnTo: "/add" },
 );

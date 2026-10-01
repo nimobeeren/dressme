@@ -26,6 +26,8 @@ export interface HomeClientProps {
   wearablesPending: boolean;
   /** True while the avatar is still generating. Drives the poller. */
   avatarPending: boolean;
+  /** Maximum accepted image upload size in bytes. */
+  maxUploadSize: number;
 }
 
 export function HomeClient({
@@ -34,6 +36,7 @@ export function HomeClient({
   outfits,
   wearablesPending,
   avatarPending,
+  maxUploadSize,
 }: HomeClientProps) {
   const [, startTransition] = useTransition();
 
@@ -56,7 +59,7 @@ export function HomeClient({
     return () => clearInterval(id);
   }, [avatarPending, startTransition]);
 
-  return <Main me={me} wearables={wearables} outfits={outfits} />;
+  return <Main me={me} wearables={wearables} outfits={outfits} maxUploadSize={maxUploadSize} />;
 }
 
 type FormFieldValues = {
@@ -68,7 +71,17 @@ type FormFieldValues = {
  * Lets the user pick wearables and outfits and shows a generated image of the selected items on the
  * user's avatar.
  */
-function Main({ me, wearables, outfits }: { me: User; wearables: Wearable[]; outfits: Outfit[] }) {
+function Main({
+  me,
+  wearables,
+  outfits,
+  maxUploadSize,
+}: {
+  me: User;
+  wearables: Wearable[];
+  outfits: Outfit[];
+  maxUploadSize: number;
+}) {
   const tops = wearables.filter((wearable) => wearable.body_part === "top");
   const bottoms = wearables.filter((wearable) => wearable.body_part === "bottom");
 
@@ -98,6 +111,7 @@ function Main({ me, wearables, outfits }: { me: User; wearables: Wearable[]; out
           activeTopId={activeTopId}
           activeBottomId={activeBottomId}
           activeOutfitId={activeOutfit?.id}
+          maxUploadSize={maxUploadSize}
         />
         <Wardrobe
           isDisabled={!me.has_avatar_image}
@@ -117,11 +131,13 @@ function Preview({
   activeTopId,
   activeBottomId,
   activeOutfitId,
+  maxUploadSize,
 }: {
   me: User;
   activeTopId: string | undefined;
   activeBottomId: string | undefined;
   activeOutfitId: string | undefined;
+  maxUploadSize: number;
 }) {
   const { toast } = useToast();
   const [isFavoriting, startFavoriting] = useTransition();
@@ -139,6 +155,11 @@ function Preview({
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Reject oversize files before upload
+    if (file.size > maxUploadSize) {
+      toastError(new Error(`Image must be smaller than ${maxUploadSize / (1024 * 1024)} MB.`));
+      return;
+    }
     const formData = new FormData();
     formData.append("image", file);
     startUploading(async () => {

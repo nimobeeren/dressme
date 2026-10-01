@@ -1,13 +1,14 @@
 import { AddClient } from "@/views/add";
 import { actionSpies } from "@/test/actions-mock";
 import { renderWithProviders } from "@/test/utils";
+import { testSettings } from "@/test/settings";
 import { mockRouter } from "@/test/mocks/next-navigation";
 import { userEvent } from "vitest/browser";
 import { expect } from "vitest";
 import { test } from "@/test/test-extend";
 
 async function renderAddPage() {
-  return renderWithProviders(<AddClient />);
+  return renderWithProviders(<AddClient maxUploadSize={testSettings.MAX_UPLOAD_SIZE} />);
 }
 
 /** A tiny File object to stand in for an uploaded image. */

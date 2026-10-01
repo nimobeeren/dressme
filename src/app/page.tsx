@@ -1,5 +1,6 @@
 import { getAuth0 } from "@/server/auth";
 import { getMe, getOutfits, getWearables } from "@/server/queries";
+import { getSettings } from "@/server/settings";
 import { HomeClient } from "@/views/home";
 
 export default getAuth0().withPageAuthRequired(async function Page() {
@@ -17,6 +18,7 @@ export default getAuth0().withPageAuthRequired(async function Page() {
       outfits={outfits}
       wearablesPending={wearablesPending}
       avatarPending={avatarPending}
+      maxUploadSize={getSettings().MAX_UPLOAD_SIZE}
     />
   );
 });

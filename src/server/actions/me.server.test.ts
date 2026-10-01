@@ -10,6 +10,7 @@ import {
   TEST_USER_ID,
   test,
 } from "@/test/server";
+import { testSettings } from "@/test/settings";
 import { uploadSelfie, refreshMe } from "./me";
 
 async function makeSelfieFormData(buffer: Buffer, name: string, type: string) {
@@ -76,7 +77,9 @@ describe("uploadSelfie", () => {
     await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
     expect(
       await uploadSelfie(await makeSelfieFormData(makeOversizedUpload(), "huge.jpg", "image/jpeg")),
-    ).toEqual({ error: "Upload must be smaller than 10 MB." });
+    ).toEqual({
+      error: `Upload must be smaller than ${testSettings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+    });
   });
 
   test("returns an error when missing the image file", async ({ db }) => {

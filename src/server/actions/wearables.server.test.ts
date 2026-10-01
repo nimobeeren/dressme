@@ -12,6 +12,7 @@ import {
   type TestDb,
   test,
 } from "@/test/server";
+import { testSettings } from "@/test/settings";
 import { classifyWearable, createWearable, refreshWearables } from "./wearables";
 
 async function createUserWithAvatar(db: TestDb) {
@@ -144,7 +145,9 @@ describe("createWearable", () => {
           category: "t-shirt",
         }),
       ),
-    ).toEqual({ error: "Upload must be smaller than 10 MB." });
+    ).toEqual({
+      error: `Upload must be smaller than ${testSettings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+    });
   });
 
   test("returns an error for a decompression-bomb image", async ({ db }) => {

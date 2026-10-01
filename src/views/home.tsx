@@ -157,7 +157,11 @@ function Preview({
     if (!file) return;
     // Reject oversize files before upload
     if (file.size > maxUploadSize) {
-      toastError(new Error(`Image must be smaller than ${maxUploadSize / (1024 * 1024)} MB.`));
+      toast({
+        title: "Smaller, please!",
+        description: `${file.name} is too large (max ${maxUploadSize / (1024 * 1024)} MB).`,
+        variant: "destructive",
+      });
       return;
     }
     const formData = new FormData();

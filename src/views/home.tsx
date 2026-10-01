@@ -349,7 +349,7 @@ function OutfitList({ outfits, activeOutfitId }: { outfits: Outfit[]; activeOutf
 
   return (
     <RadioGroup.Root
-      value={activeOutfitId}
+      value={activeOutfitId ?? ""}
       onValueChange={(value) => {
         const newOutfit = outfits.find((outfit) => outfit.id === value);
         if (!newOutfit) {
@@ -441,12 +441,13 @@ function WearableList({
     <FormField
       control={form.control}
       name={name}
-      render={({ field: { onChange, ...restField } }) => (
+      render={({ field: { onChange, value, ...restField } }) => (
         <FormItem>
           <FormControl>
             <RadioGroup.Root
               // Renaming onChange prop because Radix uses different name for the prop
               onValueChange={onChange}
+              value={value ?? ""}
               {...restField}
               className="grid grid-cols-2 content-start gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             >

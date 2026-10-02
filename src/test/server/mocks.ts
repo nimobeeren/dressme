@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
-const auth0Mocks = vi.hoisted(() => ({
-  getSession: vi.fn(),
+const clerkMocks = vi.hoisted(() => ({
+  auth: vi.fn(),
 }));
 
 vi.mock("@/server/db", async () => {
@@ -11,10 +11,8 @@ vi.mock("@/server/db", async () => {
   return { db: drizzle({ client: new PGlite(), schema }), schema };
 });
 
-vi.mock("@auth0/nextjs-auth0/server", () => ({
-  Auth0Client: class {
-    getSession = auth0Mocks.getSession;
-  },
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: clerkMocks.auth,
 }));
 
 vi.mock("next/cache", () => ({
@@ -81,6 +79,6 @@ export async function flushBackgroundTasks() {
   pendingBgTasks = [];
 }
 
-export function setSessionUser(sub: string | null) {
-  auth0Mocks.getSession.mockImplementation(async () => (sub ? { user: { sub } } : null));
+export function setSessionUser(userId: string | null) {
+  clerkMocks.auth.mockImplementation(async () => ({ userId }));
 }

@@ -16,7 +16,7 @@ export { randomUUID };
 export type TestDb = PgliteDatabase<typeof schema>;
 export { schema };
 
-export const TEST_USER_ID = "auth0|1";
+export const TEST_USER_ID = "user_1";
 
 export const test = baseTest
   // eslint-disable-next-line no-empty-pattern -- vitest requires the destructured context signature

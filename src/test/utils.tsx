@@ -52,7 +52,7 @@ export function buildOutfit(
 
 export function buildUser(overrides: Partial<User> = {}): User {
   return {
-    id: "auth0|test-user",
+    id: "user_test",
     has_selfie_image: false,
     has_avatar_image: false,
     ...overrides,

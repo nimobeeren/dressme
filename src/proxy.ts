@@ -1,20 +1,21 @@
-import { getAuth0 } from "@/server/auth";
+import type { NextProxy } from "next/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
 /**
- * Mounts the Auth0 SDK's authentication routes (`/auth/login`, `/auth/callback`,
- * `/auth/logout`, ...) and refreshes the session cookie on every request.
+ * Runs Clerk authentication on every request so `auth()` works in pages,
+ * server actions and route handlers. Route protection itself lives in the
+ * auth layer (`src/server/auth.ts`): pages redirect to `/sign-in` and API
+ * routes respond with 401 via `withCookieAuth`.
  */
-export async function proxy(request: Request) {
-  return await getAuth0().middleware(request);
-}
+export const proxy: NextProxy = clerkMiddleware();
 
 export const config = {
-  // Match any route that is NOT cacheable.
-  // We don't apply the middleware to cacheable routes because it's not possible
-  // to refresh a cookie when a response is read from cache.
-  // This is fine because the cookie expiry is typically pretty long and the
-  // user will probably make other (non-cacheable) requests in the meantime.
+  // Match everything except Next.js internals and static assets. Every route
+  // that calls auth() must be matched — including /api/images/outfit.
   matcher: [
-    `/((?!api/images/outfit|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)`,
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
   ],
 };

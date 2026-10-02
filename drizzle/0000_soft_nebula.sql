@@ -2,7 +2,8 @@ CREATE TABLE "outfit" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"top_id" uuid NOT NULL,
-	"bottom_id" uuid NOT NULL
+	"bottom_id" uuid NOT NULL,
+	CONSTRAINT "outfit_user_top_bottom_unique" UNIQUE("user_id","top_id","bottom_id")
 );
 --> statement-breakpoint
 CREATE TABLE "user" (

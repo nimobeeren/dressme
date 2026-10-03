@@ -341,8 +341,14 @@ function WoaLayer({ wearable, onSettled }: { wearable: Wearable; onSettled: () =
         // @ts-expect-error not in React's CSSProperties
         WebkitMaskMode: "luminance",
         maskMode: "luminance",
-        WebkitMaskSize: "100% 100%",
-        maskSize: "100% 100%",
+        // Scaled and cropped exactly like the image above, which object-cover does
+        // for the image: the mask stays over its own pixels whatever the aspect.
+        WebkitMaskSize: "cover",
+        maskSize: "cover",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
       }}
     />
   );

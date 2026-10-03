@@ -44,6 +44,9 @@ export const env = createEnv({
     WEARABLES_BUCKET: z.string().default("dressme-wearables"),
     /** Bucket name for WearableOnAvatar images and masks. */
     WOA_BUCKET: z.string().default("dressme-woa"),
+
+    /** PostHog API host to ship logs to, e.g. `https://eu.i.posthog.com`. */
+    POSTHOG_API_HOST: z.string().default("https://eu.i.posthog.com"),
   },
   experimental__runtimeEnv: process.env,
   emptyStringAsUndefined: true,

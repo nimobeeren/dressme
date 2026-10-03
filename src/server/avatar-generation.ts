@@ -1,6 +1,7 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
 import { env } from "@/env/server";
+import { logger } from "./logger";
 
 async function getSharp() {
   return (await import("sharp")).default;
@@ -62,9 +63,7 @@ export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
         error instanceof TypeError ||
         (error instanceof ApiError && [408, 429, 500, 502, 503, 504].includes(error.status)),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `generateAvatar attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
-        );
+        logger.warn({ attemptNumber, retriesLeft, err: error }, "generateAvatar attempt failed");
       },
     },
   );

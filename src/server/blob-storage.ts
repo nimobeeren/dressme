@@ -1,4 +1,10 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl as s3GetSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getSettings } from "./settings";
 import { isLocalUrl } from "./utils";
@@ -59,4 +65,41 @@ export async function getSignedBlobUrl(
   return s3GetSignedUrl(getClient(), new GetObjectCommand({ Bucket: bucket, Key: key }), {
     expiresIn,
   });
+}
+
+/** Lists all object keys in a bucket. */
+export async function listBlobs(bucket: string): Promise<string[]> {
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+  do {
+    const response = await getClient().send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    for (const object of response.Contents ?? []) {
+      if (object.Key) keys.push(object.Key);
+    }
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return keys;
+}
+
+/** Deletes the given object keys from a bucket. Throws if any deletion fails. */
+export async function deleteBlobs(bucket: string, keys: string[]): Promise<void> {
+  // S3 accepts at most 1000 keys per delete request
+  for (let i = 0; i < keys.length; i += 1000) {
+    const chunk = keys.slice(i, i + 1000);
+    const response = await getClient().send(
+      new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: { Objects: chunk.map((key) => ({ Key: key })), Quiet: true },
+      }),
+    );
+    if (response.Errors?.length) {
+      const details = response.Errors.map((error) => `${error.Key}: ${error.Message}`).join(", ");
+      throw new Error(`Failed to delete objects from bucket '${bucket}': ${details}`);
+    }
+  }
 }

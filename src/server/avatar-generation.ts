@@ -1,6 +1,7 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
-import { getSettings } from "./settings";
+import { env } from "@/env/server";
+import { logger } from "./logger";
 
 async function getSharp() {
   return (await import("sharp")).default;
@@ -36,8 +37,7 @@ export async function generateAvatar(
   options: { prompt?: string } = {},
 ): Promise<Buffer> {
   const prompt = options.prompt ?? AVATAR_PROMPT;
-  const settings = getSettings();
-  const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
   // Downscale selfie to max 1024px longest side before sending to Gemini
   const sharp = await getSharp();
@@ -67,9 +67,7 @@ export async function generateAvatar(
         error instanceof TypeError ||
         (error instanceof ApiError && [408, 429, 500, 502, 503, 504].includes(error.status)),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `generateAvatar attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
-        );
+        logger.warn({ attemptNumber, retriesLeft, err: error }, "generateAvatar attempt failed");
       },
     },
   );

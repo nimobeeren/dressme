@@ -3,10 +3,10 @@ import "server-only";
 import { getBodyPart, parseWearableCategory } from "@/shared/wearable-categories";
 import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { eq } from "drizzle-orm";
+import { env } from "@/env/server";
 import { getCurrentUser } from "./auth";
 import { db, schema } from "./db";
 import { getSignedBlobUrl } from "./blob-storage";
-import { getSettings } from "./settings";
 
 /**
  * Cache tags for the shared queries below. The routes reading these queries are
@@ -24,10 +24,9 @@ export const CACHE_TAGS = {
 function toWearable(
   w: { id: string; category: string; imageKey: string },
   completedKeys: ReadonlySet<string>,
-  settings: ReturnType<typeof getSettings>,
 ): Promise<Wearable> {
   const category = parseWearableCategory(w.category);
-  return getSignedBlobUrl(settings.WEARABLES_BUCKET, w.imageKey).then(
+  return getSignedBlobUrl(env.WEARABLES_BUCKET, w.imageKey).then(
     (wearable_image_url): Wearable => ({
       id: w.id,
       category,
@@ -63,7 +62,6 @@ export async function getMe(): Promise<User> {
 
 export async function getWearables(): Promise<Wearable[]> {
   const user = await getCurrentUser();
-  const settings = getSettings();
 
   const userWearables = await db.query.wearables.findMany({
     where: eq(schema.wearables.userId, user.id),
@@ -71,12 +69,11 @@ export async function getWearables(): Promise<Wearable[]> {
 
   const completedKeys = await getCompletedWearableImageKeys(user.id, user.avatarImageKey);
 
-  return Promise.all(userWearables.map((w) => toWearable(w, completedKeys, settings)));
+  return Promise.all(userWearables.map((w) => toWearable(w, completedKeys)));
 }
 
 export async function getOutfits(): Promise<Outfit[]> {
   const user = await getCurrentUser();
-  const settings = getSettings();
 
   const completedWearableImageKeys = await getCompletedWearableImageKeys(
     user.id,
@@ -95,8 +92,8 @@ export async function getOutfits(): Promise<Outfit[]> {
   return Promise.all(
     outfits.map(async (outfit): Promise<Outfit> => {
       const [top, bottom] = await Promise.all([
-        toWearable(outfit.top!, completedWearableImageKeys, settings),
-        toWearable(outfit.bottom!, completedWearableImageKeys, settings),
+        toWearable(outfit.top!, completedWearableImageKeys),
+        toWearable(outfit.bottom!, completedWearableImageKeys),
       ]);
       return { id: outfit.id, top, bottom };
     }),

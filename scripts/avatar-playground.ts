@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { lookup } from "mime-types";
 import { AVATAR_PROMPT, generateAvatar } from "../src/server/avatar-generation";
-import { getSettings } from "../src/server/settings";
+import { env } from "../src/env/server";
 
 const ROOT_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const HUMANS_DIR = path.join(ROOT_PATH, "images", "humans");
@@ -369,7 +369,7 @@ async function main() {
   const { port, only, open } = parseArgs(process.argv.slice(2));
 
   try {
-    getSettings();
+    void env.GEMINI_API_KEY;
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     console.error("Fill in the missing values in .env (see .env.example) and try again.");

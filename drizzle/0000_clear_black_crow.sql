@@ -2,16 +2,15 @@ CREATE TABLE "outfit" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"top_id" uuid NOT NULL,
-	"bottom_id" uuid NOT NULL,
-	CONSTRAINT "outfit_user_top_bottom_unique" UNIQUE("user_id","top_id","bottom_id")
+	"bottom_id" uuid NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "user" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"clerk_user_id" varchar NOT NULL,
+	"auth0_user_id" varchar NOT NULL,
 	"selfie_image_key" varchar,
 	"avatar_image_key" varchar,
-	CONSTRAINT "user_clerk_user_id_unique" UNIQUE("clerk_user_id")
+	CONSTRAINT "user_auth0_user_id_unique" UNIQUE("auth0_user_id")
 );
 --> statement-breakpoint
 CREATE TABLE "wearableonavatarimage" (

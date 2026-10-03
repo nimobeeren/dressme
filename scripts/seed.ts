@@ -7,9 +7,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, schema } from "../src/server/db";
 import { uploadBlob } from "../src/server/blob-storage";
-import { getSettings } from "../src/server/settings";
-
-const settings = getSettings();
+import { logger } from "../src/server/logger";
+import { env } from "../src/env/server";
 
 // Path to the repo root
 const ROOT_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -67,7 +66,7 @@ const WEARABLES: Record<string, WearableSeedData> = {
 };
 
 async function seed() {
-  const seedUserId = settings.CLERK_SEED_USER_ID;
+  const seedUserId = env.CLERK_SEED_USER_ID;
   if (!seedUserId) {
     throw new Error(
       "CLERK_SEED_USER_ID is not set, but this is required to determine which user " +
@@ -79,23 +78,13 @@ async function seed() {
   const selfiePath = path.join(ROOT_PATH, SELFIE_PATH);
   const selfieData = fs.readFileSync(selfiePath);
   const selfieKey = `${randomUUID()}.jpg`;
-  await uploadBlob(
-    settings.SELFIES_BUCKET,
-    selfieKey,
-    selfieData,
-    lookup(selfiePath) || "image/jpeg",
-  );
+  await uploadBlob(env.SELFIES_BUCKET, selfieKey, selfieData, lookup(selfiePath) || "image/jpeg");
 
   // Upload avatar image
   const avatarPath = path.join(ROOT_PATH, AVATAR_PATH);
   const avatarData = fs.readFileSync(avatarPath);
   const avatarKey = `${randomUUID()}.jpg`;
-  await uploadBlob(
-    settings.AVATARS_BUCKET,
-    avatarKey,
-    avatarData,
-    lookup(avatarPath) || "image/jpeg",
-  );
+  await uploadBlob(env.AVATARS_BUCKET, avatarKey, avatarData, lookup(avatarPath) || "image/jpeg");
 
   // Check if user already exists
   const existing = await db.query.users.findFirst({
@@ -103,9 +92,7 @@ async function seed() {
   });
 
   if (existing) {
-    console.info(
-      `User with clerk_user_id '${settings.CLERK_SEED_USER_ID}' already exists, skipping creation.`,
-    );
+    logger.info({ clerkUserId: env.CLERK_SEED_USER_ID }, "User already exists, skipping creation");
   }
 
   let userId = existing?.id;
@@ -122,7 +109,7 @@ async function seed() {
       .returning();
 
     if (!user) throw new Error("Failed to create user");
-    console.info(`Created user: ${user.id}`);
+    logger.info({ userId: user.id }, "Created user");
     userId = user.id;
   } else if (userId) {
     // Update existing user's images
@@ -130,7 +117,7 @@ async function seed() {
       .update(schema.users)
       .set({ selfieImageKey: selfieKey, avatarImageKey: avatarKey })
       .where(eq(schema.users.id, userId));
-    console.info(`Updated user ${userId} with new images`);
+    logger.info({ userId }, "Updated user with new images");
   }
 
   if (!userId) throw new Error("No user ID available");
@@ -142,12 +129,7 @@ async function seed() {
     const imageData = fs.readFileSync(imagePath);
     const ext = path.extname(imagePath);
     const imageKey = `${randomUUID()}${ext}`;
-    await uploadBlob(
-      settings.WEARABLES_BUCKET,
-      imageKey,
-      imageData,
-      lookup(imagePath) || "image/jpeg",
-    );
+    await uploadBlob(env.WEARABLES_BUCKET, imageKey, imageData, lookup(imagePath) || "image/jpeg");
 
     // Add wearable
     const [wearable] = await db
@@ -166,14 +148,14 @@ async function seed() {
     if (fs.existsSync(woaPath)) {
       const woaData = fs.readFileSync(woaPath);
       const woaKey = `${randomUUID()}.jpg`;
-      await uploadBlob(settings.WOA_BUCKET, woaKey, woaData, "image/jpeg");
+      await uploadBlob(env.WOA_BUCKET, woaKey, woaData, "image/jpeg");
 
       // Upload mask image
       const maskPath = path.join(ROOT_PATH, "images", "masks", "human_4", "post", `${name}.jpg`);
       if (fs.existsSync(maskPath)) {
         const maskData = fs.readFileSync(maskPath);
         const maskKey = `${randomUUID()}.jpg`;
-        await uploadBlob(settings.WOA_BUCKET, maskKey, maskData, "image/jpeg");
+        await uploadBlob(env.WOA_BUCKET, maskKey, maskData, "image/jpeg");
 
         // Add WearableOnAvatarImage
         await db.insert(schema.wearableOnAvatarImages).values({
@@ -186,13 +168,13 @@ async function seed() {
       }
     }
 
-    console.info(`Added wearable: ${name} (${wearable.id})`);
+    logger.info({ name, wearableId: wearable.id }, "Added wearable");
   }
 
-  console.info("Seeding complete!");
+  logger.info("Seeding complete");
 }
 
 seed().catch((err) => {
-  console.error("Seed failed:", err);
+  logger.error({ err }, "Seed failed");
   process.exit(1);
 });

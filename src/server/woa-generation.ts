@@ -1,6 +1,7 @@
 import pRetry from "p-retry";
 import Replicate from "replicate";
-import { getSettings } from "./settings";
+import { env } from "@/env/server";
+import { logger } from "./logger";
 import {
   CATEGORY_BODY_PARTS,
   parseWearableCategory,
@@ -52,8 +53,7 @@ export async function generateWoaImage(params: {
    * Approximate cost: $0.04 per invocation.
    */
   const { avatarImage, wearableImage, category } = params;
-  const settings = getSettings();
-  const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
+  const client = new Replicate({ auth: env.REPLICATE_API_TOKEN });
 
   // parseWearableCategory throws on unknown input; the resulting WearableCategory
   // safely indexes both exhaustive Records below without further casts.
@@ -83,9 +83,7 @@ export async function generateWoaImage(params: {
         error instanceof TypeError ||
         [408, 429, 500, 502, 503, 504].includes((error as any).response?.status),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `generateWoaImage attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
-        );
+        logger.warn({ attemptNumber, retriesLeft, err: error }, "generateWoaImage attempt failed");
       },
     },
   );
@@ -104,8 +102,7 @@ export async function generateMask(params: {
    * Approximate cost: $0.004 per invocation.
    */
   const { woaImage, category } = params;
-  const settings = getSettings();
-  const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
+  const client = new Replicate({ auth: env.REPLICATE_API_TOKEN });
 
   const woaDataUri = `data:image/jpeg;base64,${woaImage.toString("base64")}`;
   // parseWearableCategory throws on unknown input; the resulting WearableCategory
@@ -132,9 +129,7 @@ export async function generateMask(params: {
         error instanceof TypeError ||
         [408, 429, 500, 502, 503, 504].includes((error as any).response?.status),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `generateMask attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
-        );
+        logger.warn({ attemptNumber, retriesLeft, err: error }, "generateMask attempt failed");
       },
     },
   )) as unknown[];

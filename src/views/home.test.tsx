@@ -1,6 +1,5 @@
 import { HomeClient } from "@/views/home";
 import { actionSpies } from "@/test/actions-mock";
-import { testSettings } from "@/test/settings";
 import { buildOutfit, buildUser, buildWearable, renderWithProviders } from "@/test/utils";
 import { userEvent } from "vitest/browser";
 import { afterEach, describe, expect, vi } from "vitest";
@@ -23,7 +22,6 @@ function homeProps(overrides: HomeRenderOptions = {}) {
     wearablesPending:
       overrides.wearablesPending ?? wearables.some((w) => w.generation_status === "pending"),
     avatarPending: overrides.avatarPending ?? false,
-    maxUploadSize: testSettings.MAX_UPLOAD_SIZE,
   };
 }
 

@@ -82,8 +82,9 @@ pnpm build              # Production build
 
 ## Environment Variables
 
-All environment variables are sourced from `.env` (see `.env.example` for the template).
-Server-side variables (without `NEXT_PUBLIC_` prefix) are only available in route handlers and server code.
+All environment variables are sourced from `.env` (see `.env.example` for the template). [t3-env](https://env.t3.gg) validates them at build time and on startup.
+
+Server-only variables are declared in `src/env/server.ts` and are never shipped to the browser. Variables the browser needs are declared in `src/env/client.ts` under a `NEXT_PUBLIC_` prefix, which Next.js substitutes with the build-time value: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (read by the Clerk SDK) and `NEXT_PUBLIC_MAX_UPLOAD_SIZE`, which defaults to 4 MB.
 
 ### Blob Storage (MinIO / R2)
 
@@ -122,6 +123,22 @@ psql postgresql://dressme:dressme@localhost:5432/local
 ```bash
 docker compose down -v
 ```
+
+### Logging
+
+Server code logs through [pino](https://getpino.io) in `src/server/logger.ts`:
+
+```ts
+import { logger } from "@/server/logger";
+
+logger.info({ topId, bottomId }, "Serving outfit image");
+```
+
+When `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is set (see `.env.example`), `pino-opentelemetry-transport` exports records to [PostHog](https://posthog.com) over OTLP. When it is unset, records are written to stdout. Logs appear in the PostHog **Logs** page, filterable by `service.name` (`dressme`), severity, or any field you attach.
+
+Every record also carries resource attributes: `deployment.environment` is `production` / `preview` / `development` on Vercel (`VERCEL_ENV`) and `local` everywhere else, and `service.commit` is the deployed commit when `VERCEL_GIT_COMMIT_SHA` is present. Filter on `deployment.environment` to tell environments apart.
+
+`logger` runs on the Node.js server only, so browser code must not import it.
 
 ### Evals
 

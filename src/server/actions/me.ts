@@ -9,7 +9,7 @@ import { uploadBlob } from "../blob-storage";
 import { db, schema } from "../db";
 import { readFormImageAsJpeg, isExpectedUploadError } from "../image-utils";
 import { CACHE_TAGS, getMe } from "../queries";
-import { getSettings } from "../settings";
+import { env } from "@/env/server";
 
 /**
  * Uploads the user's selfie (one-time) and kicks off avatar generation.
@@ -32,10 +32,8 @@ export async function uploadSelfie(formData: FormData): Promise<{ error?: string
     throw error;
   }
 
-  const settings = getSettings();
-
   const key = `${randomUUID()}.jpg`;
-  await uploadBlob(settings.SELFIES_BUCKET, key, jpegData, "image/jpeg");
+  await uploadBlob(env.SELFIES_BUCKET, key, jpegData, "image/jpeg");
 
   await db.update(schema.users).set({ selfieImageKey: key }).where(eq(schema.users.id, user.id));
 

@@ -1,5 +1,6 @@
 import type { Sharp } from "sharp";
-import { getSettings } from "./settings";
+import { env as clientEnv } from "@/env/client";
+import { env } from "@/env/server";
 
 async function getSharp() {
   return (await import("sharp")).default;
@@ -7,11 +8,10 @@ async function getSharp() {
 
 export async function safeOpenImage(data: Buffer): Promise<Sharp> {
   const sharp = await getSharp();
-  const settings = getSettings();
 
   try {
     const img = sharp(data, {
-      limitInputPixels: settings.MAX_IMAGE_PIXELS,
+      limitInputPixels: env.MAX_IMAGE_PIXELS,
     });
     const metadata = await img.metadata();
     if (!metadata.format) {
@@ -35,7 +35,7 @@ export async function compressToJpeg(img: Sharp, quality = 75): Promise<Buffer> 
  * enforcing the per-file size cap.
  */
 export async function readFormFile(formData: FormData, name: string): Promise<Buffer> {
-  const maxFileSize = getSettings().MAX_UPLOAD_SIZE;
+  const maxFileSize = clientEnv.NEXT_PUBLIC_MAX_UPLOAD_SIZE;
 
   const value = formData.get(name);
   if (value === null) {

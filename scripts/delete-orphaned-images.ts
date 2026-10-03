@@ -1,9 +1,7 @@
 import "dotenv/config";
 import { db, schema } from "../src/server/db";
 import { deleteBlobs, listBlobs } from "../src/server/blob-storage";
-import { getSettings } from "../src/server/settings";
-
-const settings = getSettings();
+import { env } from "../src/env/server";
 
 // Keys referenced by the database are considered live; anything else in the
 // buckets is an orphan. All key columns count as live references, including
@@ -26,27 +24,27 @@ async function getLiveKeys(): Promise<Map<string, Set<string>>> {
     .from(schema.wearableOnAvatarImages);
 
   const live = new Map<string, Set<string>>([
-    [settings.SELFIES_BUCKET, new Set<string>()],
-    [settings.AVATARS_BUCKET, new Set<string>()],
-    [settings.WEARABLES_BUCKET, new Set<string>()],
-    [settings.WOA_BUCKET, new Set<string>()],
+    [env.SELFIES_BUCKET, new Set<string>()],
+    [env.AVATARS_BUCKET, new Set<string>()],
+    [env.WEARABLES_BUCKET, new Set<string>()],
+    [env.WOA_BUCKET, new Set<string>()],
   ]);
   const add = (bucket: string, key: string | null) => {
     if (key) live.get(bucket)!.add(key);
   };
 
   for (const user of users) {
-    add(settings.SELFIES_BUCKET, user.selfieImageKey);
-    add(settings.AVATARS_BUCKET, user.avatarImageKey);
+    add(env.SELFIES_BUCKET, user.selfieImageKey);
+    add(env.AVATARS_BUCKET, user.avatarImageKey);
   }
   for (const wearable of wearables) {
-    add(settings.WEARABLES_BUCKET, wearable.imageKey);
+    add(env.WEARABLES_BUCKET, wearable.imageKey);
   }
   for (const woa of woaImages) {
-    add(settings.AVATARS_BUCKET, woa.avatarImageKey);
-    add(settings.WEARABLES_BUCKET, woa.wearableImageKey);
-    add(settings.WOA_BUCKET, woa.imageKey);
-    add(settings.WOA_BUCKET, woa.maskImageKey);
+    add(env.AVATARS_BUCKET, woa.avatarImageKey);
+    add(env.WEARABLES_BUCKET, woa.wearableImageKey);
+    add(env.WOA_BUCKET, woa.imageKey);
+    add(env.WOA_BUCKET, woa.maskImageKey);
   }
   return live;
 }

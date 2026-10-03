@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserMaybe, type UserRow } from "./auth";
+import { logger } from "./logger";
 
 export type { UserRow } from "./auth";
 
@@ -16,7 +17,7 @@ export async function withCookieAuth(
 
     return handler(user);
   } catch (error) {
-    console.error("withCookieAuth error:", error);
+    logger.error({ err: error }, "withCookieAuth error");
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }

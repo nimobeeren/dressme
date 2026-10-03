@@ -23,7 +23,7 @@ export const proxy: NextProxy = clerkMiddleware({ authorizedParties });
 
 export const config = {
   // Match everything except Next.js internals and static assets. Every route
-  // that calls auth() must be matched — including /api/images/outfit.
+  // that calls auth() must be matched — pages, server actions and API routes alike.
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",

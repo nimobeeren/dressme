@@ -6,7 +6,7 @@ import { AddClient } from "@/views/add";
 export default async function Page() {
   const me = await getMe();
 
-  if (!me.has_avatar_image) {
+  if (me.avatar_image_url == null) {
     redirect("/");
   }
 

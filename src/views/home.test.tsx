@@ -1,7 +1,13 @@
 import { HomeClient } from "@/views/home";
 import { actionSpies } from "@/test/actions-mock";
 import { testSettings } from "@/test/settings";
-import { buildOutfit, buildUser, buildWearable, renderWithProviders } from "@/test/utils";
+import {
+  buildOutfit,
+  buildUser,
+  buildUserWithAvatar,
+  buildWearable,
+  renderWithProviders,
+} from "@/test/utils";
 import { userEvent } from "vitest/browser";
 import { afterEach, describe, expect, vi } from "vitest";
 import { test } from "@/test/test-extend";
@@ -42,13 +48,13 @@ test("shows upload button when user has no selfie", async () => {
 
 test("shows 'generating avatar' when selfie uploaded but avatar not ready", async () => {
   const screen = await renderHomePage({
-    me: buildUser({ has_selfie_image: true, has_avatar_image: false }),
+    me: buildUser({ has_selfie_image: true }),
     avatarPending: true,
   });
   await expect.element(screen.getByText(/generating your avatar/i)).toBeVisible();
 });
 
-test("selecting a top and bottom shows the outfit preview", async () => {
+test("selecting a top and bottom composites the outfit preview", async () => {
   const top = buildWearable({ id: "top-1", category: "t-shirt", body_part: "top" });
   const bottom = buildWearable({
     id: "bottom-1",
@@ -56,19 +62,28 @@ test("selecting a top and bottom shows the outfit preview", async () => {
     body_part: "bottom",
     wearable_image_url: "/test-images/dressme-wearables/blue-pants.webp",
   });
+  const me = buildUserWithAvatar();
 
-  const screen = await renderHomePage({
-    me: buildUser({ has_selfie_image: true, has_avatar_image: true }),
-    wearables: [top, bottom],
-  });
+  const screen = await renderHomePage({ me, wearables: [top, bottom] });
 
-  // The first success top/bottom are auto-selected, so the preview image is
-  // rendered as a plain <img> whose request carries the auth cookie.
-  const preview = screen.container.querySelector(
-    'img[src*="/api/images/outfit"]',
-  ) as HTMLImageElement | null;
-  expect(preview).toBeTruthy();
-  await expect.element(preview!).toBeVisible();
+  // The first success top/bottom are auto-selected. The preview stacks the
+  // avatar under one wear-on-avatar layer per wearable, each cut out with its
+  // luminance mask.
+  const avatarLayer = screen.container.querySelector(
+    `img[src="${me.avatar_image_url}"]`,
+  ) as HTMLImageElement;
+  expect(avatarLayer).toBeTruthy();
+  await expect.element(avatarLayer).toBeVisible();
+
+  for (const wearable of [bottom, top]) {
+    const layer = screen.container.querySelector(
+      `img[src="${wearable.woa_image_url}"]`,
+    ) as HTMLImageElement;
+    expect(layer).toBeTruthy();
+    expect(layer.style.maskImage).toContain(wearable.woa_mask_url!);
+    expect(layer.style.maskMode).toBe("luminance");
+    await expect.element(layer).toBeVisible();
+  }
 });
 
 test("clicking a pending wearable shows a toast and does not select it", async () => {
@@ -91,7 +106,7 @@ test("clicking a pending wearable shows a toast and does not select it", async (
   });
 
   const screen = await renderHomePage({
-    me: buildUser({ has_selfie_image: true, has_avatar_image: true }),
+    me: buildUserWithAvatar(),
     wearables: [readyTop, pendingTop, readyBottom],
   });
 
@@ -117,7 +132,7 @@ test("favoriting an outfit toggles the star control and the favorites list", asy
     body_part: "bottom",
     wearable_image_url: "/test-images/dressme-wearables/blue-pants.webp",
   });
-  const me = buildUser({ has_selfie_image: true, has_avatar_image: true });
+  const me = buildUserWithAvatar();
 
   const screen = await renderHomePage({ me, wearables: [top, bottom] });
 
@@ -173,7 +188,7 @@ test("uploading a selfie calls the uploadSelfie action", async () => {
 
 describe("polling", () => {
   test("polls wearables while pending and stops once the refresh clears it", async () => {
-    const me = buildUser({ has_selfie_image: true, has_avatar_image: true });
+    const me = buildUserWithAvatar();
     const wearables = [
       buildWearable({ id: "top-1", body_part: "top", generation_status: "pending" }),
       buildWearable({ id: "bottom-1", body_part: "bottom" }),
@@ -213,7 +228,7 @@ describe("polling", () => {
   test("polls me while the avatar is generating and stops once it's ready", async () => {
     vi.useFakeTimers();
     const screen = await renderHomePage({
-      me: buildUser({ has_selfie_image: true, has_avatar_image: false }),
+      me: buildUser({ has_selfie_image: true }),
       avatarPending: true,
     });
 
@@ -224,7 +239,7 @@ describe("polling", () => {
     await screen.rerender(
       <HomeClient
         {...homeProps({
-          me: buildUser({ has_selfie_image: true, has_avatar_image: true }),
+          me: buildUserWithAvatar(),
           avatarPending: false,
         })}
       />,

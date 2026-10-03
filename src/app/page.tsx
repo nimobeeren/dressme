@@ -8,7 +8,7 @@ export default async function Page() {
   // The pending flags are derived from the same arrays the client receives, so
   // the poller's lifetime and the data it polls can never disagree.
   const wearablesPending = wearables.some((w) => w.generation_status === "pending");
-  const avatarPending = me.has_selfie_image && !me.has_avatar_image;
+  const avatarPending = me.has_selfie_image && me.avatar_image_url == null;
 
   return (
     <HomeClient

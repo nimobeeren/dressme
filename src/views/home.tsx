@@ -95,6 +95,8 @@ function Main({
 
   const activeTopId = useWatch({ control: form.control, name: "topId" });
   const activeBottomId = useWatch({ control: form.control, name: "bottomId" });
+  const activeTop = tops.find((top) => top.id === activeTopId);
+  const activeBottom = bottoms.find((bottom) => bottom.id === activeBottomId);
 
   // The outfit is not a form value, instead it is derived from the top/bottom form values.
   // This makes it easier to keep them in sync; we only need to set the top/bottom when selecting
@@ -108,13 +110,13 @@ function Main({
       <form className="flex h-screen items-center justify-center gap-16">
         <Preview
           me={me}
-          activeTopId={activeTopId}
-          activeBottomId={activeBottomId}
+          activeTop={activeTop}
+          activeBottom={activeBottom}
           activeOutfitId={activeOutfit?.id}
           maxUploadSize={maxUploadSize}
         />
         <Wardrobe
-          isDisabled={!me.has_avatar_image}
+          isDisabled={me.avatar_image_url == null}
           tops={tops}
           bottoms={bottoms}
           outfits={outfits}
@@ -128,14 +130,14 @@ function Main({
 /** Shows a generated image of the active wearables/outfit on the user's avatar. */
 function Preview({
   me,
-  activeTopId,
-  activeBottomId,
+  activeTop,
+  activeBottom,
   activeOutfitId,
   maxUploadSize,
 }: {
   me: User;
-  activeTopId: string | undefined;
-  activeBottomId: string | undefined;
+  activeTop: Wearable | undefined;
+  activeBottom: Wearable | undefined;
   activeOutfitId: string | undefined;
   maxUploadSize: number;
 }) {
@@ -184,7 +186,7 @@ function Preview({
         if (activeOutfitId) {
           await deleteOutfit(activeOutfitId);
         } else {
-          await createOutfit({ topId: activeTopId!, bottomId: activeBottomId! });
+          await createOutfit({ topId: activeTop!.id, bottomId: activeBottom!.id });
         }
       } catch (error) {
         toastError(error);
@@ -194,13 +196,13 @@ function Preview({
 
   return (
     <div className="relative h-[60vh] shrink-0">
-      {me.has_avatar_image && (
+      {me.avatar_image_url != null && (
         <Button
           type="button"
           variant="ghost"
           size="icon"
           className="absolute right-4 top-4"
-          disabled={!activeTopId || !activeBottomId || isFavoriting}
+          disabled={!activeTop || !activeBottom || isFavoriting}
           aria-label={activeOutfitId ? "Remove from favorites" : "Save as favorite"}
           aria-pressed={!!activeOutfitId}
           onClick={toggleFavorite}
@@ -234,7 +236,7 @@ function Preview({
             </div>
           </div>
         )}
-        {me.has_selfie_image && !me.has_avatar_image && (
+        {me.has_selfie_image && me.avatar_image_url == null && (
           // Pending avatar generation
           <div className="flex h-full items-center justify-center bg-muted">
             <div className="flex flex-col items-center gap-4">
@@ -245,14 +247,23 @@ function Preview({
             </div>
           </div>
         )}
-        {me.has_avatar_image && activeTopId && activeBottomId ? (
-          // Normal avatar/outfit preview. The browser sends the auth cookie
-          // with the request automatically.
-          <img
-            src={`/api/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
-            className="h-full w-full object-cover"
-          />
-        ) : me.has_avatar_image ? (
+        {me.avatar_image_url != null && activeTop && activeBottom ? (
+          // The outfit is composited in the browser from the avatar and the wearables'
+          // wear-on-avatar images, each cut out with its luminance mask.
+          <div className="relative h-full w-full">
+            {/*
+             * The avatar is only shown while an outfit is selected: without one it may still
+             * be wearing the arbitrary clothes from the source photo, which would be
+             * confusing in the outfit builder.
+             */}
+            <img
+              src={me.avatar_image_url}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <WoaLayer wearable={activeBottom} />
+            <WoaLayer wearable={activeTop} />
+          </div>
+        ) : me.avatar_image_url != null ? (
           // Incomplete outfit
           <div className="flex h-full items-center justify-center px-8">
             <p className="text-center">Select a top and bottom to see your outfit preview.</p>
@@ -260,6 +271,30 @@ function Preview({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * A wearable's wear-on-avatar image, cut out with its luminance mask so it composites over the
+ * layers below it. Renders nothing while the wear-on-avatar image is still being generated.
+ */
+function WoaLayer({ wearable }: { wearable: Wearable }) {
+  if (!wearable.woa_image_url || !wearable.woa_mask_url) return null;
+  const maskUrl = wearable.woa_mask_url;
+  return (
+    <img
+      src={wearable.woa_image_url}
+      className="absolute inset-0 h-full w-full object-cover"
+      style={{
+        WebkitMaskImage: `url(${maskUrl})`,
+        maskImage: `url(${maskUrl})`,
+        // @ts-expect-error not in React's CSSProperties
+        WebkitMaskMode: "luminance",
+        maskMode: "luminance",
+        WebkitMaskSize: "100% 100%",
+        maskSize: "100% 100%",
+      }}
+    />
   );
 }
 

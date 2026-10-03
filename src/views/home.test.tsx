@@ -6,11 +6,26 @@ import {
   buildUser,
   buildUserWithAvatar,
   buildWearable,
+  fixtureImageUrl,
   renderWithProviders,
 } from "@/test/utils";
+import { http, passthrough } from "msw";
 import { userEvent } from "vitest/browser";
-import { afterEach, describe, expect, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { test } from "@/test/test-extend";
+
+beforeAll(() => {
+  // Tailwind is not compiled in this build, so define the class the composite hides with to
+  // make its hiding observable through computed style.
+  const style = document.createElement("style");
+  style.textContent = ".invisible { visibility: hidden; }";
+  document.head.appendChild(style);
+});
+
+// Unique per call so images always hit the network and can be held instead of the browser cache.
+let cacheBuster = 0;
+const uncachedWoaUrl = (file: string) =>
+  `${fixtureImageUrl("dressme-woa", file)}?bust=${++cacheBuster}`;
 
 interface HomeRenderOptions {
   me?: ReturnType<typeof buildUser>;
@@ -84,6 +99,172 @@ test("selecting a top and bottom composites the outfit preview", async () => {
     expect(layer.style.maskMode).toBe("luminance");
     await expect.element(layer).toBeVisible();
   }
+});
+
+test("keeps the composite hidden until every image has loaded", async ({ worker }) => {
+  let releaseImages!: () => void;
+  const imagesHeld = new Promise<void>((resolve) => {
+    releaseImages = resolve;
+  });
+  // Holding every wear-on-avatar response keeps the composite in its not-yet-loaded state.
+  worker.use(
+    http.get(/\/test-images\/dressme-woa\//, async () => {
+      await imagesHeld;
+      return passthrough();
+    }),
+  );
+
+  const top = buildWearable({
+    id: "top-1",
+    body_part: "top",
+    woa_image_url: uncachedWoaUrl("graphic-tee.webp"),
+    woa_mask_url: uncachedWoaUrl("jeans.webp"),
+  });
+  const bottom = buildWearable({
+    id: "bottom-1",
+    body_part: "bottom",
+    wearable_image_url: "/test-images/dressme-wearables/blue-pants.webp",
+    woa_image_url: uncachedWoaUrl("blue-pants.webp"),
+    woa_mask_url: uncachedWoaUrl("flannel.webp"),
+  });
+  const me = buildUserWithAvatar();
+  const screen = await renderHomePage({ me, wearables: [top, bottom] });
+
+  const avatarLayer = screen.container.querySelector(
+    `img[src="${me.avatar_image_url}"]`,
+  ) as HTMLImageElement;
+  const stack = avatarLayer.parentElement!;
+  const topLayer = screen.container.querySelector(
+    `img[src="${top.woa_image_url}"]`,
+  ) as HTMLImageElement;
+
+  // Mounted and laid out, but hidden while images are in flight.
+  expect(topLayer.complete).toBe(false);
+  expect(stack.className).toContain("invisible");
+  expect(getComputedStyle(stack).visibility).toBe("hidden");
+  expect(getComputedStyle(stack).display).not.toBe("none");
+
+  releaseImages();
+
+  await expect.poll(() => getComputedStyle(stack).visibility, { timeout: 5000 }).toBe("visible");
+  await expect.element(topLayer).toBeVisible();
+});
+
+test("a failed image reveals the stack instead of leaving it blank", async () => {
+  const top = buildWearable({
+    id: "top-broken",
+    body_part: "top",
+    // No fixture by this name, so the layer's image fails to load.
+    woa_image_url: fixtureImageUrl("dressme-woa", "missing.webp"),
+  });
+  const bottom = buildWearable({
+    id: "bottom-1",
+    body_part: "bottom",
+    wearable_image_url: "/test-images/dressme-wearables/blue-pants.webp",
+  });
+  const me = buildUserWithAvatar();
+  const screen = await renderHomePage({ me, wearables: [top, bottom] });
+
+  const avatarLayer = screen.container.querySelector(
+    `img[src="${me.avatar_image_url}"]`,
+  ) as HTMLImageElement;
+  const stack = avatarLayer.parentElement!;
+
+  // The broken layer settles on error instead of blocking the reveal forever.
+  await expect.poll(() => getComputedStyle(stack).visibility, { timeout: 5000 }).toBe("visible");
+  const brokenLayer = screen.container.querySelector(
+    `img[src="${top.woa_image_url}"]`,
+  ) as HTMLImageElement;
+  expect(brokenLayer.complete).toBe(true);
+});
+
+test("a wearable with null WOA URLs contributes no layer", async () => {
+  const top = buildWearable({
+    id: "top-no-woa",
+    body_part: "top",
+    woa_image_url: null,
+    woa_mask_url: null,
+  });
+  const bottom = buildWearable({
+    id: "bottom-1",
+    body_part: "bottom",
+    wearable_image_url: "/test-images/dressme-wearables/blue-pants.webp",
+  });
+  const me = buildUserWithAvatar();
+  const screen = await renderHomePage({ me, wearables: [top, bottom] });
+
+  const avatarLayer = screen.container.querySelector(
+    `img[src="${me.avatar_image_url}"]`,
+  ) as HTMLImageElement;
+  const stack = avatarLayer.parentElement!;
+
+  // The stack waits only for the avatar and the bottom's image/mask, and reveals with
+  // just the bottom's layer: that layer and its mask preloader besides the avatar.
+  await expect.poll(() => getComputedStyle(stack).visibility, { timeout: 5000 }).toBe("visible");
+  const stackImages = Array.from(stack.querySelectorAll("img"));
+  expect(stackImages.length).toBe(3);
+  const masked = stackImages.filter((img) => (img as HTMLImageElement).style.maskImage);
+  expect(masked.length).toBe(1);
+  expect(masked[0].getAttribute("src")).toBe(bottom.woa_image_url);
+});
+
+test("changing the selection hides the composite again until the new images load", async ({
+  worker,
+}) => {
+  let releaseImages!: () => void;
+  const imagesHeld = new Promise<void>((resolve) => {
+    releaseImages = resolve;
+  });
+  // Only the second top's images are held; the first top's and bottom's pass straight through.
+  worker.use(
+    http.get(/\/test-images\/dressme-woa\/(flannel|blue-pants)\.webp/, async () => {
+      await imagesHeld;
+      return passthrough();
+    }),
+  );
+
+  const firstTop = buildWearable({ id: "top-1", body_part: "top" });
+  const secondTop = buildWearable({
+    id: "top-2",
+    body_part: "top",
+    wearable_image_url: "/test-images/dressme-wearables/flannel.webp",
+    woa_image_url: uncachedWoaUrl("flannel.webp"),
+    woa_mask_url: uncachedWoaUrl("blue-pants.webp"),
+  });
+  const bottom = buildWearable({
+    id: "bottom-1",
+    body_part: "bottom",
+    wearable_image_url: "/test-images/dressme-wearables/blue-pants.webp",
+  });
+  const me = buildUserWithAvatar();
+  const screen = await renderHomePage({ me, wearables: [firstTop, secondTop, bottom] });
+
+  const stackOf = () =>
+    (screen.container.querySelector(`img[src="${me.avatar_image_url}"]`) as HTMLImageElement)
+      .parentElement!;
+
+  await expect
+    .poll(() => getComputedStyle(stackOf()).visibility, { timeout: 5000 })
+    .toBe("visible");
+
+  await userEvent.click(screen.getByRole("radio").nth(1));
+  await expect.element(screen.getByRole("radio").nth(1)).toBeChecked();
+
+  // The stack is keyed on the active URLs, so the selection change remounts it and it
+  // hides again until the new images load.
+  const secondTopLayer = screen.container.querySelector(
+    `img[src="${secondTop.woa_image_url}"]`,
+  ) as HTMLImageElement;
+  expect(secondTopLayer.complete).toBe(false);
+  expect(getComputedStyle(stackOf()).visibility).toBe("hidden");
+
+  releaseImages();
+
+  await expect
+    .poll(() => getComputedStyle(stackOf()).visibility, { timeout: 5000 })
+    .toBe("visible");
+  expect(secondTopLayer.style.maskImage).toContain(secondTop.woa_mask_url!);
+  await expect.element(secondTopLayer).toBeVisible();
 });
 
 test("clicking a pending wearable shows a toast and does not select it", async () => {

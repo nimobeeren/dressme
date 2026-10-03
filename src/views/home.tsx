@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon, UploadIcon } from "lucide-react";
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
 import Link from "next/link";
 
@@ -250,19 +250,17 @@ function Preview({
         {me.avatar_image_url != null && activeTop && activeBottom ? (
           // The outfit is composited in the browser from the avatar and the wearables'
           // wear-on-avatar images, each cut out with its luminance mask.
-          <div className="relative h-full w-full">
-            {/*
-             * The avatar is only shown while an outfit is selected: without one it may still
-             * be wearing the arbitrary clothes from the source photo, which would be
-             * confusing in the outfit builder.
-             */}
-            <img
-              src={me.avatar_image_url}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <WoaLayer wearable={activeBottom} />
-            <WoaLayer wearable={activeTop} />
-          </div>
+          <CompositeStack
+            key={[
+              me.avatar_image_url,
+              activeBottom.woa_image_url,
+              activeBottom.woa_mask_url,
+              activeTop.woa_image_url,
+              activeTop.woa_mask_url,
+            ].join("|")}
+            avatarUrl={me.avatar_image_url}
+            wearables={[activeBottom, activeTop]}
+          />
         ) : me.avatar_image_url != null ? (
           // Incomplete outfit
           <div className="flex h-full items-center justify-center px-8">
@@ -275,15 +273,67 @@ function Preview({
 }
 
 /**
+ * The avatar with the wearables' wear-on-avatar images stacked over it in the given order, each
+ * cut out with its luminance mask. Stays invisible (while keeping its layout space) until every
+ * image has settled, so the composite is only ever seen complete; the caller keys it on the active
+ * URLs so that changing the selection remounts it and repeats the wait. An image that fails to
+ * load settles too, so a broken URL doesn't leave the preview blank forever.
+ */
+function CompositeStack({
+  avatarUrl,
+  wearables,
+}: {
+  avatarUrl: string;
+  /** Wearables to stack over the avatar, bottom first. */
+  wearables: Wearable[];
+}) {
+  const layers = wearables.filter((wearable) => wearable.woa_image_url && wearable.woa_mask_url);
+  const [settledCount, setSettledCount] = useState(0);
+  const imageCount = 1 + 2 * layers.length;
+  const onImageSettled = () => setSettledCount((count) => count + 1);
+  return (
+    <div className={cn("relative h-full w-full", settledCount < imageCount && "invisible")}>
+      {/*
+       * The avatar is only shown while an outfit is selected: without one it may still
+       * be wearing the arbitrary clothes from the source photo, which would be
+       * confusing in the outfit builder.
+       */}
+      <img
+        src={avatarUrl}
+        onLoad={onImageSettled}
+        onError={onImageSettled}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      {layers.map((wearable) => (
+        <WoaLayer key={wearable.id} wearable={wearable} onSettled={onImageSettled} />
+      ))}
+      {layers.map((wearable) => (
+        // Loading the mask as an img puts it in the browser cache, so the CSS mask resolves
+        // without a fetch of its own once the layers are revealed.
+        <img
+          key={wearable.id}
+          src={wearable.woa_mask_url!}
+          onLoad={onImageSettled}
+          onError={onImageSettled}
+          className="hidden"
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
  * A wearable's wear-on-avatar image, cut out with its luminance mask so it composites over the
  * layers below it. Renders nothing while the wear-on-avatar image is still being generated.
  */
-function WoaLayer({ wearable }: { wearable: Wearable }) {
+function WoaLayer({ wearable, onSettled }: { wearable: Wearable; onSettled: () => void }) {
   if (!wearable.woa_image_url || !wearable.woa_mask_url) return null;
   const maskUrl = wearable.woa_mask_url;
   return (
     <img
       src={wearable.woa_image_url}
+      onLoad={onSettled}
+      onError={onSettled}
       className="absolute inset-0 h-full w-full object-cover"
       style={{
         WebkitMaskImage: `url(${maskUrl})`,

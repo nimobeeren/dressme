@@ -22,7 +22,7 @@ full body (head to toe)
 soft lighting
 medium contrast
 relaxed pose with arms by side
-wearing white 9" inseam shorts, white regular fit t-shirt and white socks
+wearing white 9" inseam shorts, white regular fit t-shirt and low white ankle socks
 no shoes/accessories
 facing camera
 relaxed gaze`;

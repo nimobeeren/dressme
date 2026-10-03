@@ -95,6 +95,14 @@ You can access the MinIO console at `http://localhost:9101` with the credentials
 
 ## Additional Development Tasks
 
+### Playing with the Avatar Prompt
+
+Iterate on the avatar generation prompt against the selfies in `images/humans/`:
+
+```sh
+pnpm avatar-playground
+```
+
 ### Deleting Orphaned Images
 
 Images that are no longer referenced by the database (for example after re-running the seed script or regenerating an avatar) can be removed from the blob storage buckets:

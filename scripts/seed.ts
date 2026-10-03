@@ -8,9 +8,7 @@ import { fileURLToPath } from "node:url";
 import { db, schema } from "../src/server/db";
 import { uploadBlob } from "../src/server/blob-storage";
 import { logger } from "../src/server/logger";
-import { getSettings } from "../src/server/settings";
-
-const settings = getSettings();
+import { env } from "../src/env/server";
 
 // Path to the repo root
 const ROOT_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -68,10 +66,10 @@ const WEARABLES: Record<string, WearableSeedData> = {
 };
 
 async function seed() {
-  const seedUserId = settings.AUTH0_SEED_USER_ID;
+  const seedUserId = env.CLERK_SEED_USER_ID;
   if (!seedUserId) {
     throw new Error(
-      "AUTH0_SEED_USER_ID is not set, but this is required to determine which user " +
+      "CLERK_SEED_USER_ID is not set, but this is required to determine which user " +
         "should own the data added during seeding.",
     );
   }
@@ -80,34 +78,21 @@ async function seed() {
   const selfiePath = path.join(ROOT_PATH, SELFIE_PATH);
   const selfieData = fs.readFileSync(selfiePath);
   const selfieKey = `${randomUUID()}.jpg`;
-  await uploadBlob(
-    settings.SELFIES_BUCKET,
-    selfieKey,
-    selfieData,
-    lookup(selfiePath) || "image/jpeg",
-  );
+  await uploadBlob(env.SELFIES_BUCKET, selfieKey, selfieData, lookup(selfiePath) || "image/jpeg");
 
   // Upload avatar image
   const avatarPath = path.join(ROOT_PATH, AVATAR_PATH);
   const avatarData = fs.readFileSync(avatarPath);
   const avatarKey = `${randomUUID()}.jpg`;
-  await uploadBlob(
-    settings.AVATARS_BUCKET,
-    avatarKey,
-    avatarData,
-    lookup(avatarPath) || "image/jpeg",
-  );
+  await uploadBlob(env.AVATARS_BUCKET, avatarKey, avatarData, lookup(avatarPath) || "image/jpeg");
 
   // Check if user already exists
   const existing = await db.query.users.findFirst({
-    where: eq(schema.users.auth0UserId, seedUserId),
+    where: eq(schema.users.clerkUserId, seedUserId),
   });
 
   if (existing) {
-    logger.info(
-      { auth0UserId: settings.AUTH0_SEED_USER_ID },
-      "User already exists, skipping creation",
-    );
+    logger.info({ clerkUserId: env.CLERK_SEED_USER_ID }, "User already exists, skipping creation");
   }
 
   let userId = existing?.id;
@@ -117,7 +102,7 @@ async function seed() {
     const [user] = await db
       .insert(schema.users)
       .values({
-        auth0UserId: seedUserId,
+        clerkUserId: seedUserId,
         selfieImageKey: selfieKey,
         avatarImageKey: avatarKey,
       })
@@ -144,12 +129,7 @@ async function seed() {
     const imageData = fs.readFileSync(imagePath);
     const ext = path.extname(imagePath);
     const imageKey = `${randomUUID()}${ext}`;
-    await uploadBlob(
-      settings.WEARABLES_BUCKET,
-      imageKey,
-      imageData,
-      lookup(imagePath) || "image/jpeg",
-    );
+    await uploadBlob(env.WEARABLES_BUCKET, imageKey, imageData, lookup(imagePath) || "image/jpeg");
 
     // Add wearable
     const [wearable] = await db
@@ -168,14 +148,14 @@ async function seed() {
     if (fs.existsSync(woaPath)) {
       const woaData = fs.readFileSync(woaPath);
       const woaKey = `${randomUUID()}.jpg`;
-      await uploadBlob(settings.WOA_BUCKET, woaKey, woaData, "image/jpeg");
+      await uploadBlob(env.WOA_BUCKET, woaKey, woaData, "image/jpeg");
 
       // Upload mask image
       const maskPath = path.join(ROOT_PATH, "images", "masks", "human_4", "post", `${name}.jpg`);
       if (fs.existsSync(maskPath)) {
         const maskData = fs.readFileSync(maskPath);
         const maskKey = `${randomUUID()}.jpg`;
-        await uploadBlob(settings.WOA_BUCKET, maskKey, maskData, "image/jpeg");
+        await uploadBlob(env.WOA_BUCKET, maskKey, maskData, "image/jpeg");
 
         // Add WearableOnAvatarImage
         await db.insert(schema.wearableOnAvatarImages).values({

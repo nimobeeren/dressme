@@ -5,8 +5,22 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1790962531550,
-      "tag": "0000_soft_nebula",
+      "when": 1786216906308,
+      "tag": "0000_clear_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788724072755,
+      "tag": "0001_aromatic_korath",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790963907336,
+      "tag": "0002_gray_ikaris",
       "breakpoints": true
     }
   ]

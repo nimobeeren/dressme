@@ -1,21 +1,16 @@
 import { redirect } from "next/navigation";
-import { getAuth0 } from "@/server/auth";
 import { getMe } from "@/server/queries";
-import { getSettings } from "@/server/settings";
 import { AddClient } from "@/views/add";
 
-export default getAuth0().withPageAuthRequired(
-  async function Page() {
-    const me = await getMe();
+export default async function Page() {
+  const me = await getMe();
 
-    if (!me.has_avatar_image) {
-      redirect("/");
-    }
+  if (!me.has_avatar_image) {
+    redirect("/");
+  }
 
-    return <AddClient maxUploadSize={getSettings().MAX_UPLOAD_SIZE} />;
-  },
-  { returnTo: "/add" },
-);
+  return <AddClient />;
+}
 
 // Image-processing server actions need extra execution time.
 export const maxDuration = 300;

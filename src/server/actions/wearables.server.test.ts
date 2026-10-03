@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, vi } from "vitest";
+import { env } from "@/env/client";
 import {
   flushBackgroundTasks,
   makeDecompressionBomb,
@@ -12,13 +13,12 @@ import {
   type TestDb,
   test,
 } from "@/test/server";
-import { testSettings } from "@/test/settings";
 import { classifyWearable, createWearable, refreshWearables } from "./wearables";
 
 async function createUserWithAvatar(db: TestDb) {
   const [user] = await db
     .insert(schema.users)
-    .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+    .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
     .returning();
   mockBlobStorage.upload("dressme-avatars", "avatar.jpg", await makeValidJpeg(), "image/webp");
   return user;
@@ -102,7 +102,7 @@ describe("createWearable", () => {
   });
 
   test("returns an error when user has no avatar", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     expect(
       await createWearable(
         makeWearableFormData({
@@ -119,7 +119,7 @@ describe("createWearable", () => {
     db,
   }) => {
     await db.insert(schema.users).values({
-      auth0UserId: TEST_USER_ID,
+      clerkUserId: TEST_USER_ID,
       selfieImageKey: "selfie.jpg",
     });
     expect(
@@ -146,7 +146,7 @@ describe("createWearable", () => {
         }),
       ),
     ).toEqual({
-      error: `Upload must be smaller than ${testSettings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+      error: `Upload must be smaller than ${env.NEXT_PUBLIC_MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
     });
   });
 
@@ -187,14 +187,14 @@ function makeClassifyFormData(buffer: Buffer) {
 
 describe("classifyWearable", () => {
   test("returns the classified category", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     await expect(classifyWearable(makeClassifyFormData(await makeValidJpeg()))).resolves.toEqual({
       category: "t-shirt",
     });
   });
 
   test("returns a friendly error when classification fails", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     const { classifyWearableImage } = await import("../wearable-classification");
     vi.mocked(classifyWearableImage).mockRejectedValueOnce(new Error("Gemini is down"));
 
@@ -205,7 +205,7 @@ describe("classifyWearable", () => {
   });
 
   test("returns an error for an invalid classifier category", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     const { classifyWearableImage } = await import("../wearable-classification");
     vi.mocked(classifyWearableImage).mockResolvedValueOnce("not-a-category" as never);
 
@@ -219,7 +219,7 @@ describe("classifyWearable", () => {
 describe("refreshWearables", () => {
   test("re-runs getWearables and revalidates 'wearables'", async ({ db }) => {
     await db.insert(schema.users).values({
-      auth0UserId: TEST_USER_ID,
+      clerkUserId: TEST_USER_ID,
       avatarImageKey: "avatar.jpg",
     });
     const { updateTag } = await import("next/cache");

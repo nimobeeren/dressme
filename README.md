@@ -11,7 +11,7 @@ A virtual wardrobe that shows you how clothes look on you.
 - shadcn/ui
 - Tailwind
 - React
-- Auth0
+- Clerk
 - Drizzle
 - PostgreSQL
 - Neon
@@ -82,8 +82,9 @@ pnpm build              # Production build
 
 ## Environment Variables
 
-All environment variables are sourced from `.env` (see `.env.example` for the template).
-Server-side variables (without `NEXT_PUBLIC_` prefix) are only available in route handlers and server code.
+All environment variables are sourced from `.env` (see `.env.example` for the template). [t3-env](https://env.t3.gg) validates them at build time and on startup.
+
+Server-only variables are declared in `src/env/server.ts` and are never shipped to the browser. Variables the browser needs are declared in `src/env/client.ts` under a `NEXT_PUBLIC_` prefix, which Next.js substitutes with the build-time value: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (read by the Clerk SDK) and `NEXT_PUBLIC_MAX_UPLOAD_SIZE`, which defaults to 4 MB.
 
 ### Blob Storage (MinIO / R2)
 
@@ -93,6 +94,15 @@ In production, Cloudflare R2 is used. The S3 client auto-negotiates between them
 You can access the MinIO console at `http://localhost:9101` with the credentials `minioadmin/minioadmin`.
 
 ## Additional Development Tasks
+
+### Deleting Orphaned Images
+
+Images that are no longer referenced by the database (for example after re-running the seed script or regenerating an avatar) can be removed from the blob storage buckets:
+
+```sh
+pnpm delete-orphaned-images             # dry run: lists orphaned images
+pnpm delete-orphaned-images -- --delete # actually deletes them
+```
 
 ### Inspecting the Database
 
@@ -105,12 +115,6 @@ psql postgresql://dressme:dressme@localhost:5432/local
 ```bash
 docker compose down -v
 ```
-
-### Authentication
-
-Authentication uses Auth0 with encrypted, httpOnly session cookies via [`@auth0/nextjs-auth0`](https://github.com/auth0/nextjs-auth0) (the app must be a Regular Web Application in the Auth0 dashboard). Login, callback and logout routes are mounted at `/auth/login`, `/auth/callback` and `/auth/logout`.
-
-Pages and server actions read the session through the auth layer in `src/server/auth.ts`. The outfit preview image is served by `GET /api/images/outfit`, which authenticates via the same session cookie (sent automatically by the browser).
 
 ### Logging
 

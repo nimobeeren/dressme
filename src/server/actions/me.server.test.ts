@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect } from "vitest";
+import { env } from "@/env/client";
 import {
   flushBackgroundTasks,
   makeDecompressionBomb,
@@ -10,7 +11,6 @@ import {
   TEST_USER_ID,
   test,
 } from "@/test/server";
-import { testSettings } from "@/test/settings";
 import { uploadSelfie, refreshMe } from "./me";
 
 async function makeSelfieFormData(buffer: Buffer, name: string, type: string) {
@@ -21,7 +21,7 @@ async function makeSelfieFormData(buffer: Buffer, name: string, type: string) {
 
 describe("uploadSelfie", () => {
   test("creates selfie, triggers avatar generation and revalidates 'me'", async ({ db }) => {
-    const [user] = await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID }).returning();
+    const [user] = await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID }).returning();
     const { updateTag } = await import("next/cache");
 
     await uploadSelfie(
@@ -44,7 +44,7 @@ describe("uploadSelfie", () => {
 
   test("returns an error when user already has selfie", async ({ db }) => {
     await db.insert(schema.users).values({
-      auth0UserId: TEST_USER_ID,
+      clerkUserId: TEST_USER_ID,
       selfieImageKey: "existing.jpg",
     });
 
@@ -56,7 +56,7 @@ describe("uploadSelfie", () => {
   });
 
   test("returns an error for an invalid image", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     expect(
       await uploadSelfie(
         await makeSelfieFormData(Buffer.from("not an image"), "bad.txt", "text/plain"),
@@ -65,7 +65,7 @@ describe("uploadSelfie", () => {
   });
 
   test("returns an error for a decompression-bomb image", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     expect(
       await uploadSelfie(
         await makeSelfieFormData(await makeDecompressionBomb(), "bomb.png", "image/png"),
@@ -74,16 +74,16 @@ describe("uploadSelfie", () => {
   });
 
   test("returns an error for an oversized upload", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     expect(
       await uploadSelfie(await makeSelfieFormData(makeOversizedUpload(), "huge.jpg", "image/jpeg")),
     ).toEqual({
-      error: `Upload must be smaller than ${testSettings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+      error: `Upload must be smaller than ${env.NEXT_PUBLIC_MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
     });
   });
 
   test("returns an error when missing the image file", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     expect(await uploadSelfie(new FormData())).toEqual({
       error: 'Missing file for field "image".',
     });
@@ -92,7 +92,7 @@ describe("uploadSelfie", () => {
 
 describe("refreshMe", () => {
   test("re-runs getMe and revalidates 'me'", async ({ db }) => {
-    await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID });
+    await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID });
     const { updateTag } = await import("next/cache");
 
     await refreshMe();

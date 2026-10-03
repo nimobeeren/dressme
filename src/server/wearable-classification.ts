@@ -1,7 +1,7 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
+import { env } from "@/env/server";
 import { logger } from "./logger";
-import { getSettings } from "./settings";
 import { WEARABLE_CATEGORIES, type WearableCategory } from "@/shared/wearable-categories";
 import { classifyResponseSchema } from "@/shared/schemas";
 
@@ -18,8 +18,7 @@ export interface WearableClassifier {
  * Approximate cost: $0.0003 per invocation.
  */
 export async function classifyWearableImage(imageData: Buffer): Promise<WearableCategory | null> {
-  const settings = getSettings();
-  const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
   const sharp = await getSharp();
   const downscaled = await sharp(imageData)

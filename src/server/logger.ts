@@ -1,10 +1,12 @@
 import pino from "pino";
-import { getSettings } from "./settings";
+import { env } from "@/env/server";
+import { env as clientEnv } from "@/env/client";
 
 /** Name of the service that log records are attributed to. */
 export const SERVICE_NAME = "dressme";
 
-const { NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN, POSTHOG_API_HOST } = getSettings();
+const { NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN } = clientEnv;
+const { POSTHOG_API_HOST } = env;
 const commit = process.env.VERCEL_GIT_COMMIT_SHA;
 
 const transport: pino.TransportSingleOptions | undefined = NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN

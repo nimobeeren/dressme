@@ -16,7 +16,7 @@ import {
 } from "../image-utils";
 import { logger } from "../logger";
 import { CACHE_TAGS, getWearables } from "../queries";
-import { getSettings } from "../settings";
+import { env } from "@/env/server";
 
 /**
  * Adds the wearable from the `category`/`image` form field pair and schedules
@@ -28,8 +28,6 @@ export async function createWearable(formData: FormData): Promise<{ error?: stri
   if (!user.avatarImageKey) {
     return { error: "Avatar generation must be completed before adding wearables." };
   }
-
-  const settings = getSettings();
 
   try {
     const image = await readFormFile(formData, "image");
@@ -43,7 +41,7 @@ export async function createWearable(formData: FormData): Promise<{ error?: stri
     const jpegData = await compressToJpeg(await safeOpenImage(image));
 
     const key = `${randomUUID()}.jpg`;
-    await uploadBlob(settings.WEARABLES_BUCKET, key, jpegData, "image/jpeg");
+    await uploadBlob(env.WEARABLES_BUCKET, key, jpegData, "image/jpeg");
 
     const [wearable] = await db
       .insert(schema.wearables)

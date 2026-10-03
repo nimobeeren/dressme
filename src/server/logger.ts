@@ -1,4 +1,8 @@
 import pino from "pino";
+// pino's transport worker thread loads this by name at runtime. Importing it
+// here puts it in the deployed server files, and `serverExternalPackages` keeps
+// it out of the bundle so the worker can still require it.
+import "pino-opentelemetry-transport";
 import { env } from "@/env/server";
 import { env as clientEnv } from "@/env/client";
 

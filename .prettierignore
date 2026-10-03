@@ -1,4 +1,2 @@
-.wrangler/
-api/
-src/api/
 pnpm-lock.yaml
+public/mockServiceWorker.js

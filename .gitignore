@@ -6,12 +6,10 @@ pnpm-debug.log*
 node_modules
 
 # Build files
-.wrangler/
 dist
 dist-ssr
 *.local
 *.tsbuildinfo
-.wrangler
 
 # Environment variables and local files
 .env*
@@ -20,6 +18,8 @@ dist-ssr
 
 # Playwright
 .playwright-cli
+playwright-report
+test-results
 
 # Editor directories and files
 .vscode/*
@@ -34,3 +34,8 @@ dist-ssr
 
 # Misc
 .DS_Store
+
+# next.js
+.next/
+next-env.d.ts
+.vercel

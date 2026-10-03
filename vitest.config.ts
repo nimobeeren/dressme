@@ -84,6 +84,8 @@ function testFixtureImages(): Plugin {
     "dressme-wearables": path.join(root, "wearables"),
     "dressme-avatars": path.join(root, "avatars"),
     "dressme-selfies": path.join(root, "selfies"),
+    // Wear-on-avatar images and masks have no fixtures of their own: any image bytes serve.
+    "dressme-woa": path.join(root, "wearables"),
   };
   return {
     name: "test-fixture-images",

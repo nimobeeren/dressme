@@ -18,7 +18,7 @@ describe("getMe", () => {
     expect(me).toEqual({
       id: user.id,
       has_selfie_image: true,
-      has_avatar_image: true,
+      avatar_image_url: "https://signed-url/dressme-avatars/avatar.jpg",
     });
   });
 
@@ -29,7 +29,7 @@ describe("getMe", () => {
     expect(me).toEqual({
       id: user.id,
       has_selfie_image: false,
-      has_avatar_image: false,
+      avatar_image_url: null,
     });
   });
 
@@ -39,7 +39,7 @@ describe("getMe", () => {
 
     const me = await getMe();
     expect(me.has_selfie_image).toBe(false);
-    expect(me.has_avatar_image).toBe(false);
+    expect(me.avatar_image_url).toBeNull();
 
     const persisted = await db.query.users.findFirst({
       where: eq(schema.users.clerkUserId, newSub),
@@ -109,6 +109,8 @@ describe("getWearables", () => {
         body_part: "top",
         wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
         generation_status: "pending",
+        woa_image_url: null,
+        woa_mask_url: null,
       },
       {
         id: w2.id,
@@ -116,6 +118,8 @@ describe("getWearables", () => {
         body_part: "bottom",
         wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
         generation_status: "pending",
+        woa_image_url: null,
+        woa_mask_url: null,
       },
     ]);
   });
@@ -151,6 +155,8 @@ describe("getWearables", () => {
         body_part: "top",
         wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
         generation_status: "success",
+        woa_image_url: "https://signed-url/dressme-woa/woa_w1.jpg",
+        woa_mask_url: "https://signed-url/dressme-woa/mask_w1.jpg",
       },
       {
         id: w2.id,
@@ -158,6 +164,8 @@ describe("getWearables", () => {
         body_part: "bottom",
         wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
         generation_status: "pending",
+        woa_image_url: null,
+        woa_mask_url: null,
       },
     ]);
   });
@@ -188,6 +196,8 @@ describe("getWearables", () => {
         body_part: "top",
         wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
         generation_status: "pending",
+        woa_image_url: null,
+        woa_mask_url: null,
       },
       {
         id: w2.id,
@@ -195,6 +205,8 @@ describe("getWearables", () => {
         body_part: "bottom",
         wearable_image_url: "https://signed-url/dressme-wearables/w2.jpg",
         generation_status: "pending",
+        woa_image_url: null,
+        woa_mask_url: null,
       },
     ]);
   });
@@ -233,10 +245,14 @@ describe("getOutfits", () => {
     expect(outfits[0].top.category).toBe("t-shirt");
     expect(outfits[0].top.generation_status).toBe("success");
     expect(outfits[0].top.wearable_image_url).toContain("signed-url");
+    expect(outfits[0].top.woa_image_url).toBe("https://signed-url/dressme-woa/woa_top.jpg");
+    expect(outfits[0].top.woa_mask_url).toBe("https://signed-url/dressme-woa/mask_top.jpg");
     expect(outfits[0].bottom.id).toBe(bottom.id);
     expect(outfits[0].bottom.category).toBe("pants");
     expect(outfits[0].bottom.generation_status).toBe("pending");
     expect(outfits[0].bottom.wearable_image_url).toContain("signed-url");
+    expect(outfits[0].bottom.woa_image_url).toBeNull();
+    expect(outfits[0].bottom.woa_mask_url).toBeNull();
   });
 
   test("returns an empty array when user has no outfits", async ({ db }) => {

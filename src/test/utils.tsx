@@ -5,7 +5,7 @@ import { TEST_IMAGE_PREFIX } from "./constants";
 
 /** Build a URL that the Vite middleware will serve from fixtures on disk. */
 export function fixtureImageUrl(
-  bucket: "dressme-wearables" | "dressme-avatars" | "dressme-selfies",
+  bucket: "dressme-wearables" | "dressme-avatars" | "dressme-selfies" | "dressme-woa",
   filename: string,
 ): string {
   return `${TEST_IMAGE_PREFIX}/${bucket}/${filename}`;
@@ -26,12 +26,18 @@ export async function renderWithProviders(ui: React.ReactElement) {
 let wearableSeq = 0;
 export function buildWearable(overrides: Partial<Wearable> = {}): Wearable {
   const id = overrides.id ?? `wearable-${++wearableSeq}`;
+  // Mirrors the API invariant: WOA URLs are present exactly when generation succeeded.
+  const generation_status = overrides.generation_status ?? "success";
   return {
     id,
     category: "t-shirt",
     body_part: "top",
     wearable_image_url: fixtureImageUrl("dressme-wearables", "graphic-tee.webp"),
-    generation_status: "success",
+    generation_status,
+    woa_image_url:
+      generation_status === "success" ? fixtureImageUrl("dressme-woa", "graphic-tee.webp") : null,
+    woa_mask_url:
+      generation_status === "success" ? fixtureImageUrl("dressme-woa", "jeans.webp") : null,
     ...overrides,
   };
 }
@@ -54,7 +60,16 @@ export function buildUser(overrides: Partial<User> = {}): User {
   return {
     id: "user_test",
     has_selfie_image: false,
-    has_avatar_image: false,
+    avatar_image_url: null,
     ...overrides,
   };
+}
+
+/** A user who has uploaded a selfie and has a generated avatar to try clothes on. */
+export function buildUserWithAvatar(overrides: Partial<User> = {}): User {
+  return buildUser({
+    has_selfie_image: true,
+    avatar_image_url: fixtureImageUrl("dressme-avatars", "avatar.jpg"),
+    ...overrides,
+  });
 }

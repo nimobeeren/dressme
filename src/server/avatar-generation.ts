@@ -10,7 +10,7 @@ export interface AvatarGenerator {
   generate(selfieImageData: Buffer): Promise<Buffer>;
 }
 
-const PROMPT = `style the person as a sims 3 character
+export const AVATAR_PROMPT = `style the person as a sims 3 character
 no text/UI/diamond above the head
 video game style (PS3)
 not photorealistic
@@ -31,7 +31,11 @@ relaxed gaze`;
  * Generate a game-like avatar image from a selfie image.
  * Approximate cost: $0.07 per invocation.
  */
-export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
+export async function generateAvatar(
+  selfieImageData: Buffer,
+  options: { prompt?: string } = {},
+): Promise<Buffer> {
+  const prompt = options.prompt ?? AVATAR_PROMPT;
   const settings = getSettings();
   const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
 
@@ -48,7 +52,7 @@ export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
         model: "gemini-3.1-flash-image",
         contents: [
           { inlineData: { mimeType: "image/jpeg", data: downscaled.toString("base64") } },
-          PROMPT,
+          prompt,
         ],
         config: {
           imageConfig: {

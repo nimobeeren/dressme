@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { downloadBlob, uploadBlob } from "./blob-storage";
+import { logger } from "./logger";
 import { getSettings } from "./settings";
 import { db, schema } from "./db";
 
@@ -30,9 +31,9 @@ export async function generateAvatarTask(userId: string): Promise<void> {
       .set({ avatarImageKey: avatarKey })
       .where(eq(schema.users.id, userId));
 
-    console.info(`Avatar generation succeeded for user '${userId}'`);
+    logger.info({ userId }, "Avatar generation succeeded");
   } catch (error) {
-    console.error(`Avatar generation failed for user '${userId}'`, error);
+    logger.error({ userId, err: error }, "Avatar generation failed");
   }
 }
 
@@ -87,8 +88,8 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
       maskImageKey: maskKey,
     });
 
-    console.info(`WOA generation succeeded for wearable '${wearableId}'`);
+    logger.info({ wearableId, userId }, "WOA generation succeeded");
   } catch (error) {
-    console.error(`WOA generation failed for wearable '${wearableId}'`, error);
+    logger.error({ wearableId, userId, err: error }, "WOA generation failed");
   }
 }

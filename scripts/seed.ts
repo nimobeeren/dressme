@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, schema } from "../src/server/db";
 import { uploadBlob } from "../src/server/blob-storage";
+import { logger } from "../src/server/logger";
 import { getSettings } from "../src/server/settings";
 
 const settings = getSettings();
@@ -103,8 +104,9 @@ async function seed() {
   });
 
   if (existing) {
-    console.info(
-      `User with auth0_user_id '${settings.AUTH0_SEED_USER_ID}' already exists, skipping creation.`,
+    logger.info(
+      { auth0UserId: settings.AUTH0_SEED_USER_ID },
+      "User already exists, skipping creation",
     );
   }
 
@@ -122,7 +124,7 @@ async function seed() {
       .returning();
 
     if (!user) throw new Error("Failed to create user");
-    console.info(`Created user: ${user.id}`);
+    logger.info({ userId: user.id }, "Created user");
     userId = user.id;
   } else if (userId) {
     // Update existing user's images
@@ -130,7 +132,7 @@ async function seed() {
       .update(schema.users)
       .set({ selfieImageKey: selfieKey, avatarImageKey: avatarKey })
       .where(eq(schema.users.id, userId));
-    console.info(`Updated user ${userId} with new images`);
+    logger.info({ userId }, "Updated user with new images");
   }
 
   if (!userId) throw new Error("No user ID available");
@@ -186,13 +188,13 @@ async function seed() {
       }
     }
 
-    console.info(`Added wearable: ${name} (${wearable.id})`);
+    logger.info({ name, wearableId: wearable.id }, "Added wearable");
   }
 
-  console.info("Seeding complete!");
+  logger.info("Seeding complete");
 }
 
 seed().catch((err) => {
-  console.error("Seed failed:", err);
+  logger.error({ err }, "Seed failed");
   process.exit(1);
 });

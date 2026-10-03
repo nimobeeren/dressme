@@ -1,5 +1,6 @@
 import pRetry from "p-retry";
 import Replicate from "replicate";
+import { logger } from "./logger";
 import { getSettings } from "./settings";
 import {
   CATEGORY_BODY_PARTS,
@@ -83,9 +84,7 @@ export async function generateWoaImage(params: {
         error instanceof TypeError ||
         [408, 429, 500, 502, 503, 504].includes((error as any).response?.status),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `generateWoaImage attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
-        );
+        logger.warn({ attemptNumber, retriesLeft, err: error }, "generateWoaImage attempt failed");
       },
     },
   );
@@ -132,9 +131,7 @@ export async function generateMask(params: {
         error instanceof TypeError ||
         [408, 429, 500, 502, 503, 504].includes((error as any).response?.status),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `generateMask attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
-        );
+        logger.warn({ attemptNumber, retriesLeft, err: error }, "generateMask attempt failed");
       },
     },
   )) as unknown[];

@@ -52,7 +52,7 @@ export const settingsSchema = z.object({
 
   // Logging
   /** PostHog project API key (starts with `phc_`). Log export is disabled when unset. */
-  POSTHOG_API_KEY: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: z.string().optional(),
   /** PostHog API host to ship logs to, e.g. `https://eu.i.posthog.com`. */
   POSTHOG_API_HOST: z.string().default("https://eu.i.posthog.com"),
 });

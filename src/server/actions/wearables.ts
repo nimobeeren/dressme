@@ -14,6 +14,7 @@ import {
   readFormImageAsJpeg,
   safeOpenImage,
 } from "../image-utils";
+import { logger } from "../logger";
 import { CACHE_TAGS, getWearables } from "../queries";
 import { getSettings } from "../settings";
 
@@ -95,7 +96,7 @@ export async function classifyWearable(formData: FormData): Promise<ClassifyResp
     const category = wearableCategorySchema.nullable().parse(await classifyWearableImage(jpegData));
     return { category };
   } catch (error) {
-    console.error("Wearable classification failed:", error);
+    logger.error({ err: error }, "Wearable classification failed");
     return { category: null, error: "Wearable classification failed" };
   }
 }

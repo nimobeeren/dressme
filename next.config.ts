@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["devbox"],
-  serverExternalPackages: ["sharp"],
+  // `pino-opentelemetry-transport` is loaded by name inside a pino transport
+  // worker thread, so it must be resolved from node_modules at runtime.
+  serverExternalPackages: ["sharp", "pino-opentelemetry-transport"],
   experimental: {
     serverActions: {
       // Uploads are posted via server actions, one image per request; match

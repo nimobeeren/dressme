@@ -1,30 +1,50 @@
-import { logs, SeverityNumber, type LogAttributes } from "@opentelemetry/api-logs";
+import pino from "pino";
+import { getSettings } from "./settings";
 
 /** Name of the service that log records are attributed to. */
 export const SERVICE_NAME = "dressme";
 
-const otelLogger = logs.getLogger(SERVICE_NAME);
+const { NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN, POSTHOG_API_HOST } = getSettings();
+const commit = process.env.VERCEL_GIT_COMMIT_SHA;
 
-function emit(
-  severityNumber: SeverityNumber,
-  severityText: string,
-  body: string,
-  attributes?: LogAttributes,
-): void {
-  otelLogger.emit({ severityNumber, severityText, body, attributes });
-}
+const transport: pino.TransportSingleOptions | undefined = NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+  ? {
+      target: "pino-opentelemetry-transport",
+      options: {
+        loggerName: SERVICE_NAME,
+        serviceVersion: commit ?? "0.0.0",
+        // Resource attributes are attached to every record. `deployment.environment`
+        // separates local dev, Vercel previews and production in the PostHog Logs page.
+        resourceAttributes: {
+          "service.name": SERVICE_NAME,
+          "deployment.environment": process.env.VERCEL_ENV ?? "local",
+          ...(commit ? { "service.commit": commit } : {}),
+        },
+        logRecordProcessorOptions: {
+          // Sends each record as it is emitted, so nothing is lost when a
+          // serverless function is frozen or the process stops.
+          recordProcessorType: "simple",
+          exporterOptions: {
+            protocol: "http",
+            httpExporterOptions: {
+              url: `${POSTHOG_API_HOST.replace(/\/+$/, "")}/i/v1/logs`,
+              headers: { Authorization: `Bearer ${NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN}` },
+            },
+          },
+        },
+      },
+      // The transport runs in a worker thread. Turn off its resource
+      // auto-detection, which would report the worker's process and host
+      // details instead of the ones set above.
+      worker: { env: { ...process.env, OTEL_NODE_RESOURCE_DETECTORS: "none" } },
+    }
+  : undefined;
 
 /**
- * Emits log records from server code. Records are exported to PostHog when
- * `POSTHOG_API_KEY` is set and dropped otherwise; see `logging.ts`.
+ * Server logger. Records are exported to PostHog over OTLP when
+ * `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is set (see `.env.example`) and written to
+ * stdout otherwise.
+ *
+ * `logger` runs on the Node.js server only; browser code must not import it.
  */
-export const logger = {
-  debug: (body: string, attributes?: LogAttributes) =>
-    emit(SeverityNumber.DEBUG, "DEBUG", body, attributes),
-  info: (body: string, attributes?: LogAttributes) =>
-    emit(SeverityNumber.INFO, "INFO", body, attributes),
-  warn: (body: string, attributes?: LogAttributes) =>
-    emit(SeverityNumber.WARN, "WARN", body, attributes),
-  error: (body: string, attributes?: LogAttributes) =>
-    emit(SeverityNumber.ERROR, "ERROR", body, attributes),
-};
+export const logger = pino({ level: "info", transport });

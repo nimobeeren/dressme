@@ -114,17 +114,19 @@ Pages and server actions read the session through the auth layer in `src/server/
 
 ### Logging
 
-Server code logs through `logger` in `src/server/logger.ts`:
+Server code logs through [pino](https://getpino.io) in `src/server/logger.ts`:
 
 ```ts
 import { logger } from "@/server/logger";
 
-logger.info("Serving outfit image", { topId, bottomId });
+logger.info({ topId, bottomId }, "Serving outfit image");
 ```
 
-Records are exported to [PostHog](https://posthog.com) over OTLP when `POSTHOG_API_KEY` is set (see `.env.example`), and dropped otherwise. Export is configured once at server startup in `src/server/logging.ts`, reached from `src/instrumentation.ts`. Logs appear in the PostHog **Logs** page, filterable by `service.name` (`dressme`), severity, or any attribute you attach.
+When `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is set (see `.env.example`), `pino-opentelemetry-transport` exports records to [PostHog](https://posthog.com) over OTLP. When it is unset, records are written to stdout. Logs appear in the PostHog **Logs** page, filterable by `service.name` (`dressme`), severity, or any field you attach.
 
-Every record also carries resource attributes set at startup: `deployment.environment` is `production` / `preview` / `development` on Vercel (`VERCEL_ENV`) and `local` everywhere else, and `service.version` is the deployed commit when `VERCEL_GIT_COMMIT_SHA` is present. Filter on `deployment.environment` to tell environments apart.
+Every record also carries resource attributes: `deployment.environment` is `production` / `preview` / `development` on Vercel (`VERCEL_ENV`) and `local` everywhere else, and `service.commit` is the deployed commit when `VERCEL_GIT_COMMIT_SHA` is present. Filter on `deployment.environment` to tell environments apart.
+
+`logger` runs on the Node.js server only, so browser code must not import it.
 
 ### Evals
 

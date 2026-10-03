@@ -22,11 +22,20 @@ export function configureLogging(): void {
     headers: { Authorization: `Bearer ${POSTHOG_API_KEY}` },
   });
 
+  // Resource attributes are attached to every record. `deployment.environment`
+  // separates local dev, Vercel previews and production in the PostHog Logs page.
+  const resourceAttributes: Record<string, string> = {
+    "service.name": SERVICE_NAME,
+    "deployment.environment": process.env.VERCEL_ENV ?? "local",
+  };
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA;
+  if (commit) resourceAttributes["service.version"] = commit;
+
   // SimpleLogRecordProcessor sends each record as it is emitted, so nothing is
   // lost when a serverless function is frozen or the process stops.
   logs.setGlobalLoggerProvider(
     new LoggerProvider({
-      resource: resourceFromAttributes({ "service.name": SERVICE_NAME }),
+      resource: resourceFromAttributes(resourceAttributes),
       processors: [new SimpleLogRecordProcessor({ exporter })],
     }),
   );

@@ -124,6 +124,8 @@ logger.info("Serving outfit image", { topId, bottomId });
 
 Records are exported to [PostHog](https://posthog.com) over OTLP when `POSTHOG_API_KEY` is set (see `.env.example`), and dropped otherwise. Export is configured once at server startup in `src/server/logging.ts`, reached from `src/instrumentation.ts`. Logs appear in the PostHog **Logs** page, filterable by `service.name` (`dressme`), severity, or any attribute you attach.
 
+Every record also carries resource attributes set at startup: `deployment.environment` is `production` / `preview` / `development` on Vercel (`VERCEL_ENV`) and `local` everywhere else, and `service.version` is the deployed commit when `VERCEL_GIT_COMMIT_SHA` is present. Filter on `deployment.environment` to tell environments apart.
+
 ### Evals
 
 Evals measure the performance of AI components. To run them:

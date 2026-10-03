@@ -1,6 +1,6 @@
 import pRetry from "p-retry";
 import Replicate from "replicate";
-import { getSettings } from "./settings";
+import { env } from "@/env/server";
 import {
   CATEGORY_BODY_PARTS,
   parseWearableCategory,
@@ -52,8 +52,7 @@ export async function generateWoaImage(params: {
    * Approximate cost: $0.04 per invocation.
    */
   const { avatarImage, wearableImage, category } = params;
-  const settings = getSettings();
-  const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
+  const client = new Replicate({ auth: env.REPLICATE_API_TOKEN });
 
   // parseWearableCategory throws on unknown input; the resulting WearableCategory
   // safely indexes both exhaustive Records below without further casts.
@@ -104,8 +103,7 @@ export async function generateMask(params: {
    * Approximate cost: $0.004 per invocation.
    */
   const { woaImage, category } = params;
-  const settings = getSettings();
-  const client = new Replicate({ auth: settings.REPLICATE_API_TOKEN });
+  const client = new Replicate({ auth: env.REPLICATE_API_TOKEN });
 
   const woaDataUri = `data:image/jpeg;base64,${woaImage.toString("base64")}`;
   // parseWearableCategory throws on unknown input; the resulting WearableCategory

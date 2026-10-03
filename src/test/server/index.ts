@@ -6,8 +6,8 @@ import { drizzle, type PgliteDatabase } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeEach, test as baseTest, vi } from "vitest";
 import sharp from "sharp";
+import { env } from "@/env/client";
 import * as schema from "@/server/db/schema";
-import { testSettings } from "@/test/settings";
 import { flushBackgroundTasks, mockBlobStorage, setSessionUser } from "./mocks";
 
 export { flushBackgroundTasks, mockBlobStorage, setSessionUser } from "./mocks";
@@ -72,7 +72,7 @@ export async function makeDecompressionBomb(): Promise<Buffer<ArrayBuffer>> {
 }
 
 export function makeOversizedUpload(): Buffer<ArrayBuffer> {
-  return Buffer.alloc(testSettings.MAX_UPLOAD_SIZE + 1, 0);
+  return Buffer.alloc(env.NEXT_PUBLIC_MAX_UPLOAD_SIZE + 1, 0);
 }
 
 export { eq };

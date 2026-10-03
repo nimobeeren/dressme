@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, vi } from "vitest";
+import { env } from "@/env/client";
 import {
   flushBackgroundTasks,
   makeDecompressionBomb,
@@ -12,7 +13,6 @@ import {
   type TestDb,
   test,
 } from "@/test/server";
-import { testSettings } from "@/test/settings";
 import { classifyWearable, createWearable, refreshWearables } from "./wearables";
 
 async function createUserWithAvatar(db: TestDb) {
@@ -146,7 +146,7 @@ describe("createWearable", () => {
         }),
       ),
     ).toEqual({
-      error: `Upload must be smaller than ${testSettings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+      error: `Upload must be smaller than ${env.NEXT_PUBLIC_MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
     });
   });
 

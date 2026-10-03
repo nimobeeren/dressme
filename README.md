@@ -82,8 +82,9 @@ pnpm build              # Production build
 
 ## Environment Variables
 
-All environment variables are sourced from `.env` (see `.env.example` for the template).
-Server-side variables (without `NEXT_PUBLIC_` prefix) are only available in route handlers and server code.
+All environment variables are sourced from `.env` (see `.env.example` for the template). [t3-env](https://env.t3.gg) validates them at build time and on startup.
+
+Server-only variables are declared in `src/env/server.ts` and are never shipped to the browser. Variables the browser needs are declared in `src/env/client.ts` under a `NEXT_PUBLIC_` prefix, which Next.js substitutes with the build-time value: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (read by the Clerk SDK) and `NEXT_PUBLIC_MAX_UPLOAD_SIZE`, which defaults to 4 MB.
 
 ### Blob Storage (MinIO / R2)
 

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect } from "vitest";
+import { env } from "@/env/client";
 import {
   flushBackgroundTasks,
   makeDecompressionBomb,
@@ -10,7 +11,6 @@ import {
   TEST_USER_ID,
   test,
 } from "@/test/server";
-import { testSettings } from "@/test/settings";
 import { uploadSelfie, refreshMe } from "./me";
 
 async function makeSelfieFormData(buffer: Buffer, name: string, type: string) {
@@ -78,7 +78,7 @@ describe("uploadSelfie", () => {
     expect(
       await uploadSelfie(await makeSelfieFormData(makeOversizedUpload(), "huge.jpg", "image/jpeg")),
     ).toEqual({
-      error: `Upload must be smaller than ${testSettings.MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+      error: `Upload must be smaller than ${env.NEXT_PUBLIC_MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
     });
   });
 

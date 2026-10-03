@@ -1,6 +1,6 @@
 {
-  "id": "76a93e8e-a2cb-4bf7-a847-5c8ba6f7a6a4",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "2b9b9aeb-f61d-46a1-9645-1bbb0d9fd331",
+  "prevId": "49684dcb-aa91-48b3-b867-ac477f4d02e0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -81,7 +81,13 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "outfit_user_top_bottom_unique": {
+          "name": "outfit_user_top_bottom_unique",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "top_id", "bottom_id"]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -97,8 +103,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "auth0_user_id": {
-          "name": "auth0_user_id",
+        "clerk_user_id": {
+          "name": "clerk_user_id",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
@@ -120,10 +126,10 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "user_auth0_user_id_unique": {
-          "name": "user_auth0_user_id_unique",
+        "user_clerk_user_id_unique": {
+          "name": "user_clerk_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["auth0_user_id"]
+          "columns": ["clerk_user_id"]
         }
       },
       "policies": {},

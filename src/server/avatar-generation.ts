@@ -1,6 +1,6 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
-import { getSettings } from "./settings";
+import { env } from "@/env/server";
 
 async function getSharp() {
   return (await import("sharp")).default;
@@ -32,8 +32,7 @@ relaxed gaze`;
  * Approximate cost: $0.07 per invocation.
  */
 export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
-  const settings = getSettings();
-  const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
   // Downscale selfie to max 1024px longest side before sending to Gemini
   const sharp = await getSharp();

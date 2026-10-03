@@ -3,10 +3,10 @@ import "server-only";
 import { getBodyPart, parseWearableCategory } from "@/shared/wearable-categories";
 import type { Outfit, User, Wearable } from "@/shared/schemas";
 import { eq } from "drizzle-orm";
+import { env } from "@/env/server";
 import { getCurrentUser } from "./auth";
 import { db, schema } from "./db";
 import { getSignedBlobUrl } from "./blob-storage";
-import { getSettings } from "./settings";
 
 /**
  * Cache tags for the shared queries below. The routes reading these queries are
@@ -30,14 +30,13 @@ type WoaKeys = { imageKey: string; maskImageKey: string };
 async function toWearable(
   w: { id: string; category: string; imageKey: string },
   woaByWearableImageKey: ReadonlyMap<string, WoaKeys>,
-  settings: ReturnType<typeof getSettings>,
 ): Promise<Wearable> {
   const category = parseWearableCategory(w.category);
   const woa = woaByWearableImageKey.get(w.imageKey);
   const [wearable_image_url, woa_image_url, woa_mask_url] = await Promise.all([
-    getSignedBlobUrl(settings.WEARABLES_BUCKET, w.imageKey),
-    woa ? getSignedBlobUrl(settings.WOA_BUCKET, woa.imageKey) : null,
-    woa ? getSignedBlobUrl(settings.WOA_BUCKET, woa.maskImageKey) : null,
+    getSignedBlobUrl(env.WEARABLES_BUCKET, w.imageKey),
+    woa ? getSignedBlobUrl(env.WOA_BUCKET, woa.imageKey) : null,
+    woa ? getSignedBlobUrl(env.WOA_BUCKET, woa.maskImageKey) : null,
   ]);
   return {
     id: w.id,
@@ -73,20 +72,18 @@ async function getWoaKeysByWearableImageKey(
 
 export async function getMe(): Promise<User> {
   const user = await getCurrentUser();
-  const settings = getSettings();
   return {
     id: user.id,
     has_selfie_image: user.selfieImageKey !== null,
     avatar_image_url:
       user.avatarImageKey === null
         ? null
-        : await getSignedBlobUrl(settings.AVATARS_BUCKET, user.avatarImageKey),
+        : await getSignedBlobUrl(env.AVATARS_BUCKET, user.avatarImageKey),
   };
 }
 
 export async function getWearables(): Promise<Wearable[]> {
   const user = await getCurrentUser();
-  const settings = getSettings();
 
   const userWearables = await db.query.wearables.findMany({
     where: eq(schema.wearables.userId, user.id),
@@ -94,12 +91,11 @@ export async function getWearables(): Promise<Wearable[]> {
 
   const woaKeys = await getWoaKeysByWearableImageKey(user.id, user.avatarImageKey);
 
-  return Promise.all(userWearables.map((w) => toWearable(w, woaKeys, settings)));
+  return Promise.all(userWearables.map((w) => toWearable(w, woaKeys)));
 }
 
 export async function getOutfits(): Promise<Outfit[]> {
   const user = await getCurrentUser();
-  const settings = getSettings();
 
   const woaKeys = await getWoaKeysByWearableImageKey(user.id, user.avatarImageKey);
 
@@ -115,8 +111,8 @@ export async function getOutfits(): Promise<Outfit[]> {
   return Promise.all(
     outfits.map(async (outfit): Promise<Outfit> => {
       const [top, bottom] = await Promise.all([
-        toWearable(outfit.top!, woaKeys, settings),
-        toWearable(outfit.bottom!, woaKeys, settings),
+        toWearable(outfit.top!, woaKeys),
+        toWearable(outfit.bottom!, woaKeys),
       ]);
       return { id: outfit.id, top, bottom };
     }),

@@ -5,6 +5,7 @@ import path from "node:path";
 import { lookup } from "mime-types";
 import { defineConfig, type Plugin } from "vitest/config";
 import { TEST_IMAGE_PREFIX } from "./src/test/constants";
+import { testEnv } from "./src/test/env";
 
 export default defineConfig({
   test: {
@@ -23,6 +24,13 @@ export default defineConfig({
             instances: [{ browser: "chromium" }],
           },
         },
+        define: {
+          // Next.js replaces this reference with the build-time value; tests run
+          // unbundled, so it is left unset and the schema default applies.
+          "process.env.NEXT_PUBLIC_MAX_UPLOAD_SIZE": "undefined",
+          // Placeholder to satisfy client env validation; tests never call Clerk.
+          "process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": '"pk_test_placeholder"',
+        },
         plugins: [react(), testFixtureImages()],
         resolve: {
           alias: {
@@ -39,6 +47,8 @@ export default defineConfig({
           include: ["src/**/*.server.test.ts"],
           environment: "node",
           setupFiles: ["./src/test/server/setup.ts"],
+          // AI calls are mocked; the schema just needs a value for GEMINI_API_KEY.
+          env: { ...testEnv, GEMINI_API_KEY: "placeholder" },
           alias: {
             "@": path.resolve(__dirname, "./src"),
             "server-only": path.resolve(__dirname, "./src/test/mocks/server-only.ts"),
@@ -51,6 +61,8 @@ export default defineConfig({
           include: ["evals/**/*.eval.ts"],
           environment: "node",
           setupFiles: ["./evals/vitest.setup.ts"],
+          // GEMINI_API_KEY comes from .env so evals can call the real Gemini API.
+          env: { ...testEnv },
           alias: {
             "@": path.resolve(__dirname, "./src"),
           },

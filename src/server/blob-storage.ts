@@ -51,10 +51,11 @@ export async function downloadBlob(bucket: string, key: string): Promise<Buffer>
   return Buffer.from(bytes);
 }
 
+// Preview pages keep these URLs around for the lifetime of a tab, so they are valid for 24 hours.
 export async function getSignedBlobUrl(
   bucket: string,
   key: string,
-  expiresIn = 3600,
+  expiresIn = 24 * 60 * 60,
 ): Promise<string> {
   const settings = getSettings();
 

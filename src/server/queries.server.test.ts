@@ -8,7 +8,7 @@ describe("getMe", () => {
     const [user] = await db
       .insert(schema.users)
       .values({
-        auth0UserId: TEST_USER_ID,
+        clerkUserId: TEST_USER_ID,
         selfieImageKey: "selfie.jpg",
         avatarImageKey: "avatar.jpg",
       })
@@ -23,7 +23,7 @@ describe("getMe", () => {
   });
 
   test("returns user info without avatar", async ({ db }) => {
-    const [user] = await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID }).returning();
+    const [user] = await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID }).returning();
 
     const me = await getMe();
     expect(me).toEqual({
@@ -34,7 +34,7 @@ describe("getMe", () => {
   });
 
   test("auto-creates and persists a new user on first request", async ({ db }) => {
-    const newSub = "auth0|new";
+    const newSub = "user_new";
     setSessionUser(newSub);
 
     const me = await getMe();
@@ -42,7 +42,7 @@ describe("getMe", () => {
     expect(me.has_avatar_image).toBe(false);
 
     const persisted = await db.query.users.findFirst({
-      where: eq(schema.users.auth0UserId, newSub),
+      where: eq(schema.users.clerkUserId, newSub),
     });
     expect(persisted).toBeDefined();
     expect(persisted?.id).toBe(me.id);
@@ -53,7 +53,7 @@ describe("getMe", () => {
   }) => {
     const [existingUser] = await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID })
+      .values({ clerkUserId: TEST_USER_ID })
       .returning();
 
     const { db: prodDb } = await import("./db");
@@ -80,7 +80,7 @@ describe("getWearables", () => {
   }) => {
     const [user] = await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
       .returning();
     const [w1] = await db
       .insert(schema.wearables)
@@ -93,7 +93,7 @@ describe("getWearables", () => {
 
     const [otherUser] = await db
       .insert(schema.users)
-      .values({ auth0UserId: "auth0|2", avatarImageKey: "avatar2.jpg" })
+      .values({ clerkUserId: "user_2", avatarImageKey: "avatar2.jpg" })
       .returning();
     await db.insert(schema.wearables).values({
       userId: otherUser.id,
@@ -125,7 +125,7 @@ describe("getWearables", () => {
   }) => {
     const [user] = await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
       .returning();
     const [w1] = await db
       .insert(schema.wearables)
@@ -163,7 +163,7 @@ describe("getWearables", () => {
   });
 
   test("returns signed URLs and pending status when the user has no avatar", async ({ db }) => {
-    const [user] = await db.insert(schema.users).values({ auth0UserId: TEST_USER_ID }).returning();
+    const [user] = await db.insert(schema.users).values({ clerkUserId: TEST_USER_ID }).returning();
     const [w1] = await db
       .insert(schema.wearables)
       .values({ userId: user.id, category: "t-shirt", imageKey: "w1.jpg" })
@@ -204,7 +204,7 @@ describe("getOutfits", () => {
   test("returns outfits with generation status", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
       .returning();
     const [top] = await db
       .insert(schema.wearables)
@@ -242,7 +242,7 @@ describe("getOutfits", () => {
   test("returns an empty array when user has no outfits", async ({ db }) => {
     await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
       .returning();
 
     expect(await getOutfits()).toEqual([]);

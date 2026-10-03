@@ -22,7 +22,7 @@ describe("GET", () => {
   test("returns 400 when a wearable id is not a UUID", async ({ db }) => {
     await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" });
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" });
 
     const req = new NextRequest(
       "http://localhost/api/images/outfit?top_id=not-a-uuid&bottom_id=also-not-a-uuid",
@@ -34,7 +34,7 @@ describe("GET", () => {
   test("returns 200 with JPEG image", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
       .returning();
     const [top] = await db
       .insert(schema.wearables)
@@ -80,7 +80,7 @@ describe("GET", () => {
   test("returns 404 when the top wearable is missing", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
       .returning();
     const [bottom] = await db
       .insert(schema.wearables)
@@ -100,7 +100,7 @@ describe("GET", () => {
   test("returns 404 when the top WOA image is missing", async ({ db }) => {
     const [user] = await db
       .insert(schema.users)
-      .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+      .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
       .returning();
     const [top] = await db
       .insert(schema.wearables)

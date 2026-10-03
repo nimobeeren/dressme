@@ -1,9 +1,8 @@
-import { getAuth0 } from "@/server/auth";
 import { getMe, getOutfits, getWearables } from "@/server/queries";
 import { getSettings } from "@/server/settings";
 import { HomeClient } from "@/views/home";
 
-export default getAuth0().withPageAuthRequired(async function Page() {
+export default async function Page() {
   const [me, wearables, outfits] = await Promise.all([getMe(), getWearables(), getOutfits()]);
 
   // The pending flags are derived from the same arrays the client receives, so
@@ -21,7 +20,7 @@ export default getAuth0().withPageAuthRequired(async function Page() {
       maxUploadSize={getSettings().MAX_UPLOAD_SIZE}
     />
   );
-});
+}
 
 // Image-processing server actions need extra execution time.
 export const maxDuration = 300;

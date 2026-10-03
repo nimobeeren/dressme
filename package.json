@@ -6,7 +6,6 @@
   "engines": {
     "node": "24.x"
   },
-  "packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621",
   "scripts": {
     "build": "next build",
     "deploy": "vercel",
@@ -23,9 +22,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auth0/nextjs-auth0": "^4.26.0",
     "@aws-sdk/client-s3": "^3.1079.0",
     "@aws-sdk/s3-request-presigner": "^3.1079.0",
+    "@clerk/nextjs": "^7.9.9",
     "@google/genai": "^2.10.0",
     "@hookform/resolvers": "^3.10.0",
     "@neondatabase/serverless": "^1.1.0",

@@ -6,7 +6,7 @@ import { createOutfit, deleteOutfit } from "./outfits";
 async function createOutfitFixtures(db: TestDb) {
   const [user] = await db
     .insert(schema.users)
-    .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+    .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
     .returning();
   const [top] = await db
     .insert(schema.wearables)
@@ -111,7 +111,7 @@ describe("createOutfit", () => {
     const { user, top } = await createOutfitFixtures(db);
     const [otherUser] = await db
       .insert(schema.users)
-      .values({ auth0UserId: "auth0|2", avatarImageKey: "avatar2.jpg" })
+      .values({ clerkUserId: "user_2", avatarImageKey: "avatar2.jpg" })
       .returning();
     const [otherBottom] = await db
       .insert(schema.wearables)
@@ -131,7 +131,7 @@ describe("createOutfit", () => {
 async function createDeleteFixtures(db: TestDb) {
   const [user] = await db
     .insert(schema.users)
-    .values({ auth0UserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
+    .values({ clerkUserId: TEST_USER_ID, avatarImageKey: "avatar.jpg" })
     .returning();
   const [top] = await db
     .insert(schema.wearables)
@@ -172,7 +172,7 @@ describe("deleteOutfit", () => {
   test("rejects when the outfit belongs to another user", async ({ db }) => {
     const [otherUser] = await db
       .insert(schema.users)
-      .values({ auth0UserId: "auth0|2", avatarImageKey: "avatar2.jpg" })
+      .values({ clerkUserId: "user_2", avatarImageKey: "avatar2.jpg" })
       .returning();
     const [otherTop] = await db
       .insert(schema.wearables)

@@ -67,10 +67,10 @@ const WEARABLES: Record<string, WearableSeedData> = {
 };
 
 async function seed() {
-  const seedUserId = settings.AUTH0_SEED_USER_ID;
+  const seedUserId = settings.CLERK_SEED_USER_ID;
   if (!seedUserId) {
     throw new Error(
-      "AUTH0_SEED_USER_ID is not set, but this is required to determine which user " +
+      "CLERK_SEED_USER_ID is not set, but this is required to determine which user " +
         "should own the data added during seeding.",
     );
   }
@@ -99,12 +99,12 @@ async function seed() {
 
   // Check if user already exists
   const existing = await db.query.users.findFirst({
-    where: eq(schema.users.auth0UserId, seedUserId),
+    where: eq(schema.users.clerkUserId, seedUserId),
   });
 
   if (existing) {
     console.info(
-      `User with auth0_user_id '${settings.AUTH0_SEED_USER_ID}' already exists, skipping creation.`,
+      `User with clerk_user_id '${settings.CLERK_SEED_USER_ID}' already exists, skipping creation.`,
     );
   }
 
@@ -115,7 +115,7 @@ async function seed() {
     const [user] = await db
       .insert(schema.users)
       .values({
-        auth0UserId: seedUserId,
+        clerkUserId: seedUserId,
         selfieImageKey: selfieKey,
         avatarImageKey: avatarKey,
       })

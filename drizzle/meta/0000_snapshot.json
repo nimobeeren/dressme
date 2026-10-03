@@ -1,5 +1,5 @@
 {
-  "id": "c5fc84f2-5bff-475a-97af-6d1bcfde6ef9",
+  "id": "278592f8-596b-4e39-81a4-040c5f673d35",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -103,8 +103,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "auth0_user_id": {
-          "name": "auth0_user_id",
+        "clerk_user_id": {
+          "name": "clerk_user_id",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
@@ -126,10 +126,10 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "user_auth0_user_id_unique": {
-          "name": "user_auth0_user_id_unique",
+        "user_clerk_user_id_unique": {
+          "name": "user_clerk_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["auth0_user_id"]
+          "columns": ["clerk_user_id"]
         }
       },
       "policies": {},

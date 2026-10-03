@@ -1,18 +1,14 @@
 import { z } from "zod";
 
 export const settingsSchema = z.object({
-  // Auth0
-  /** Custom domain assigned to the Auth0 application. */
-  AUTH0_DOMAIN: z.string(),
-  /** Client ID of the Auth0 application (must be a Regular Web Application). */
-  AUTH0_CLIENT_ID: z.string(),
-  /** Client secret of the Auth0 application. */
-  AUTH0_CLIENT_SECRET: z.string(),
-  /** Secret used to encrypt the session cookie. Generate with `openssl rand -hex 32`. */
-  AUTH0_SECRET: z.string(),
-  /** Auth0 User ID of the user who should own the data added during database seeding.
+  // Clerk
+  /** Publishable key of the Clerk application. The Clerk SDK also reads this on the client. */
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
+  /** Secret key of the Clerk application. */
+  CLERK_SECRET_KEY: z.string(),
+  /** Clerk User ID of the user who should own the data added during database seeding.
    * You can find this ID in the database. */
-  AUTH0_SEED_USER_ID: z.string().optional(),
+  CLERK_SEED_USER_ID: z.string().optional(),
 
   // Database
   /** PostgreSQL connection string. */

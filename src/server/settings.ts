@@ -49,6 +49,12 @@ export const settingsSchema = z.object({
   WEARABLES_BUCKET: z.string().default("dressme-wearables"),
   /** Bucket name for WearableOnAvatar images and masks. */
   WOA_BUCKET: z.string().default("dressme-woa"),
+
+  // Logging
+  /** PostHog project API key (starts with `phc_`). Log export is disabled when unset. */
+  POSTHOG_API_KEY: z.string().optional(),
+  /** PostHog API host to ship logs to, e.g. `https://eu.i.posthog.com`. */
+  POSTHOG_API_HOST: z.string().default("https://eu.i.posthog.com"),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

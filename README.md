@@ -112,6 +112,18 @@ Authentication uses Auth0 with encrypted, httpOnly session cookies via [`@auth0/
 
 Pages and server actions read the session through the auth layer in `src/server/auth.ts`. The outfit preview image is served by `GET /api/images/outfit`, which authenticates via the same session cookie (sent automatically by the browser).
 
+### Logging
+
+Server code logs through `logger` in `src/server/logger.ts`:
+
+```ts
+import { logger } from "@/server/logger";
+
+logger.info("Serving outfit image", { topId, bottomId });
+```
+
+Records are exported to [PostHog](https://posthog.com) over OTLP when `POSTHOG_API_KEY` is set (see `.env.example`), and dropped otherwise. Export is configured once at server startup in `src/server/logging.ts`, reached from `src/instrumentation.ts`. Logs appear in the PostHog **Logs** page, filterable by `service.name` (`dressme`), severity, or any attribute you attach.
+
 ### Evals
 
 Evals measure the performance of AI components. To run them:

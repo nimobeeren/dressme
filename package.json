@@ -11,6 +11,7 @@
     "deploy": "vercel",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
+    "delete-orphaned-images": "tsx scripts/delete-orphaned-images.ts",
     "dev": "next dev",
     "evals": "vitest --project evals run --slowTestThreshold=10000",
     "lint": "eslint .",

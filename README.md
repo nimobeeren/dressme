@@ -94,6 +94,15 @@ You can access the MinIO console at `http://localhost:9101` with the credentials
 
 ## Additional Development Tasks
 
+### Deleting Orphaned Images
+
+Images that are no longer referenced by the database (for example after re-running the seed script or regenerating an avatar) can be removed from the blob storage buckets:
+
+```sh
+pnpm delete-orphaned-images             # dry run: lists orphaned images
+pnpm delete-orphaned-images -- --delete # actually deletes them
+```
+
 ### Inspecting the Database
 
 ```sh

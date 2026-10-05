@@ -3,7 +3,7 @@ import { index, pgTable, unique, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const users = pgTable("user", {
   id: uuid("id").defaultRandom().primaryKey(),
-  auth0UserId: varchar("auth0_user_id").notNull().unique(),
+  clerkUserId: varchar("clerk_user_id").notNull().unique(),
   selfieImageKey: varchar("selfie_image_key"),
   avatarImageKey: varchar("avatar_image_key"),
 });

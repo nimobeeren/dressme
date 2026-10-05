@@ -15,6 +15,13 @@
       "when": 1788724072755,
       "tag": "0001_aromatic_korath",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790963907336,
+      "tag": "0002_gray_ikaris",
+      "breakpoints": true
     }
   ]
 }

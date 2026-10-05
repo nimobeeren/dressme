@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AlphaNotice } from "@/components/alpha-notice";
+import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -12,9 +12,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {children}
-        <Toaster />
-        <AlphaNotice />
+        <ClerkProvider>
+          {children}
+          <Show when="signed-in">
+            <div className="fixed right-4 top-4 z-50">
+              <UserButton />
+            </div>
+          </Show>
+          <Toaster />
+        </ClerkProvider>
       </body>
     </html>
   );

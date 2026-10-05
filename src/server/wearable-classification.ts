@@ -1,6 +1,7 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
-import { getSettings } from "./settings";
+import { env } from "@/env/server";
+import { logger } from "./logger";
 import { WEARABLE_CATEGORIES, type WearableCategory } from "@/shared/wearable-categories";
 import { classifyResponseSchema } from "@/shared/schemas";
 
@@ -17,8 +18,7 @@ export interface WearableClassifier {
  * Approximate cost: $0.0003 per invocation.
  */
 export async function classifyWearableImage(imageData: Buffer): Promise<WearableCategory | null> {
-  const settings = getSettings();
-  const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
   const sharp = await getSharp();
   const downscaled = await sharp(imageData)
@@ -54,8 +54,9 @@ export async function classifyWearableImage(imageData: Buffer): Promise<Wearable
         error instanceof TypeError ||
         (error instanceof ApiError && [408, 429, 500, 502, 503, 504].includes(error.status)),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `classifyWearableImage attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
+        logger.warn(
+          { attemptNumber, retriesLeft, err: error },
+          "classifyWearableImage attempt failed",
         );
       },
     },

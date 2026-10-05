@@ -1,6 +1,7 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
-import { getSettings } from "./settings";
+import { env } from "@/env/server";
+import { logger } from "./logger";
 
 async function getSharp() {
   return (await import("sharp")).default;
@@ -10,7 +11,7 @@ export interface AvatarGenerator {
   generate(selfieImageData: Buffer): Promise<Buffer>;
 }
 
-const PROMPT = `style the person as a sims 3 character
+export const AVATAR_PROMPT = `style the person as a sims 3 character
 no text/UI/diamond above the head
 video game style (PS3)
 not photorealistic
@@ -22,7 +23,7 @@ full body (head to toe)
 soft lighting
 medium contrast
 relaxed pose with arms by side
-wearing white 9" inseam shorts, white regular fit t-shirt and white socks
+wearing white 9" inseam shorts, white regular fit t-shirt and low white ankle socks
 no shoes/accessories
 facing camera
 relaxed gaze`;
@@ -31,9 +32,12 @@ relaxed gaze`;
  * Generate a game-like avatar image from a selfie image.
  * Approximate cost: $0.07 per invocation.
  */
-export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
-  const settings = getSettings();
-  const ai = new GoogleGenAI({ apiKey: settings.GEMINI_API_KEY });
+export async function generateAvatar(
+  selfieImageData: Buffer,
+  options: { prompt?: string } = {},
+): Promise<Buffer> {
+  const prompt = options.prompt ?? AVATAR_PROMPT;
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
   // Downscale selfie to max 1024px longest side before sending to Gemini
   const sharp = await getSharp();
@@ -48,7 +52,7 @@ export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
         model: "gemini-3.1-flash-image",
         contents: [
           { inlineData: { mimeType: "image/jpeg", data: downscaled.toString("base64") } },
-          PROMPT,
+          prompt,
         ],
         config: {
           imageConfig: {
@@ -63,9 +67,7 @@ export async function generateAvatar(selfieImageData: Buffer): Promise<Buffer> {
         error instanceof TypeError ||
         (error instanceof ApiError && [408, 429, 500, 502, 503, 504].includes(error.status)),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `generateAvatar attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
-        );
+        logger.warn({ attemptNumber, retriesLeft, err: error }, "generateAvatar attempt failed");
       },
     },
   );

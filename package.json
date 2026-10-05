@@ -6,12 +6,13 @@
   "engines": {
     "node": "24.x"
   },
-  "packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621",
   "scripts": {
+    "avatar-playground": "tsx scripts/avatar-playground.ts",
     "build": "next build",
     "deploy": "vercel",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
+    "delete-orphaned-images": "tsx scripts/delete-orphaned-images.ts",
     "dev": "next dev",
     "evals": "vitest --project evals run --slowTestThreshold=10000",
     "lint": "eslint .",
@@ -23,9 +24,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auth0/nextjs-auth0": "^4.26.0",
     "@aws-sdk/client-s3": "^3.1079.0",
     "@aws-sdk/s3-request-presigner": "^3.1079.0",
+    "@clerk/nextjs": "^7.9.9",
     "@google/genai": "^2.10.0",
     "@hookform/resolvers": "^3.10.0",
     "@neondatabase/serverless": "^1.1.0",
@@ -35,6 +36,7 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.3",
+    "@t3-oss/env-nextjs": "^0.13.11",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
@@ -42,6 +44,8 @@
     "next": "^16.2.10",
     "p-retry": "^7.0.0",
     "pg": "^8.22.0",
+    "pino": "^10.3.1",
+    "pino-opentelemetry-transport": "^4.0.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.54.2",

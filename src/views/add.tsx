@@ -1,6 +1,7 @@
 "use client";
 
 import type { Wearable } from "@/shared/schemas";
+import { env } from "@/env/client";
 import { classifyWearable, createWearable } from "@/server/actions/wearables";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,7 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckIcon, CircleSlashIcon, LoaderCircleIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   Control,
   FieldPath,
@@ -57,24 +58,22 @@ const ALL_CATEGORIES = Object.keys(CATEGORY_TO_GROUP) as [WearableCategory, ...W
 
 const CATEGORY_GROUPS = Object.entries(Object.groupBy(ALL_CATEGORIES, (c) => CATEGORY_TO_GROUP[c]));
 
-function makeFormSchema(maxUploadSize: number) {
-  return z.object({
-    wearables: z
-      .array(
-        z.object({
-          file: z
-            .instanceof(File)
-            .refine(
-              (f) => f.size <= maxUploadSize,
-              `Image must be smaller than ${maxUploadSize / (1024 * 1024)} MB.`,
-            ),
-          preview: z.string(),
-          category: z.enum(ALL_CATEGORIES),
-        }),
-      )
-      .min(1),
-  });
-}
+const formSchema = z.object({
+  wearables: z
+    .array(
+      z.object({
+        file: z
+          .instanceof(File)
+          .refine(
+            (f) => f.size <= env.NEXT_PUBLIC_MAX_UPLOAD_SIZE,
+            `Image must be smaller than ${env.NEXT_PUBLIC_MAX_UPLOAD_SIZE / (1024 * 1024)} MB.`,
+          ),
+        preview: z.string(),
+        category: z.enum(ALL_CATEGORIES),
+      }),
+    )
+    .min(1),
+});
 
 /** Auto-classification state for one wearable card, keyed by field-array ID. */
 type Classification =
@@ -82,13 +81,8 @@ type Classification =
   | { status: "done"; category: WearableCategory | null }
   | { status: "error" };
 
-interface AddClientProps {
-  /** Maximum accepted image upload size in bytes. */
-  maxUploadSize: number;
-}
-
 /** Page for adding wearables. Requires the user to have a generated avatar. */
-export function AddClient({ maxUploadSize }: AddClientProps) {
+export function AddClient() {
   const router = useRouter();
   const { toast } = useToast();
   const [classifications, setClassifications] = useState<Record<string, Classification>>({});
@@ -96,8 +90,6 @@ export function AddClient({ maxUploadSize }: AddClientProps) {
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
-
-  const formSchema = useMemo(() => makeFormSchema(maxUploadSize), [maxUploadSize]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -134,10 +126,10 @@ export function AddClient({ maxUploadSize }: AddClientProps) {
     if (!e.target.files) return;
     // Reject oversize files before adding them
     const accepted = Array.from(e.target.files).filter((file) => {
-      if (file.size <= maxUploadSize) return true;
+      if (file.size <= env.NEXT_PUBLIC_MAX_UPLOAD_SIZE) return true;
       toast({
         title: "Smaller, please!",
-        description: `${file.name} is too large (max ${maxUploadSize / (1024 * 1024)} MB).`,
+        description: `${file.name} is too large (max ${env.NEXT_PUBLIC_MAX_UPLOAD_SIZE / (1024 * 1024)} MB).`,
         variant: "destructive",
       });
       return false;

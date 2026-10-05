@@ -11,6 +11,9 @@ runs:
   using: composite
   steps:
     - uses: pnpm/action-setup@v6
+      with:
+        # Keep in sync with the pnpm major Vercel uses for builds.
+        version: 10
 
     - uses: actions/setup-node@v5
       with:

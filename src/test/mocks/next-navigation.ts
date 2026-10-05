@@ -44,6 +44,10 @@ export const redirect = vi.fn((href: string) => {
   emit();
 });
 
+export const notFound = vi.fn(() => {
+  throw new Error("NEXT_NOT_FOUND");
+});
+
 export function useRouter() {
   return mockRouter;
 }

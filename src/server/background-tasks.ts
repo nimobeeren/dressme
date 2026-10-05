@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { env } from "@/env/server";
 import { downloadBlob, uploadBlob } from "./blob-storage";
-import { getSettings } from "./settings";
+import { logger } from "./logger";
 import { db, schema } from "./db";
 
 // TODO: add a test for this
 export async function generateAvatarTask(userId: string): Promise<void> {
-  const settings = getSettings();
-
   try {
     const user = await db.query.users.findFirst({
       where: eq(schema.users.id, userId),
@@ -17,29 +16,27 @@ export async function generateAvatarTask(userId: string): Promise<void> {
       throw new Error("User does not have a selfie image");
     }
 
-    const selfieData = await downloadBlob(settings.SELFIES_BUCKET, user.selfieImageKey);
+    const selfieData = await downloadBlob(env.SELFIES_BUCKET, user.selfieImageKey);
 
     const { generateAvatar } = await import("./avatar-generation");
     const avatarData = await generateAvatar(selfieData);
 
     const avatarKey = `${randomUUID()}.jpg`;
-    await uploadBlob(settings.AVATARS_BUCKET, avatarKey, avatarData, "image/jpeg");
+    await uploadBlob(env.AVATARS_BUCKET, avatarKey, avatarData, "image/jpeg");
 
     await db
       .update(schema.users)
       .set({ avatarImageKey: avatarKey })
       .where(eq(schema.users.id, userId));
 
-    console.info(`Avatar generation succeeded for user '${userId}'`);
+    logger.info({ userId }, "Avatar generation succeeded");
   } catch (error) {
-    console.error(`Avatar generation failed for user '${userId}'`, error);
+    logger.error({ userId, err: error }, "Avatar generation failed");
   }
 }
 
 // TODO: add a test for this
 export async function generateWoaTask(wearableId: string, userId: string): Promise<void> {
-  const settings = getSettings();
-
   try {
     const user = await db.query.users.findFirst({
       where: eq(schema.users.id, userId),
@@ -54,8 +51,8 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
     });
     if (!wearable) throw new Error(`Wearable '${wearableId}' not found`);
 
-    const wearableImageData = await downloadBlob(settings.WEARABLES_BUCKET, wearable.imageKey);
-    const avatarImageData = await downloadBlob(settings.AVATARS_BUCKET, user.avatarImageKey);
+    const wearableImageData = await downloadBlob(env.WEARABLES_BUCKET, wearable.imageKey);
+    const avatarImageData = await downloadBlob(env.AVATARS_BUCKET, user.avatarImageKey);
 
     const { generateWoaImage, generateMask } = await import("./woa-generation");
 
@@ -76,8 +73,8 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
     const maskKey = `${randomUUID()}.jpg`;
 
     // Upload results to blob storage
-    await uploadBlob(settings.WOA_BUCKET, woaKey, woaImageData, "image/jpeg");
-    await uploadBlob(settings.WOA_BUCKET, maskKey, maskImageData, "image/jpeg");
+    await uploadBlob(env.WOA_BUCKET, woaKey, woaImageData, "image/jpeg");
+    await uploadBlob(env.WOA_BUCKET, maskKey, maskImageData, "image/jpeg");
 
     await db.insert(schema.wearableOnAvatarImages).values({
       userId: user.id,
@@ -87,8 +84,8 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
       maskImageKey: maskKey,
     });
 
-    console.info(`WOA generation succeeded for wearable '${wearableId}'`);
+    logger.info({ wearableId, userId }, "WOA generation succeeded");
   } catch (error) {
-    console.error(`WOA generation failed for wearable '${wearableId}'`, error);
+    logger.error({ wearableId, userId, err: error }, "WOA generation failed");
   }
 }

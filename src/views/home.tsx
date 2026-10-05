@@ -1,6 +1,7 @@
 "use client";
 
 import { type Outfit, type User, type Wearable } from "@/shared/schemas";
+import { env } from "@/env/client";
 import { refreshMe, uploadSelfie } from "@/server/actions/me";
 import { refreshWearables } from "@/server/actions/wearables";
 import { createOutfit, deleteOutfit } from "@/server/actions/outfits";
@@ -26,8 +27,6 @@ export interface HomeClientProps {
   wearablesPending: boolean;
   /** True while the avatar is still generating. Drives the poller. */
   avatarPending: boolean;
-  /** Maximum accepted image upload size in bytes. */
-  maxUploadSize: number;
 }
 
 export function HomeClient({
@@ -36,7 +35,6 @@ export function HomeClient({
   outfits,
   wearablesPending,
   avatarPending,
-  maxUploadSize,
 }: HomeClientProps) {
   const [, startTransition] = useTransition();
 
@@ -59,7 +57,7 @@ export function HomeClient({
     return () => clearInterval(id);
   }, [avatarPending, startTransition]);
 
-  return <Main me={me} wearables={wearables} outfits={outfits} maxUploadSize={maxUploadSize} />;
+  return <Main me={me} wearables={wearables} outfits={outfits} />;
 }
 
 type FormFieldValues = {
@@ -71,17 +69,7 @@ type FormFieldValues = {
  * Lets the user pick wearables and outfits and shows a generated image of the selected items on the
  * user's avatar.
  */
-function Main({
-  me,
-  wearables,
-  outfits,
-  maxUploadSize,
-}: {
-  me: User;
-  wearables: Wearable[];
-  outfits: Outfit[];
-  maxUploadSize: number;
-}) {
+function Main({ me, wearables, outfits }: { me: User; wearables: Wearable[]; outfits: Outfit[] }) {
   const tops = wearables.filter((wearable) => wearable.body_part === "top");
   const bottoms = wearables.filter((wearable) => wearable.body_part === "bottom");
 
@@ -111,7 +99,6 @@ function Main({
           activeTopId={activeTopId}
           activeBottomId={activeBottomId}
           activeOutfitId={activeOutfit?.id}
-          maxUploadSize={maxUploadSize}
         />
         <Wardrobe
           isDisabled={!me.has_avatar_image}
@@ -131,13 +118,11 @@ function Preview({
   activeTopId,
   activeBottomId,
   activeOutfitId,
-  maxUploadSize,
 }: {
   me: User;
   activeTopId: string | undefined;
   activeBottomId: string | undefined;
   activeOutfitId: string | undefined;
-  maxUploadSize: number;
 }) {
   const { toast } = useToast();
   const [isFavoriting, startFavoriting] = useTransition();
@@ -156,8 +141,12 @@ function Preview({
     const file = e.target.files?.[0];
     if (!file) return;
     // Reject oversize files before upload
-    if (file.size > maxUploadSize) {
-      toastError(new Error(`Image must be smaller than ${maxUploadSize / (1024 * 1024)} MB.`));
+    if (file.size > env.NEXT_PUBLIC_MAX_UPLOAD_SIZE) {
+      toast({
+        title: "Smaller, please!",
+        description: `${file.name} is too large (max ${env.NEXT_PUBLIC_MAX_UPLOAD_SIZE / (1024 * 1024)} MB).`,
+        variant: "destructive",
+      });
       return;
     }
     const formData = new FormData();

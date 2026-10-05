@@ -1,6 +1,7 @@
 import type { Sharp } from "sharp";
 import { env as clientEnv } from "@/env/client";
 import { env } from "@/env/server";
+import { logger } from "@/server/logger";
 
 async function getSharp() {
   return (await import("sharp")).default;
@@ -21,7 +22,8 @@ export async function safeOpenImage(data: Buffer): Promise<Sharp> {
       fit: "inside",
       withoutEnlargement: true,
     });
-  } catch {
+  } catch (error) {
+    logger.error({ error }, "Could not read the uploaded file as an image.");
     throw new UnprocessableImageError("Could not read the uploaded file as an image.");
   }
 }

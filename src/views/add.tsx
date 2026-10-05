@@ -194,7 +194,7 @@ export function AddClient() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormItem>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               {wearablesFieldArray.fields.map((field, index) => (
                 <WearableAddCard
                   key={field.id}
@@ -285,7 +285,7 @@ function WearableAddCard<TFieldValues extends FieldValues>({
   }, []);
 
   return (
-    <div className="group relative w-64">
+    <div className="group relative w-64 shrink-0">
       <Card className="flex flex-col overflow-hidden">
         <img src={previewSrc} className="aspect-3/4 object-cover" />
         <CategoryFormField
@@ -389,7 +389,7 @@ function FileInputButton({ onChange }: WearableFileInputButtonProps) {
       type="button"
       variant="outline"
       tabIndex={-1}
-      className="relative aspect-3/4 h-auto w-64 border-2 p-4 text-6xl text-foreground"
+      className="relative aspect-3/4 h-auto w-64 shrink-0 border-2 p-4 text-6xl text-foreground"
     >
       <PlusIcon className="!size-12" />
       <input

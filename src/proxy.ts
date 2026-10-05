@@ -3,15 +3,17 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 
 /**
  * Origins whose session tokens `clerkMiddleware` accepts (the `azp` claim).
- * Dev origins are excluded on Vercel, where NODE_ENV is "production" for
- * previews too.
+ * Only on production to fix redirect loops when using SSH tunnels
+ * in development.
  */
-const authorizedParties = [
-  "https://www.dressme.fashion",
-  ...(process.env.NODE_ENV !== "production" ? ["http://localhost:3000", "http://devbox:3000"] : []),
-  ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
-  ...(process.env.VERCEL_BRANCH_URL ? [`https://${process.env.VERCEL_BRANCH_URL}`] : []),
-];
+const authorizedParties =
+  process.env.NODE_ENV === "production"
+    ? [
+        "https://www.dressme.fashion",
+        ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
+        ...(process.env.VERCEL_BRANCH_URL ? [`https://${process.env.VERCEL_BRANCH_URL}`] : []),
+      ]
+    : undefined;
 
 /**
  * Runs Clerk authentication on every request so `auth()` works in pages,

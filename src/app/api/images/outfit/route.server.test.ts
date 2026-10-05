@@ -63,10 +63,10 @@ describe("GET", () => {
 
     const image = await makeValidJpeg();
     await mockBlobStorage.upload("dressme-avatars", "avatar.jpg", image, "image/jpeg");
-    await mockBlobStorage.upload("dressme-woa", "woa_top.jpg", image, "image/jpeg");
-    await mockBlobStorage.upload("dressme-woa", "woa_bottom.jpg", image, "image/jpeg");
-    await mockBlobStorage.upload("dressme-woa", "mask_top.jpg", image, "image/jpeg");
-    await mockBlobStorage.upload("dressme-woa", "mask_bottom.jpg", image, "image/jpeg");
+    await mockBlobStorage.upload("dressme-woas", "woa_top.jpg", image, "image/jpeg");
+    await mockBlobStorage.upload("dressme-woas", "woa_bottom.jpg", image, "image/jpeg");
+    await mockBlobStorage.upload("dressme-woa-masks", "mask_top.jpg", image, "image/jpeg");
+    await mockBlobStorage.upload("dressme-woa-masks", "mask_bottom.jpg", image, "image/jpeg");
 
     const req = new NextRequest(
       `http://localhost/api/images/outfit?top_id=${top.id}&bottom_id=${bottom.id}`,
@@ -118,8 +118,8 @@ describe("GET", () => {
       maskImageKey: "mask_bottom.jpg",
     });
     const image = await makeValidJpeg();
-    await mockBlobStorage.upload("dressme-woa", "woa_bottom.jpg", image, "image/jpeg");
-    await mockBlobStorage.upload("dressme-woa", "mask_bottom.jpg", image, "image/jpeg");
+    await mockBlobStorage.upload("dressme-woas", "woa_bottom.jpg", image, "image/jpeg");
+    await mockBlobStorage.upload("dressme-woa-masks", "mask_bottom.jpg", image, "image/jpeg");
 
     const req = new NextRequest(
       `http://localhost/api/images/outfit?top_id=${top.id}&bottom_id=${bottom.id}`,

@@ -16,6 +16,7 @@
     "dev": "next dev",
     "evals": "vitest --project evals run --slowTestThreshold=10000",
     "lint": "eslint .",
+    "migrate-woa-buckets": "tsx scripts/migrate-woa-buckets.ts",
     "prepare": "husky",
     "preview": "next start",
     "test": "vitest --project browser --project server",

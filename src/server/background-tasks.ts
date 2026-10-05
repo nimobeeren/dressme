@@ -74,7 +74,7 @@ export async function generateWoaTask(wearableId: string, userId: string): Promi
 
     // Upload results to blob storage
     await uploadBlob(env.WOA_BUCKET, woaKey, woaImageData, "image/jpeg");
-    await uploadBlob(env.WOA_BUCKET, maskKey, maskImageData, "image/jpeg");
+    await uploadBlob(env.WOA_MASKS_BUCKET, maskKey, maskImageData, "image/jpeg");
 
     await db.insert(schema.wearableOnAvatarImages).values({
       userId: user.id,

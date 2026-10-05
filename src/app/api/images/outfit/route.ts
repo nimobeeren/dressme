@@ -77,8 +77,8 @@ export async function GET(request: NextRequest) {
     const avatarData = await downloadBlob(env.AVATARS_BUCKET, user.avatarImageKey);
     const topData = await downloadBlob(env.WOA_BUCKET, topOnAvatar.imageKey);
     const bottomData = await downloadBlob(env.WOA_BUCKET, bottomOnAvatar.imageKey);
-    const topMaskData = await downloadBlob(env.WOA_BUCKET, topOnAvatar.maskImageKey);
-    const bottomMaskData = await downloadBlob(env.WOA_BUCKET, bottomOnAvatar.maskImageKey);
+    const topMaskData = await downloadBlob(env.WOA_MASKS_BUCKET, topOnAvatar.maskImageKey);
+    const bottomMaskData = await downloadBlob(env.WOA_MASKS_BUCKET, bottomOnAvatar.maskImageKey);
 
     const { combineWearables } = await import("@/server/combining");
     const outfitImage = await combineWearables(

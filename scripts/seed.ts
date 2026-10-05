@@ -155,7 +155,7 @@ async function seed() {
       if (fs.existsSync(maskPath)) {
         const maskData = fs.readFileSync(maskPath);
         const maskKey = `${randomUUID()}.jpg`;
-        await uploadBlob(env.WOA_BUCKET, maskKey, maskData, "image/jpeg");
+        await uploadBlob(env.WOA_MASKS_BUCKET, maskKey, maskData, "image/jpeg");
 
         // Add WearableOnAvatarImage
         await db.insert(schema.wearableOnAvatarImages).values({

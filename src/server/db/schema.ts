@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, pgTable, unique, uuid, varchar } from "drizzle-orm/pg-core";
 
+/** Creature using this app. */
 export const users = pgTable("user", {
   id: uuid("id").defaultRandom().primaryKey(),
   clerkUserId: varchar("clerk_user_id").notNull().unique(),
@@ -8,6 +9,7 @@ export const users = pgTable("user", {
   avatarImageKey: varchar("avatar_image_key"),
 });
 
+/** Wearable fashion item. */
 export const wearables = pgTable(
   "wearable",
   {
@@ -50,7 +52,7 @@ export const wearableOnAvatarImages = pgTable(
 );
 
 /**
- * A combination of a top and bottom, created by a user.
+ * Combination of a top and bottom wearable, created by a user.
  * A user can only have one outfit with the same top and bottom.
  */
 export const outfits = pgTable(
@@ -73,6 +75,7 @@ export const outfits = pgTable(
   ],
 );
 
+/** Allow querying top and bottom objects directly in an outfit. */
 export const outfitsRelations = relations(outfits, ({ one }) => ({
   top: one(wearables, {
     fields: [outfits.topId],

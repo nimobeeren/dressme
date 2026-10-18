@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, test } from "vitest";
+import { logger } from "../src/server/logger";
 import { classifyWearableImage } from "../src/server/wearable-classification";
 
 const WEARABLES_DIR = join(import.meta.dirname, "..", "images", "wearables");
@@ -53,7 +54,10 @@ describe("wearable-classification", () => {
       const predicted = await classifyWearableImage(imageData);
       const correct = predicted === expected;
       const status = correct ? "✓" : "✗";
-      console.log(`${expected.padEnd(12)} ${String(predicted).padEnd(12)} ${status} ${relPath}`);
+      logger.info(
+        { expected, predicted, correct, relPath },
+        `${expected.padEnd(12)} ${String(predicted).padEnd(12)} ${status} ${relPath}`,
+      );
     },
   );
 });

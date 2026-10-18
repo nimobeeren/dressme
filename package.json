@@ -7,6 +7,7 @@
     "node": "24.x"
   },
   "scripts": {
+    "avatar-playground": "tsx scripts/avatar-playground.ts",
     "build": "next build",
     "deploy": "vercel",
     "db:migrate": "drizzle-kit migrate",
@@ -15,6 +16,7 @@
     "dev": "next dev",
     "evals": "vitest --project evals run --slowTestThreshold=10000",
     "lint": "eslint .",
+    "migrate-woa-buckets": "tsx scripts/migrate-woa-buckets.ts",
     "prepare": "husky",
     "preview": "next start",
     "test": "vitest --project browser --project server",
@@ -43,6 +45,8 @@
     "next": "^16.2.10",
     "p-retry": "^7.0.0",
     "pg": "^8.22.0",
+    "pino": "^10.3.1",
+    "pino-opentelemetry-transport": "^4.0.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.54.2",

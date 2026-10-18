@@ -1,6 +1,7 @@
 import { GoogleGenAI, ApiError } from "@google/genai";
 import pRetry from "p-retry";
 import { env } from "@/env/server";
+import { logger } from "./logger";
 import { WEARABLE_CATEGORIES, type WearableCategory } from "@/shared/wearable-categories";
 import { classifyResponseSchema } from "@/shared/schemas";
 
@@ -53,8 +54,9 @@ export async function classifyWearableImage(imageData: Buffer): Promise<Wearable
         error instanceof TypeError ||
         (error instanceof ApiError && [408, 429, 500, 502, 503, 504].includes(error.status)),
       onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
-        console.info(
-          `classifyWearableImage attempt ${attemptNumber} failed (${retriesLeft} retries left): ${error.message}`,
+        logger.warn(
+          { attemptNumber, retriesLeft, err: error },
+          "classifyWearableImage attempt failed",
         );
       },
     },

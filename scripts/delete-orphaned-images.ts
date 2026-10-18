@@ -28,6 +28,7 @@ async function getLiveKeys(): Promise<Map<string, Set<string>>> {
     [env.AVATARS_BUCKET, new Set<string>()],
     [env.WEARABLES_BUCKET, new Set<string>()],
     [env.WOA_BUCKET, new Set<string>()],
+    [env.WOA_MASKS_BUCKET, new Set<string>()],
   ]);
   const add = (bucket: string, key: string | null) => {
     if (key) live.get(bucket)!.add(key);
@@ -44,7 +45,7 @@ async function getLiveKeys(): Promise<Map<string, Set<string>>> {
     add(env.AVATARS_BUCKET, woa.avatarImageKey);
     add(env.WEARABLES_BUCKET, woa.wearableImageKey);
     add(env.WOA_BUCKET, woa.imageKey);
-    add(env.WOA_BUCKET, woa.maskImageKey);
+    add(env.WOA_MASKS_BUCKET, woa.maskImageKey);
   }
   return live;
 }

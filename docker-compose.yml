@@ -46,11 +46,13 @@ services:
       mc mb --ignore-existing minio/dressme-selfies;
       mc mb --ignore-existing minio/dressme-avatars;
       mc mb --ignore-existing minio/dressme-wearables;
-      mc mb --ignore-existing minio/dressme-woa;
+      mc mb --ignore-existing minio/dressme-woas;
+      mc mb --ignore-existing minio/dressme-woa-masks;
       mc anonymous set download minio/dressme-selfies;
       mc anonymous set download minio/dressme-avatars;
       mc anonymous set download minio/dressme-wearables;
-      mc anonymous set download minio/dressme-woa;
+      mc anonymous set download minio/dressme-woas;
+      mc anonymous set download minio/dressme-woa-masks;
       "
 
 volumes:

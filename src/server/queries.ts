@@ -36,7 +36,7 @@ async function toWearable(
   const [wearable_image_url, woa_image_url, woa_mask_url] = await Promise.all([
     getSignedBlobUrl(env.WEARABLES_BUCKET, w.imageKey),
     woa ? getSignedBlobUrl(env.WOA_BUCKET, woa.imageKey) : null,
-    woa ? getSignedBlobUrl(env.WOA_BUCKET, woa.maskImageKey) : null,
+    woa ? getSignedBlobUrl(env.WOA_MASKS_BUCKET, woa.maskImageKey) : null,
   ]);
   return {
     id: w.id,

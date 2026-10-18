@@ -155,8 +155,8 @@ describe("getWearables", () => {
         body_part: "top",
         wearable_image_url: "https://signed-url/dressme-wearables/w1.jpg",
         generation_status: "success",
-        woa_image_url: "https://signed-url/dressme-woa/woa_w1.jpg",
-        woa_mask_url: "https://signed-url/dressme-woa/mask_w1.jpg",
+        woa_image_url: "https://signed-url/dressme-woas/woa_w1.jpg",
+        woa_mask_url: "https://signed-url/dressme-woa-masks/mask_w1.jpg",
       },
       {
         id: w2.id,
@@ -245,8 +245,8 @@ describe("getOutfits", () => {
     expect(outfits[0].top.category).toBe("t-shirt");
     expect(outfits[0].top.generation_status).toBe("success");
     expect(outfits[0].top.wearable_image_url).toContain("signed-url");
-    expect(outfits[0].top.woa_image_url).toBe("https://signed-url/dressme-woa/woa_top.jpg");
-    expect(outfits[0].top.woa_mask_url).toBe("https://signed-url/dressme-woa/mask_top.jpg");
+    expect(outfits[0].top.woa_image_url).toBe("https://signed-url/dressme-woas/woa_top.jpg");
+    expect(outfits[0].top.woa_mask_url).toBe("https://signed-url/dressme-woa-masks/mask_top.jpg");
     expect(outfits[0].bottom.id).toBe(bottom.id);
     expect(outfits[0].bottom.category).toBe("pants");
     expect(outfits[0].bottom.generation_status).toBe("pending");

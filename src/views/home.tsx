@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { OutfitTransition } from "@/components/outfit";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import { HourglassIcon, LoaderCircleIcon, PlusIcon, StarIcon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useTransition } from "react";
@@ -83,6 +84,8 @@ function Main({ me, wearables, outfits }: { me: User; wearables: Wearable[]; out
 
   const activeTopId = useWatch({ control: form.control, name: "topId" });
   const activeBottomId = useWatch({ control: form.control, name: "bottomId" });
+  const activeTop = tops.find((top) => top.id === activeTopId);
+  const activeBottom = bottoms.find((bottom) => bottom.id === activeBottomId);
 
   // The outfit is not a form value, instead it is derived from the top/bottom form values.
   // This makes it easier to keep them in sync; we only need to set the top/bottom when selecting
@@ -96,12 +99,12 @@ function Main({ me, wearables, outfits }: { me: User; wearables: Wearable[]; out
       <form className="flex h-screen items-center justify-center gap-16">
         <Preview
           me={me}
-          activeTopId={activeTopId}
-          activeBottomId={activeBottomId}
+          activeTop={activeTop}
+          activeBottom={activeBottom}
           activeOutfitId={activeOutfit?.id}
         />
         <Wardrobe
-          isDisabled={!me.has_avatar_image}
+          isDisabled={me.avatar_image_url == null}
           tops={tops}
           bottoms={bottoms}
           outfits={outfits}
@@ -112,16 +115,19 @@ function Main({ me, wearables, outfits }: { me: User; wearables: Wearable[]; out
   );
 }
 
-/** Shows a generated image of the active wearables/outfit on the user's avatar. */
+/**
+ * Shows a generated image of the active wearables/outfit on the user's avatar.
+ * Falls back to an upload button when the user hasn't uploaded a selfie yet.
+ */
 function Preview({
   me,
-  activeTopId,
-  activeBottomId,
+  activeTop,
+  activeBottom,
   activeOutfitId,
 }: {
   me: User;
-  activeTopId: string | undefined;
-  activeBottomId: string | undefined;
+  activeTop: Wearable | undefined;
+  activeBottom: Wearable | undefined;
   activeOutfitId: string | undefined;
 }) {
   const { toast } = useToast();
@@ -169,7 +175,7 @@ function Preview({
         if (activeOutfitId) {
           await deleteOutfit(activeOutfitId);
         } else {
-          await createOutfit({ topId: activeTopId!, bottomId: activeBottomId! });
+          await createOutfit({ topId: activeTop!.id, bottomId: activeBottom!.id });
         }
       } catch (error) {
         toastError(error);
@@ -179,13 +185,13 @@ function Preview({
 
   return (
     <div className="relative h-[60vh] shrink-0">
-      {me.has_avatar_image && (
+      {me.avatar_image_url != null && (
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute right-4 top-4"
-          disabled={!activeTopId || !activeBottomId || isFavoriting}
+          className="absolute right-4 top-4 z-10"
+          disabled={!activeTop || !activeBottom || isFavoriting}
           aria-label={activeOutfitId ? "Remove from favorites" : "Save as favorite"}
           aria-pressed={!!activeOutfitId}
           onClick={toggleFavorite}
@@ -219,7 +225,7 @@ function Preview({
             </div>
           </div>
         )}
-        {me.has_selfie_image && !me.has_avatar_image && (
+        {me.has_selfie_image && me.avatar_image_url == null && (
           // Pending avatar generation
           <div className="flex h-full items-center justify-center bg-muted">
             <div className="flex flex-col items-center gap-4">
@@ -230,14 +236,9 @@ function Preview({
             </div>
           </div>
         )}
-        {me.has_avatar_image && activeTopId && activeBottomId ? (
-          // Normal avatar/outfit preview. The browser sends the auth cookie
-          // with the request automatically.
-          <img
-            src={`/api/images/outfit?top_id=${activeTopId}&bottom_id=${activeBottomId}`}
-            className="h-full w-full object-cover"
-          />
-        ) : me.has_avatar_image ? (
+        {me.avatar_image_url != null && activeTop && activeBottom ? (
+          <OutfitTransition avatarUrl={me.avatar_image_url} wearables={[activeBottom, activeTop]} />
+        ) : me.avatar_image_url != null ? (
           // Incomplete outfit
           <div className="flex h-full items-center justify-center px-8">
             <p className="text-center">Select a top and bottom to see your outfit preview.</p>

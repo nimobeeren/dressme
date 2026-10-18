@@ -50,10 +50,11 @@ export async function downloadBlob(bucket: string, key: string): Promise<Buffer>
   return Buffer.from(bytes);
 }
 
+// Preview pages keep these URLs around for the lifetime of a tab, so they are valid for 24 hours.
 export async function getSignedBlobUrl(
   bucket: string,
   key: string,
-  expiresIn = 3600,
+  expiresIn = 24 * 60 * 60,
 ): Promise<string> {
   // Local MinIO has anonymous access enabled, so return a direct unsigned URL
   if (isLocalUrl(env.S3_ENDPOINT_URL)) {
